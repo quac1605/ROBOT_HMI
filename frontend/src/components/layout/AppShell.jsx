@@ -1,5 +1,7 @@
 import {
+  Alert,
   Box,
+  Button,
   Chip,
   Divider,
   Drawer,
@@ -11,8 +13,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext.js';
 
 const navItems = [
   ['/status', 'Trạng thái'],
@@ -23,6 +26,10 @@ const navItems = [
 
 export default function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const toggleDrawer = (open) => (event) => {
     if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
@@ -30,6 +37,19 @@ export default function AppShell() {
     }
     setDrawerOpen(open);
   };
+
+  async function handleLogout() {
+    setLogoutBusy(true);
+    setLogoutError('');
+    try {
+      await signOut();
+      navigate('/login', { replace: true });
+    } catch (cause) {
+      setLogoutError(cause.message);
+    } finally {
+      setLogoutBusy(false);
+    }
+  }
 
   return (
     <Box sx={{ minHeight: '100dvh' }}>
@@ -127,6 +147,29 @@ export default function AppShell() {
             </ListItem>
           ))}
         </List>
+        <Divider />
+        {/* Nút Đăng xuất ở cuối menu */}
+        <Box sx={{ p: 2, mt: 'auto' }}>
+          {user && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Đang đăng nhập: <strong>{user.username}</strong>
+            </Typography>
+          )}
+          {logoutError && (
+            <Alert severity="error" sx={{ mb: 1.5 }}>
+              {logoutError}
+            </Alert>
+          )}
+          <Button
+            variant="outlined"
+            color="error"
+            fullWidth
+            disabled={logoutBusy}
+            onClick={handleLogout}
+          >
+            {logoutBusy ? 'Đang đăng xuất...' : 'Đăng xuất'}
+          </Button>
+        </Box>
       </Drawer>
       {/* Vùng hiển thị nội dung trang con */}
       <Box component="main" sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>

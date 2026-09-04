@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { BrowserRouter } from 'react-router';
+import AuthProvider from './auth/AuthProvider.jsx';
 import App from './App.jsx';
 import './index.css';
 
@@ -22,8 +23,10 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <BrowserRouter>
-        <CssBaseline />
-        <App />
+        <AuthProvider>
+          <CssBaseline />
+          <App />
+        </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
   </StrictMode>,
