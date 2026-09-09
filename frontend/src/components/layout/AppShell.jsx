@@ -16,6 +16,8 @@ import {
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.js';
+import { useRobotStore } from '../../stores/robotStore.js';
+import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
 
 const navItems = [
   ['/status', 'Trạng thái'],
@@ -30,6 +32,12 @@ export default function AppShell() {
   const [logoutError, setLogoutError] = useState('');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // Đọc trạng thái từ store và độ tươi telemetry
+  const hasSnapshot = useRobotStore((state) => state.snapshot !== null);
+  const rosConnected = useRobotStore((state) => state.snapshot?.rosConnected);
+  const locStatus = useRobotStore((state) => state.snapshot?.localization?.status);
+  const { stale } = useRobotFreshness(2000);
 
   const toggleDrawer = (open) => (event) => {
     if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
@@ -88,10 +96,28 @@ export default function AppShell() {
           {/* Bên phải: Chip mô phỏng + Nút Hamburger Menu (khớp slide PowerPoint) */}
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
             <Chip
-              label="Mô phỏng — chưa kết nối robot"
+              label={
+                !hasSnapshot
+                  ? 'Đang chờ dữ liệu...'
+                  : stale
+                    ? 'Mất tín hiệu (Stale)'
+                    : !rosConnected
+                      ? 'Robot: Offline'
+                      : locStatus === 'lost'
+                        ? 'Mất định vị'
+                        : 'Robot: Online'
+              }
+              color={
+                !hasSnapshot
+                  ? 'default'
+                  : stale || locStatus === 'lost'
+                    ? 'warning'
+                    : !rosConnected
+                      ? 'error'
+                      : 'success'
+              }
               variant="outlined"
               size="small"
-              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
             />
             <IconButton
               aria-label="Mở menu chức năng"

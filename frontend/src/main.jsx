@@ -5,6 +5,8 @@ import { BrowserRouter } from 'react-router';
 import AuthProvider from './auth/AuthProvider.jsx';
 import App from './App.jsx';
 import './index.css';
+import TelemetryBridge from './components/status/TelemetryBridge.jsx';
+
 
 const theme = createTheme({
   palette: {
@@ -24,6 +26,7 @@ createRoot(document.getElementById('root')).render(
     <ThemeProvider theme={theme}>
       <BrowserRouter>
         <AuthProvider>
+          <TelemetryBridge /> {/* <-- Đặt ở đây */}
           <CssBaseline />
           <App />
         </AuthProvider>

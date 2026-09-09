@@ -1,7 +1,10 @@
+import { createMockTelemetry } from './mockTelemetry.js';
+
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function createMockRobotClient() {
   let user = null;
+  const telemetry = createMockTelemetry(); // Khởi tạo 1 lần duy nhất
 
   return {
     kind: 'mock',
@@ -19,6 +22,20 @@ export function createMockRobotClient() {
     async logout() {
       await delay(100);
       user = null;
+    },
+
+     // Bổ sung các phương thức telemetry:
+    async getRobotState() {
+      return telemetry.getSnapshot();
+    },
+    subscribeRobotState(listener) {
+      return telemetry.subscribe(listener);
+    },
+    setDemoScenario(name) {
+      telemetry.setScenario(name);
+    },
+    getDemoScenario() {
+      return telemetry.getScenario();
     },
   };
 }
