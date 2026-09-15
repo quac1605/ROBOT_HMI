@@ -1,7 +1,16 @@
 # ==========================================
 # Tài liệu nội bộ (theo yêu cầu không push lên GitHub)
 # ==========================================
-docs/
+docs/*
+!docs/test/
+!docs/test/**
+!docs/NGHIEM_THU_CHANG_06.md
+!docs/CHANG_06_OCCUPANCYGRID_2D_VA_LUONG_MAPPING.md
+
+test-results/
+playwright-report/
+**/test-results/
+**/playwright-report/
 
 # ==========================================
 # Dependencies & Package Managers

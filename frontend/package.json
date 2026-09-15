@@ -6,7 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint src test ../docs/test",
+    "test:node": "node --test",
+    "test:browser": "node ../docs/test/scripts/run_browser_tests.mjs",
+    "test": "npm run test:node",
+    "benchmark:grid": "node ../docs/test/scripts/benchmark_grid_chromium.mjs --output artifacts/stage6/benchmark-results.json",
+    "benchmark:grid:check": "node ../docs/test/scripts/check_benchmark_grid.mjs artifacts/stage6/benchmark-results.json artifacts/stage6/quality-budgets.json",
+    "evidence:check": "node ../docs/test/scripts/check_stage6_evidence.mjs",
+    "verify:stage6": "npm run test:node && npm run test:browser && npm run lint && npm run build && npm run benchmark:grid && npm run benchmark:grid:check && npm run evidence:check",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",

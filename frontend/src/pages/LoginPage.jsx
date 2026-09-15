@@ -92,6 +92,7 @@ export default function LoginPage() {
                             {error && <Alert severity="error">{error}</Alert>}
 
                             <TextField
+                                id="login-username"
                                 label="Tài khoản"
                                 autoComplete="username"
                                 value={username}
@@ -101,6 +102,7 @@ export default function LoginPage() {
                             />
 
                             <TextField
+                                id="login-password"
                                 label="Mật khẩu"
                                 type={showPassword ? 'text' : 'password'}
                                 autoComplete="current-password"
@@ -126,6 +128,7 @@ export default function LoginPage() {
                             />
 
                             <Button
+                                id="login-submit-btn"
                                 type="submit"
                                 variant="contained"
                                 size="large"

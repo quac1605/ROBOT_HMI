@@ -1,0 +1,605 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\nnqua\\Desktop\\ROBOT_HMI\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--project=chromium"
+    ],
+    "configFile": "C:\\Users\\nnqua\\Desktop\\ROBOT_HMI\\frontend\\playwright.config.js",
+    "rootDir": "C:/Users/nnqua/Desktop/ROBOT_HMI/docs/test/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/nnqua/Desktop/ROBOT_HMI/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/nnqua/Desktop/ROBOT_HMI/docs/test/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "artifacts/stage6/browser-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "stage6.spec.js",
+      "file": "stage6.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Chặng 6 — Chromium acceptance với production modules và oracle xác định",
+          "file": "stage6.spec.js",
+          "line": 88,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Case 1: Official 4x3 — blob production có exact RGBA và row flip",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1620,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:36:53.888Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-bb1fa76f7049fc3537d2",
+              "file": "stage6.spec.js",
+              "line": 104,
+              "column": 7
+            },
+            {
+              "title": "Case 2: 200x160 và origin pi/2 — robot/goal dùng cùng transform, không double rotate",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3001,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:36:56.149Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-380f1670464f98dca47d",
+              "file": "stage6.spec.js",
+              "line": 150,
+              "column": 7
+            },
+            {
+              "title": "Case 3: Pan/zoom/resize/numeric/bounds giữ world goal và đổi viewBox đúng",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2684,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:36:59.167Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-8f0a6a66a8b5f505a3f6",
+              "file": "stage6.spec.js",
+              "line": 189,
+              "column": 7
+            },
+            {
+              "title": "Case 4: Deferred A→B→C — chỉ latest C publish, active/pending không vượt 1",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1507,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:01.863Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-0edb752fa1da8c71008e",
+              "file": "stage6.spec.js",
+              "line": 242,
+              "column": 7
+            },
+            {
+              "title": "Case 5: Deferred decode + context switch — A không commit vào B",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1631,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:03.381Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-d116b143852f4823cc16",
+              "file": "stage6.spec.js",
+              "line": 267,
+              "column": 7
+            },
+            {
+              "title": "Case 6: Same geometry giữ viewBox; geometry đổi giữa pointerDown/Up hủy goal",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1578,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:05.026Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-6910a2da6b145af19dd0",
+              "file": "stage6.spec.js",
+              "line": 284,
+              "column": 7
+            },
+            {
+              "title": "Case 7: blob/decode/SVG error giữ last-good, error code đúng, URL cân bằng",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1295,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:06.614Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-8aead7c4d8c20ba1fec6",
+              "file": "stage6.spec.js",
+              "line": 333,
+              "column": 7
+            },
+            {
+              "title": "Case 8: StrictMode unmount khi toBlob pending — không late publish/error/rò URL",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1601,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:07.918Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-fc9a899912ab0ddea086",
+              "file": "stage6.spec.js",
+              "line": 386,
+              "column": 7
+            },
+            {
+              "title": "Case 9: Double-start và getJob ngay sau accepted chỉ tạo một session",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1290,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:09.527Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-cb1f720d270aaf6fe91a",
+              "file": "stage6.spec.js",
+              "line": 423,
+              "column": 7
+            },
+            {
+              "title": "Case 10: Mapping→Navigation→Mapping giữ session và live grid tiếp tục",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3856,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:10.829Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-52683a957860b001f27f",
+              "file": "stage6.spec.js",
+              "line": 449,
+              "column": 7
+            },
+            {
+              "title": "Case 11: Finish background cập nhật catalog và load exact saved revision",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3223,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:14.697Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-d310a2a3206444a35a8f",
+              "file": "stage6.spec.js",
+              "line": 467,
+              "column": 7
+            },
+            {
+              "title": "Case 12: Save failure không tạo ready; retry giữ raster và chỉ tạo một map",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3898,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:17.931Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-0880ac670e56832e9730",
+              "file": "stage6.spec.js",
+              "line": 489,
+              "column": 7
+            },
+            {
+              "title": "Case 13: Saved silence hợp lệ; live stale/offline/recovery không làm mới grid giả",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6231,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:21.838Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-a3ff48f74328c7f23b98",
+              "file": "stage6.spec.js",
+              "line": 516,
+              "column": 7
+            },
+            {
+              "title": "Case 14: Wrong frame/context pose bị ẩn; đúng frame/context hiện đúng ô",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2203,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:28.079Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-58eee00eb5c553404a9c",
+              "file": "stage6.spec.js",
+              "line": 572,
+              "column": 7
+            },
+            {
+              "title": "Case 15: Full reload ghi rõ mock in-memory, không tuyên bố backend recovery",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2175,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-15T06:37:30.293Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16b301a3cc979d69c643-adafff27bf78802fb702",
+              "file": "stage6.spec.js",
+              "line": 600,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-15T06:36:53.168Z",
+    "duration": 39636.693999999996,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

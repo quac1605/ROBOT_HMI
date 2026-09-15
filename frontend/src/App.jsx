@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router';
 import AppShell from './components/layout/AppShell.jsx';
+import MappingOperationCoordinator from './components/MappingOperationCoordinator.jsx';
 import RequireAuth from './auth/RequireAuth.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import StatusPage from './pages/StatusPage.jsx';
@@ -15,7 +16,13 @@ export default function App() {
 
       {/* Nhóm các route yêu cầu đăng nhập */}
       <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
+        <Route
+          element={
+            <MappingOperationCoordinator>
+              <AppShell />
+            </MappingOperationCoordinator>
+          }
+        >
           <Route index element={<Navigate to="/status" replace />} />
           <Route path="/status" element={<StatusPage />} />
           <Route path="/mapping" element={<MappingPage />} />

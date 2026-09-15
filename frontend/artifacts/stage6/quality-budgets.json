@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "description": "Stage 6 budgets measured in Chromium through production validation, raster controller and Map2D",
+  "globalInvariants": {
+    "maxActiveTasks": 1,
+    "maxPendingQueue": 1,
+    "outstandingUrlsAfterDispose": 0,
+    "errors": 0,
+    "unhandledRejections": 0
+  },
+  "profiles": {
+    "profile_200x160_1hz": {
+      "minSamples": 30,
+      "minAchievedHzRatio": 0.95,
+      "maxDroppedRatio": 0.05,
+      "maxValidationP95Ms": 30,
+      "maxRasterP95Ms": 120,
+      "maxToBlobP95Ms": 60,
+      "maxDecodeP95Ms": 40,
+      "maxEndToEndP95Ms": 150,
+      "maxScheduleDelayP95Ms": 40,
+      "maxResponsivenessP95Ms": 30,
+      "maxAnimationFrameP95Ms": 35,
+      "maxLongTaskMs": 150,
+      "maxHeapPeakGrowthBytes": 67108864
+    },
+    "profile_200x160_2hz": {
+      "minSamples": 60,
+      "minAchievedHzRatio": 0.95,
+      "maxDroppedRatio": 0.05,
+      "maxValidationP95Ms": 30,
+      "maxRasterP95Ms": 120,
+      "maxToBlobP95Ms": 60,
+      "maxDecodeP95Ms": 40,
+      "maxEndToEndP95Ms": 150,
+      "maxScheduleDelayP95Ms": 40,
+      "maxResponsivenessP95Ms": 30,
+      "maxAnimationFrameP95Ms": 35,
+      "maxLongTaskMs": 150,
+      "maxHeapPeakGrowthBytes": 100663296
+    },
+    "profile_512x512_1hz": {
+      "minSamples": 30,
+      "minAchievedHzRatio": 0.90,
+      "maxDroppedRatio": 0.10,
+      "maxValidationP95Ms": 100,
+      "maxRasterP95Ms": 300,
+      "maxToBlobP95Ms": 160,
+      "maxDecodeP95Ms": 70,
+      "maxEndToEndP95Ms": 400,
+      "maxScheduleDelayP95Ms": 120,
+      "maxResponsivenessP95Ms": 80,
+      "maxAnimationFrameP95Ms": 100,
+      "maxLongTaskMs": 300,
+      "maxHeapPeakGrowthBytes": 201326592
+    },
+    "profile_512x512_2hz": {
+      "minSamples": 60,
+      "minAchievedHzRatio": 0.90,
+      "maxDroppedRatio": 0.10,
+      "maxValidationP95Ms": 100,
+      "maxRasterP95Ms": 300,
+      "maxToBlobP95Ms": 160,
+      "maxDecodeP95Ms": 70,
+      "maxEndToEndP95Ms": 400,
+      "maxScheduleDelayP95Ms": 120,
+      "maxResponsivenessP95Ms": 80,
+      "maxAnimationFrameP95Ms": 100,
+      "maxLongTaskMs": 300,
+      "maxHeapPeakGrowthBytes": 268435456
+    }
+  }
+}

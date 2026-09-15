@@ -1,0 +1,600 @@
+{
+  "schemaVersion": "2.0.0",
+  "timestamp": "2026-09-14T13:27:15.636Z",
+  "methodology": {
+    "implementation": [
+      "/src/utils/normalizeOccupancyGrid.js",
+      "/src/utils/occupancyRasterController.js",
+      "/src/utils/rasterRuntime.js",
+      "/src/components/map/Map2D.jsx"
+    ],
+    "transportBytes": "TextEncoder(JSON.stringify(full map.grid envelope)).byteLength",
+    "arrivalScheduling": "independent wall-clock setTimeout arrivals; latest-only production controller"
+  },
+  "environment": {
+    "os": "Windows_NT 10.0.26200 x64",
+    "nodeVersion": "v22.21.0",
+    "chromiumVersion": "152.0.7977.83"
+  },
+  "globalInvariants": {
+    "maxActiveTasks": 1,
+    "maxPendingQueue": 0,
+    "outstandingUrlsAfterDispose": 0,
+    "errors": 0,
+    "unhandledRejections": 0
+  },
+  "profiles": {
+    "profile_200x160_1hz": {
+      "dimensions": {
+        "width": 200,
+        "height": 160,
+        "resolution": 0.05
+      },
+      "targetHz": 10,
+      "sampleCount": 2,
+      "durationMs": 200.10000002384186,
+      "achievedHz": 9.995002497559723,
+      "totalEnvelopeUtf8Bytes": 161097,
+      "averageEnvelopeUtf8Bytes": 80548.5,
+      "envelopeBytesPerSecond": 805082.4586746894,
+      "generatedCount": 2,
+      "committedCount": 2,
+      "droppedCount": 0,
+      "maxActiveTasks": 1,
+      "maxPendingQueue": 0,
+      "createdUrlsCount": 2,
+      "revokedUrlsCount": 2,
+      "outstandingUrls": 0,
+      "heap": {
+        "supported": true,
+        "beforeBytes": 34676490,
+        "afterBytes": 35738830,
+        "maxBytes": 40054050,
+        "growthBytes": 1062340
+      },
+      "validation": {
+        "count": 2,
+        "p50": 4.5,
+        "p95": 5.800000011920929,
+        "max": 5.800000011920929,
+        "avg": 5.1500000059604645
+      },
+      "raster": {
+        "count": 2,
+        "p50": 30.400000035762787,
+        "p95": 33.10000002384186,
+        "max": 33.10000002384186,
+        "avg": 31.750000029802322
+      },
+      "toBlob": {
+        "count": 2,
+        "p50": 27.100000023841858,
+        "p95": 31.80000001192093,
+        "max": 31.80000001192093,
+        "avg": 29.450000017881393
+      },
+      "decode": {
+        "count": 2,
+        "p50": 0.6000000238418579,
+        "p95": 1.300000011920929,
+        "max": 1.300000011920929,
+        "avg": 0.9500000178813934
+      },
+      "endToEnd": {
+        "count": 2,
+        "p50": 40.69999998807907,
+        "p95": 56.10000002384186,
+        "max": 56.10000002384186,
+        "avg": 48.400000005960464
+      },
+      "scheduleDelay": {
+        "count": 2,
+        "p50": 0.19999998807907104,
+        "p95": 0.30000001192092896,
+        "max": 0.30000001192092896,
+        "avg": 0.25
+      },
+      "responsiveness": {
+        "count": 6,
+        "p50": 0,
+        "p95": 6.599999964237213,
+        "max": 6.599999964237213,
+        "avg": 1.3499999940395355
+      },
+      "animationFrame": {
+        "count": 86,
+        "p50": 2.7999999999999545,
+        "p95": 3,
+        "max": 75.10000000000014,
+        "avg": 4.070930232558139
+      },
+      "longTasks": {
+        "count": 1,
+        "p50": 129,
+        "p95": 129,
+        "max": 129,
+        "avg": 129
+      },
+      "errors": [],
+      "rawSamples": [
+        {
+          "index": 1,
+          "gridRevision": 1,
+          "envelopeUtf8Bytes": 80670,
+          "envelopeCodeUnits": 80665,
+          "envelopeSha256": "1f63810af3763a31aa81b61cd7b157504bd4430d46c90bfa1193e257a075645a",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_200x160_1hz",
+            "streamEpoch": 1,
+            "sequence": 1,
+            "sentAt": "2023-11-14T22:13:20.000Z"
+          },
+          "scheduleDelayMs": 0.19999998807907104,
+          "validationMs": 5.800000011920929,
+          "rgbaMs": 0.9000000357627869,
+          "toBlobMs": 27.100000023841858,
+          "decodeMs": 1.300000011920929,
+          "rasterMs": 30.400000035762787,
+          "endToEndMs": 56.10000002384186,
+          "outcome": "committed"
+        },
+        {
+          "index": 2,
+          "gridRevision": 2,
+          "envelopeUtf8Bytes": 80427,
+          "envelopeCodeUnits": 80422,
+          "envelopeSha256": "64a4b94354779c205d8f376734ce371c6c4b4d65f6503891244e1be2d36a6eec",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_200x160_1hz",
+            "streamEpoch": 1,
+            "sequence": 2,
+            "sentAt": "2023-11-14T22:13:21.000Z"
+          },
+          "scheduleDelayMs": 0.30000001192092896,
+          "validationMs": 4.5,
+          "rgbaMs": 0.40000003576278687,
+          "toBlobMs": 31.80000001192093,
+          "decodeMs": 0.6000000238418579,
+          "rasterMs": 33.10000002384186,
+          "endToEndMs": 40.69999998807907,
+          "outcome": "committed"
+        }
+      ]
+    },
+    "profile_200x160_2hz": {
+      "dimensions": {
+        "width": 200,
+        "height": 160,
+        "resolution": 0.05
+      },
+      "targetHz": 10,
+      "sampleCount": 2,
+      "durationMs": 199.69999998807907,
+      "achievedHz": 10.01502253439854,
+      "totalEnvelopeUtf8Bytes": 161129,
+      "averageEnvelopeUtf8Bytes": 80564.5,
+      "envelopeBytesPerSecond": 806855.2829725512,
+      "generatedCount": 2,
+      "committedCount": 2,
+      "droppedCount": 0,
+      "maxActiveTasks": 1,
+      "maxPendingQueue": 0,
+      "createdUrlsCount": 2,
+      "revokedUrlsCount": 2,
+      "outstandingUrls": 0,
+      "heap": {
+        "supported": true,
+        "beforeBytes": 34695969,
+        "afterBytes": 35757869,
+        "maxBytes": 39928089,
+        "growthBytes": 1061900
+      },
+      "validation": {
+        "count": 2,
+        "p50": 4.299999952316284,
+        "p95": 6.100000023841858,
+        "max": 6.100000023841858,
+        "avg": 5.199999988079071
+      },
+      "raster": {
+        "count": 2,
+        "p50": 4.300000011920929,
+        "p95": 5.399999976158142,
+        "max": 5.399999976158142,
+        "avg": 4.8499999940395355
+      },
+      "toBlob": {
+        "count": 2,
+        "p50": 2.700000047683716,
+        "p95": 3,
+        "max": 3,
+        "avg": 2.850000023841858
+      },
+      "decode": {
+        "count": 2,
+        "p50": 0.699999988079071,
+        "p95": 0.800000011920929,
+        "max": 0.800000011920929,
+        "avg": 0.75
+      },
+      "endToEnd": {
+        "count": 2,
+        "p50": 11,
+        "p95": 30.80000001192093,
+        "max": 30.80000001192093,
+        "avg": 20.900000005960464
+      },
+      "scheduleDelay": {
+        "count": 2,
+        "p50": 0.2999999523162842,
+        "p95": 0.5999999642372131,
+        "max": 0.5999999642372131,
+        "avg": 0.44999995827674866
+      },
+      "responsiveness": {
+        "count": 6,
+        "p50": 0,
+        "p95": 0.8999999761581421,
+        "max": 0.8999999761581421,
+        "avg": 0.24999999006589255
+      },
+      "animationFrame": {
+        "count": 107,
+        "p50": 2.7999999999999545,
+        "p95": 2.900000000000091,
+        "max": 13.900000000000091,
+        "avg": 2.9588785046728963
+      },
+      "longTasks": {
+        "count": 1,
+        "p50": 119,
+        "p95": 119,
+        "max": 119,
+        "avg": 119
+      },
+      "errors": [],
+      "rawSamples": [
+        {
+          "index": 1,
+          "gridRevision": 1,
+          "envelopeUtf8Bytes": 80754,
+          "envelopeCodeUnits": 80749,
+          "envelopeSha256": "4425173c6ff614b77dfd3d10023e64d0c6d2df5e5fc7758e1bce725f4e61b2c5",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_200x160_2hz",
+            "streamEpoch": 1,
+            "sequence": 1,
+            "sentAt": "2023-11-14T22:13:20.000Z"
+          },
+          "scheduleDelayMs": 0.5999999642372131,
+          "validationMs": 6.100000023841858,
+          "rgbaMs": 1,
+          "toBlobMs": 2.700000047683716,
+          "decodeMs": 0.800000011920929,
+          "rasterMs": 5.399999976158142,
+          "endToEndMs": 30.80000001192093,
+          "outcome": "committed"
+        },
+        {
+          "index": 2,
+          "gridRevision": 2,
+          "envelopeUtf8Bytes": 80375,
+          "envelopeCodeUnits": 80370,
+          "envelopeSha256": "d01a6469e88258c383a46384c60299fb42971474a01d0fd4d65f8d663bb9819f",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_200x160_2hz",
+            "streamEpoch": 1,
+            "sequence": 2,
+            "sentAt": "2023-11-14T22:13:21.000Z"
+          },
+          "scheduleDelayMs": 0.2999999523162842,
+          "validationMs": 4.299999952316284,
+          "rgbaMs": 0.30000001192092896,
+          "toBlobMs": 3,
+          "decodeMs": 0.699999988079071,
+          "rasterMs": 4.300000011920929,
+          "endToEndMs": 11,
+          "outcome": "committed"
+        }
+      ]
+    },
+    "profile_512x512_1hz": {
+      "dimensions": {
+        "width": 512,
+        "height": 512,
+        "resolution": 0.05
+      },
+      "targetHz": 10,
+      "sampleCount": 2,
+      "durationMs": 199.80000001192093,
+      "achievedHz": 10.01001000941277,
+      "totalEnvelopeUtf8Bytes": 1311723,
+      "averageEnvelopeUtf8Bytes": 655861.5,
+      "envelopeBytesPerSecond": 6565180.179788473,
+      "generatedCount": 2,
+      "committedCount": 2,
+      "droppedCount": 0,
+      "maxActiveTasks": 1,
+      "maxPendingQueue": 0,
+      "createdUrlsCount": 2,
+      "revokedUrlsCount": 2,
+      "outstandingUrls": 0,
+      "heap": {
+        "supported": true,
+        "beforeBytes": 39033024,
+        "afterBytes": 42897644,
+        "maxBytes": 50191237,
+        "growthBytes": 3864620
+      },
+      "validation": {
+        "count": 2,
+        "p50": 34,
+        "p95": 36.90000003576279,
+        "max": 36.90000003576279,
+        "avg": 35.45000001788139
+      },
+      "raster": {
+        "count": 2,
+        "p50": 13.199999988079071,
+        "p95": 15.600000023841858,
+        "max": 15.600000023841858,
+        "avg": 14.400000005960464
+      },
+      "toBlob": {
+        "count": 2,
+        "p50": 9.300000011920929,
+        "p95": 10.199999988079071,
+        "max": 10.199999988079071,
+        "avg": 9.75
+      },
+      "decode": {
+        "count": 2,
+        "p50": 1.100000023841858,
+        "p95": 1.199999988079071,
+        "max": 1.199999988079071,
+        "avg": 1.1500000059604645
+      },
+      "endToEnd": {
+        "count": 2,
+        "p50": 51.5,
+        "p95": 73.70000004768372,
+        "max": 73.70000004768372,
+        "avg": 62.60000002384186
+      },
+      "scheduleDelay": {
+        "count": 2,
+        "p50": 0.800000011920929,
+        "p95": 1,
+        "max": 1,
+        "avg": 0.9000000059604645
+      },
+      "responsiveness": {
+        "count": 7,
+        "p50": 0,
+        "p95": 4.599999964237213,
+        "max": 4.599999964237213,
+        "avg": 1.4000000017029899
+      },
+      "animationFrame": {
+        "count": 94,
+        "p50": 2.7999999999999545,
+        "p95": 3.099999999999909,
+        "max": 49.899999999999864,
+        "avg": 3.811702127659574
+      },
+      "longTasks": {
+        "count": 1,
+        "p50": 125,
+        "p95": 125,
+        "max": 125,
+        "avg": 125
+      },
+      "errors": [],
+      "rawSamples": [
+        {
+          "index": 1,
+          "gridRevision": 1,
+          "envelopeUtf8Bytes": 655771,
+          "envelopeCodeUnits": 655766,
+          "envelopeSha256": "44276dc35b08a7683b7d7e6e6261b1df2834d83bb7ee77e2582fa5d0d73ac9f0",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_512x512_1hz",
+            "streamEpoch": 1,
+            "sequence": 1,
+            "sentAt": "2023-11-14T22:13:20.000Z"
+          },
+          "scheduleDelayMs": 1,
+          "validationMs": 36.90000003576279,
+          "rgbaMs": 3.800000011920929,
+          "toBlobMs": 9.300000011920929,
+          "decodeMs": 1.100000023841858,
+          "rasterMs": 15.600000023841858,
+          "endToEndMs": 73.70000004768372,
+          "outcome": "committed"
+        },
+        {
+          "index": 2,
+          "gridRevision": 2,
+          "envelopeUtf8Bytes": 655952,
+          "envelopeCodeUnits": 655947,
+          "envelopeSha256": "81ad81a7bdc3654305d53e2215ffe7a69e882c67cfae7555053614adad591c7d",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_512x512_1hz",
+            "streamEpoch": 1,
+            "sequence": 2,
+            "sentAt": "2023-11-14T22:13:21.000Z"
+          },
+          "scheduleDelayMs": 0.800000011920929,
+          "validationMs": 34,
+          "rgbaMs": 1.5,
+          "toBlobMs": 10.199999988079071,
+          "decodeMs": 1.199999988079071,
+          "rasterMs": 13.199999988079071,
+          "endToEndMs": 51.5,
+          "outcome": "committed"
+        }
+      ]
+    },
+    "profile_512x512_2hz": {
+      "dimensions": {
+        "width": 512,
+        "height": 512,
+        "resolution": 0.05
+      },
+      "targetHz": 10,
+      "sampleCount": 2,
+      "durationMs": 199.4000000357628,
+      "achievedHz": 10.03009026901352,
+      "totalEnvelopeUtf8Bytes": 1311709,
+      "averageEnvelopeUtf8Bytes": 655854.5,
+      "envelopeBytesPerSecond": 6578279.838338728,
+      "generatedCount": 2,
+      "committedCount": 2,
+      "droppedCount": 0,
+      "maxActiveTasks": 1,
+      "maxPendingQueue": 0,
+      "createdUrlsCount": 2,
+      "revokedUrlsCount": 2,
+      "outstandingUrls": 0,
+      "heap": {
+        "supported": true,
+        "beforeBytes": 39032890,
+        "afterBytes": 42897505,
+        "maxBytes": 50204737,
+        "growthBytes": 3864615
+      },
+      "validation": {
+        "count": 2,
+        "p50": 33.89999997615814,
+        "p95": 36.700000047683716,
+        "max": 36.700000047683716,
+        "avg": 35.30000001192093
+      },
+      "raster": {
+        "count": 2,
+        "p50": 13.199999988079071,
+        "p95": 16.100000023841858,
+        "max": 16.100000023841858,
+        "avg": 14.650000005960464
+      },
+      "toBlob": {
+        "count": 2,
+        "p50": 9.700000047683716,
+        "p95": 10.300000011920929,
+        "max": 10.300000011920929,
+        "avg": 10.000000029802322
+      },
+      "decode": {
+        "count": 2,
+        "p50": 1,
+        "p95": 1.100000023841858,
+        "max": 1.100000023841858,
+        "avg": 1.050000011920929
+      },
+      "endToEnd": {
+        "count": 2,
+        "p50": 51.59999996423721,
+        "p95": 74.10000002384186,
+        "max": 74.10000002384186,
+        "avg": 62.849999994039536
+      },
+      "scheduleDelay": {
+        "count": 2,
+        "p50": 0.5,
+        "p95": 1.0999999642372131,
+        "max": 1.0999999642372131,
+        "avg": 0.7999999821186066
+      },
+      "responsiveness": {
+        "count": 6,
+        "p50": 0.20000004768371582,
+        "p95": 47.10000002384186,
+        "max": 47.10000002384186,
+        "avg": 15.31666667262713
+      },
+      "animationFrame": {
+        "count": 96,
+        "p50": 2.7999999999999545,
+        "p95": 3,
+        "max": 47.200000000000045,
+        "avg": 3.7322916666666672
+      },
+      "longTasks": {
+        "count": 1,
+        "p50": 120,
+        "p95": 120,
+        "max": 120,
+        "avg": 120
+      },
+      "errors": [],
+      "rawSamples": [
+        {
+          "index": 1,
+          "gridRevision": 1,
+          "envelopeUtf8Bytes": 655987,
+          "envelopeCodeUnits": 655982,
+          "envelopeSha256": "8b7b5ff4cee26937a7323f54d713f2e01efbcd3f3188dc6550b09650694b6dc2",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_512x512_2hz",
+            "streamEpoch": 1,
+            "sequence": 1,
+            "sentAt": "2023-11-14T22:13:20.000Z"
+          },
+          "scheduleDelayMs": 1.0999999642372131,
+          "validationMs": 36.700000047683716,
+          "rgbaMs": 3.700000047683716,
+          "toBlobMs": 10.300000011920929,
+          "decodeMs": 1,
+          "rasterMs": 16.100000023841858,
+          "endToEndMs": 74.10000002384186,
+          "outcome": "committed"
+        },
+        {
+          "index": 2,
+          "gridRevision": 2,
+          "envelopeUtf8Bytes": 655722,
+          "envelopeCodeUnits": 655717,
+          "envelopeSha256": "5cca0f891f01fc4351771854b6ff2782da7e6c499f813d1c86de3ca36e4717bf",
+          "envelopeHeader": {
+            "version": 1,
+            "type": "map.grid",
+            "subscriptionId": "benchmark-định-tuyến",
+            "streamId": "benchmark-stream-profile_512x512_2hz",
+            "streamEpoch": 1,
+            "sequence": 2,
+            "sentAt": "2023-11-14T22:13:21.000Z"
+          },
+          "scheduleDelayMs": 0.5,
+          "validationMs": 33.89999997615814,
+          "rgbaMs": 1.9000000357627869,
+          "toBlobMs": 9.700000047683716,
+          "decodeMs": 1.100000023841858,
+          "rasterMs": 13.199999988079071,
+          "endToEndMs": 51.59999996423721,
+          "outcome": "committed"
+        }
+      ]
+    }
+  }
+}

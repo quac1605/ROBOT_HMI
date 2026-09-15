@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
-  Divider,
+  CircularProgress,
   MenuItem,
   Select,
   Stack,
@@ -16,289 +16,367 @@ import {
 } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import Map2D from '../components/map/Map2D.jsx';
-import { demoMap, demoMapRotated } from '../clients/demoMap.js';
 import { useRobotStore } from '../stores/robotStore.js';
-import { isInsideMap } from '../utils/mapCoordinates.js';
+import { isInsideMap, resolveVisiblePose } from '../utils/mapCoordinates.js';
+import { sameMapContext, sameGeometry } from '../utils/mapRenderModel.js';
+import { resolvePoseQuality } from '../utils/poseQuality.js';
 import { useRobotFreshness } from '../hooks/useRobotFreshness.js';
+import { useRobotClient } from '../hooks/useRobotClient.js';
+import { useMapGrid } from '../hooks/useMapGrid.js';
+import { useOccupancyRaster } from '../hooks/useOccupancyRaster.js';
+import { useMappingWorkflowStore } from '../state/mappingWorkflowStore.js';
 
 export default function NavigationPage() {
+  const client = useRobotClient();
   const snapshot = useRobotStore((state) => state.snapshot);
   const { stale } = useRobotFreshness(2000);
+  const catalogRefreshRevision = useMappingWorkflowStore((state) => state.catalogRefreshRevision);
+  const workflowViewerContext = useMappingWorkflowStore((state) => state.viewerContext);
+  const savedTargetKey = workflowViewerContext?.kind === 'saved'
+    ? `${workflowViewerContext.mapId}:${workflowViewerContext.mapRevision}`
+    : '';
 
-  // Đánh giá chất lượng dữ liệu vị trí robot
-  const rosConnected = snapshot?.rosConnected ?? false;
-  const locStatus = snapshot?.localization?.status ?? 'unknown';
+  // 1. Danh mục bản đồ từ client
+  const [mapCatalog, setMapCatalog] = useState([]);
+  const [currentMap, setCurrentMap] = useState(null);
+  const [catalogError, setCatalogError] = useState(null);
 
-  let poseQuality = 'reliable';
-  if (!rosConnected) {
-    poseQuality = 'offline';
-  } else if (stale) {
-    poseQuality = 'stale';
-  } else if (locStatus !== 'tracking') {
-    poseQuality = 'lost';
-  }
+  useEffect(() => {
+    let active = true;
+    client
+      .listMaps()
+      .then((maps) => {
+        if (!active) return;
+        setCatalogError(null);
+        setMapCatalog(maps);
+        setCurrentMap((prev) => {
+          if (workflowViewerContext?.kind === 'saved') {
+            const justSaved = maps.find(
+              (m) =>
+                m.id === workflowViewerContext.mapId &&
+                m.revision === workflowViewerContext.mapRevision
+            );
+            if (justSaved) return justSaved;
+          }
+          if (prev) {
+            const matched = maps.find((m) => m.id === prev.id && m.revision === prev.revision);
+            if (matched) return matched;
+          }
+          return maps[0] ?? null;
+        });
+      })
+      .catch((err) => {
+        if (active) setCatalogError(err.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, catalogRefreshRevision, savedTargetKey, workflowViewerContext]);
 
-  // Quản lý map hiện tại (hỗ trợ đổi giữa map chuẩn và map xoay)
-  const [currentMap, setCurrentMap] = useState(demoMap);
+  // 2. Ngữ cảnh bản đồ và hình học kỳ vọng
+  const expectedContext = useMemo(() => {
+    if (!currentMap) return null;
+    return {
+      kind: 'saved',
+      mapId: currentMap.id,
+      mapRevision: currentMap.revision,
+    };
+  }, [currentMap]);
+
+  const expectedGeometry = useMemo(() => {
+    if (!currentMap) return null;
+    return {
+      frameId: currentMap.frameId,
+      width: currentMap.width,
+      height: currentMap.height,
+      resolution: currentMap.resolution,
+      origin: currentMap.origin,
+    };
+  }, [currentMap]);
+
+  // 3. Hook lấy dữ liệu OccupancyGrid và tạo Raster nguyên tử
+  const { normalizedGrid, error: gridError } = useMapGrid(expectedContext, {
+    expectedGeometry,
+  });
+  const { raster, rasterError } = useOccupancyRaster(normalizedGrid);
+
+  // 4. RenderModel nguyên tử kết hợp context, geometry và raster
+  const renderModel = useMemo(() => {
+    if (
+      raster &&
+      sameMapContext(raster.context, expectedContext) &&
+      sameGeometry(raster.geometry, expectedGeometry)
+    ) {
+      return raster;
+    }
+    return null;
+  }, [raster, expectedContext, expectedGeometry]);
+
+  // 5. Đánh giá chất lượng vị trí robot
+  const poseQuality = resolvePoseQuality(snapshot, { transportStale: stale });
+
+  // Lọc vị trí robot theo đúng ngữ cảnh bản đồ đang xem
+  const visiblePose = useMemo(() => {
+    if (!currentMap) return null;
+    return resolveVisiblePose(snapshot, currentMap);
+  }, [snapshot, currentMap]);
 
   // Trạng thái mục tiêu và công cụ chuột
   const [goalDraft, setGoalDraft] = useState(null);
   const [tool, setTool] = useState('goal');
 
-  // Trạng thái cho form nhập tọa độ bằng bàn phím
+  // Form nhập tọa độ bàn phím
   const [manualX, setManualX] = useState('');
   const [manualY, setManualY] = useState('');
   const [manualYawDeg, setManualYawDeg] = useState('0');
   const [inputError, setInputError] = useState(null);
 
-  // Xử lý đổi bản đồ: reset mục tiêu và chuyển map
-  function handleMapChange(event) {
-    const selectedId = event.target.value;
-    const nextMap = selectedId === demoMapRotated.id ? demoMapRotated : demoMap;
-    setCurrentMap(nextMap);
-    setGoalDraft(null); // Reset goal khi đổi map revision/id
+  const currentMapKey = currentMap
+    ? `${currentMap.id}:${currentMap.revision}`
+    : '';
+
+  // Đổi map bằng dropdown hoặc do một save-job hoàn tất trong nền đều phải
+  // xóa goal của context cũ. Nếu không, hai map cùng frame `map` có thể vô
+  // tình hiển thị lại một goal thuộc asset/revision khác.
+  useEffect(() => {
+    setGoalDraft(null);
     setInputError(null);
+  }, [currentMapKey]);
+
+  function handleMapChange(event) {
+    try {
+      const [selectedId, selectedRev] = JSON.parse(event.target.value);
+      const nextMap = mapCatalog.find((m) => m.id === selectedId && m.revision === selectedRev);
+      if (nextMap) {
+        setCurrentMap(nextMap);
+        setGoalDraft(null);
+        setInputError(null);
+      }
+    } catch {
+      // ignore
+    }
   }
 
-  // Xử lý đổi công cụ (Pan hoặc Chọn đích)
   function handleToolChange(event, newTool) {
     if (newTool !== null) {
       setTool(newTool);
     }
   }
 
-  // Xử lý nhập tọa độ thủ công bằng bàn phím
-  function handleApplyManualCoordinates(e) {
-    e.preventDefault();
+  function handleApplyManualCoordinates(event) {
+    event.preventDefault();
     setInputError(null);
 
-    const xTrim = manualX.trim();
-    const yTrim = manualY.trim();
-    const yawTrim = manualYawDeg.trim();
+    const x = Number(manualX);
+    const y = Number(manualY);
+    const yawDeg = Number(manualYawDeg);
 
-    // Kiểm tra chuỗi rỗng: không tự ý biến chuỗi rỗng thành 0
-    if (xTrim === '' || yTrim === '' || yawTrim === '') {
-      setInputError('Vui lòng nhập đầy đủ các trường X, Y và Góc quay.');
+    if (
+      !manualX.trim() ||
+      !manualY.trim() ||
+      !manualYawDeg.trim() ||
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      !Number.isFinite(yawDeg)
+    ) {
+      setInputError('Tọa độ hoặc góc quay phải là số hợp lệ.');
       return;
     }
 
-    const numX = Number(xTrim);
-    const numY = Number(yTrim);
-    const numDeg = Number(yawTrim);
-
-    if (!Number.isFinite(numX) || !Number.isFinite(numY) || !Number.isFinite(numDeg)) {
-      setInputError('Tọa độ hoặc góc quay không phải là số hợp lệ.');
+    if (!currentMap) {
+      setInputError('Chưa có thông tin bản đồ.');
       return;
     }
 
-    // Chặn góc quá lớn gây tràn số IEEE 754 (ví dụ 1e308 nhân PI ra Infinity)
-    if (Math.abs(numDeg) > 36000) {
-      setInputError('Góc quay phải nằm trong khoảng hợp lệ (-36000° đến 36000°).');
-      return;
-    }
-
-    // Chuẩn hóa góc về đoạn [-180, 180] độ
-    let normalizedDeg = numDeg % 360;
-    if (normalizedDeg > 180) normalizedDeg -= 360;
-    if (normalizedDeg < -180) normalizedDeg += 360;
-
-    const numYawRad = (normalizedDeg * Math.PI) / 180;
-    if (!Number.isFinite(numYawRad)) {
-      setInputError('Góc quay không thể quy đổi sang Radian hợp lệ.');
-      return;
-    }
-
-    const candidate = {
-      frameId: currentMap.frameId,
-      x: numX,
-      y: numY,
-      yaw: numYawRad,
-    };
-
+    const candidate = { x, y };
     if (!isInsideMap(candidate, currentMap)) {
       setInputError(
-        `Tọa độ (${numX.toFixed(2)}, ${numY.toFixed(2)}) nằm ngoài phạm vi bản đồ!`
+        `Điểm (${x}, ${y}) nằm ngoài phạm vi hình học của bản đồ đang chọn.`
       );
       return;
     }
 
-    setGoalDraft(candidate);
+    const yaw = (yawDeg * Math.PI) / 180;
+    if (!Number.isFinite(yaw)) {
+      setInputError('Góc quay nằm ngoài phạm vi số có thể xử lý.');
+      return;
+    }
+    setGoalDraft({ frameId: currentMap.frameId, x, y, yaw });
   }
-
-  // Xóa đích đã chọn
-  function handleClearGoal() {
-    setGoalDraft(null);
-    setInputError(null);
-  }
-
-  // Đổi yaw từ Radian sang Độ để hiển thị
-  const goalYawDegrees = goalDraft ? ((goalDraft.yaw * 180) / Math.PI).toFixed(1) : '0.0';
 
   return (
-    <PageFrame title="Điều hướng & Chọn đích (2D Map)">
-      <Stack spacing={2.5}>
-        {/* Thanh điều khiển trên cùng: Chọn Map & Chọn Tool */}
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
-        >
-          {/* Bộ chọn Map */}
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Typography id="map-select-label" variant="body2" sx={{ fontWeight: 600 }}>
-              Bản đồ:
+    <PageFrame
+      title="Điều hướng Đi đến đích (Navigation)"
+      subtitle="Chọn mục tiêu điều hướng trên bản đồ 2D Occupancy Grid hoặc nhập tọa độ"
+    >
+      <Stack spacing={3}>
+        <Alert severity="warning" variant="outlined">
+          Ô trống trên Occupancy Grid chỉ phản ánh dữ liệu cảm biến đầu vào;
+          chưa có planner nên không khẳng định footprint robot đi qua an toàn
+          hoặc đã có đường tránh vật cản.
+        </Alert>
+        {catalogError && <Alert severity="error">Lỗi nạp danh mục bản đồ: {catalogError}</Alert>}
+        {gridError && <Alert severity="warning">Lỗi dữ liệu lưới: {gridError.message}</Alert>}
+        {rasterError && <Alert severity="error">Lỗi xử lý hình ảnh bản đồ: {rasterError.message}</Alert>}
+
+        {/* Thanh công cụ chọn bản đồ và chế độ chuột */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 100 }}>
+              Chọn bản đồ:
             </Typography>
-            <Select
-              id="map-select"
-              labelId="map-select-label"
-              size="small"
-              value={currentMap.id}
-              onChange={handleMapChange}
-              inputProps={{ 'aria-label': 'Chọn bản đồ' }}
-              sx={{ minWidth: 260 }}
-            >
-              <MenuItem value={demoMap.id}>{demoMap.name}</MenuItem>
-              <MenuItem value={demoMapRotated.id}>{demoMapRotated.name}</MenuItem>
-            </Select>
+            <Box id="map-selector-dropdown">
+              <Select
+                id="map-selector-select"
+                size="small"
+                value={currentMap ? JSON.stringify([currentMap.id, currentMap.revision]) : ''}
+                onChange={handleMapChange}
+                sx={{ minWidth: 260 }}
+                disabled={mapCatalog.length === 0}
+              >
+                {mapCatalog.map((m) => (
+                  <MenuItem key={JSON.stringify([m.id, m.revision])} value={JSON.stringify([m.id, m.revision])}>
+                    {m.name} ({m.id} rev {m.revision})
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
           </Stack>
 
-          {/* Bộ chọn Công cụ (Tool) */}
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Thao tác:
-            </Typography>
-            <ToggleButtonGroup
-              size="small"
-              value={tool}
-              exclusive
-              onChange={handleToolChange}
-              aria-label="Công cụ bản đồ"
-            >
-              <ToggleButton value="goal" aria-label="Chọn điểm đích">
-                🎯 Chọn đích
-              </ToggleButton>
-              <ToggleButton value="pan" aria-label="Di chuyển bản đồ">
-                ✋ Di chuyển (Pan)
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
+          <ToggleButtonGroup
+            value={tool}
+            exclusive
+            onChange={handleToolChange}
+            size="small"
+            aria-label="Công cụ tương tác chuột"
+          >
+            <ToggleButton value="goal" aria-label="Đặt mục tiêu">
+              Đặt đích (Goal)
+            </ToggleButton>
+            <ToggleButton value="pan" aria-label="Kéo xem bản đồ">
+              Kéo xem
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Stack>
 
-        {/* Khung bản đồ 2D */}
-        <Map2D
-          key={`${currentMap.id}:${currentMap.revision}`}
-          map={currentMap}
-          pose={snapshot?.pose ?? null}
-          poseQuality={poseQuality}
-          goal={goalDraft}
-          tool={tool}
-          onGoalChange={setGoalDraft}
-        />
+        {/* Cửa sổ bản đồ 2D */}
+        <Card variant="outlined" sx={{ overflow: 'hidden' }}>
+          <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+            {renderModel ? (
+              <Map2D
+                model={renderModel}
+                pose={visiblePose}
+                poseQuality={poseQuality}
+                goal={goalDraft}
+                tool={tool}
+                onGoalChange={(nextGoal) => setGoalDraft(nextGoal)}
+              />
+            ) : (
+              <Box
+                sx={{
+                  height: 440,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1.5,
+                  bgcolor: '#eceff1',
+                  borderRadius: 2,
+                }}
+              >
+                <CircularProgress size={36} />
+                <Typography variant="body2" color="text.secondary">
+                  {currentMap
+                    ? `Đang nạp dữ liệu lưới ${currentMap.name} (rev ${currentMap.revision})...`
+                    : 'Đang chuẩn bị bản đồ...'}
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Khu vực thông tin mục tiêu & Điều khiển */}
+        {/* Panel tọa độ và gửi lệnh */}
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          {/* Bảng hiển thị mục tiêu đã chọn */}
           <Card variant="outlined" sx={{ flex: 1 }}>
             <CardContent>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                MỤC TIÊU ĐANG CHỌN
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                Nhập tọa độ mục tiêu (m)
               </Typography>
-
-              {goalDraft ? (
-                <Stack spacing={1}>
-                  <Typography variant="h6" color="primary">
-                    X: {goalDraft.x.toFixed(2)} m | Y: {goalDraft.y.toFixed(2)} m
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Hướng đích (Yaw): {goalYawDegrees}° ({(goalDraft.yaw).toFixed(3)} rad)
-                  </Typography>
-                  <Box sx={{ pt: 1 }}>
-                    <Button
-                      size="small"
-                      color="error"
-                      variant="outlined"
-                      onClick={handleClearGoal}
-                    >
-                      Xóa đích
-                    </Button>
-                  </Box>
-                </Stack>
-              ) : (
-                <Typography variant="body1" color="text.secondary" sx={{ py: 1 }}>
-                  Chưa chọn đích. Hãy click và kéo trên bản đồ hoặc nhập tọa độ bên cạnh.
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Form nhập tọa độ bàn phím (Accessibility) */}
-          <Card variant="outlined" sx={{ flex: 1.2 }}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                NHẬP TỌA ĐỘ BẰNG BÀN PHÍM
-              </Typography>
-
-              <Box component="form" onSubmit={handleApplyManualCoordinates} sx={{ mt: 1 }}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <Box component="form" onSubmit={handleApplyManualCoordinates}>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                   <TextField
-                    label="X (m)"
                     size="small"
+                    label="X (m)"
                     value={manualX}
                     onChange={(e) => setManualX(e.target.value)}
-                    placeholder="ví dụ 3.5"
-                    sx={{ flex: 1 }}
                   />
                   <TextField
-                    label="Y (m)"
                     size="small"
+                    label="Y (m)"
                     value={manualY}
                     onChange={(e) => setManualY(e.target.value)}
-                    placeholder="ví dụ 2.0"
-                    sx={{ flex: 1 }}
                   />
                   <TextField
-                    label="Góc (°)"
                     size="small"
+                    label="Góc (°)"
                     value={manualYawDeg}
                     onChange={(e) => setManualYawDeg(e.target.value)}
-                    placeholder="ví dụ 45"
-                    sx={{ flex: 1 }}
                   />
-                  <Button type="submit" variant="contained" size="small" sx={{ px: 2.5 }}>
+                  <Button type="submit" variant="outlined" size="small">
                     Áp dụng
                   </Button>
                 </Stack>
-
                 {inputError && (
-                  <Alert severity="error" sx={{ mt: 1.5, py: 0 }}>
+                  <Alert severity="error" sx={{ mt: 1.5 }}>
                     {inputError}
                   </Alert>
                 )}
               </Box>
             </CardContent>
           </Card>
-        </Stack>
 
-        <Divider />
-
-        {/* Nút gửi lệnh đi đến đích (sẽ mở ở chặng 7) */}
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ justifyContent: 'flex-end', alignItems: 'center' }}
-        >
-          <Typography variant="caption" color="text.secondary">
-            * Chức năng gửi lệnh Mission sẽ được kết nối ở Chặng 7.
-          </Typography>
-          <Button
-            disabled
-            variant="contained"
-            color="success"
-            size="large"
-            sx={{ minWidth: 200 }}
-          >
-            Đi đến đích
-          </Button>
+          <Card variant="outlined" sx={{ flex: 1 }}>
+            <CardContent>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                Mục tiêu đã chọn
+              </Typography>
+              {goalDraft ? (
+                <Stack spacing={1}>
+                  <Typography variant="body2">
+                    Tọa độ: X = <strong>{goalDraft.x.toFixed(2)}m</strong>, Y = <strong>{goalDraft.y.toFixed(2)}m</strong>
+                  </Typography>
+                  <Typography variant="body2">
+                    Hướng đích (Yaw): <strong>{((goalDraft.yaw * 180) / Math.PI).toFixed(1)}°</strong>
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      disabled
+                      aria-describedby="navigation-submit-disabled-reason"
+                    >
+                      Bắt đầu di chuyển
+                    </Button>
+                    <Button variant="outlined" color="inherit" size="small" onClick={() => setGoalDraft(null)}>
+                      Hủy mục tiêu
+                    </Button>
+                  </Stack>
+                  <Typography
+                    id="navigation-submit-disabled-reason"
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    Chưa gửi mission: chức năng điều hướng sẽ được nối ở Chặng 7.
+                  </Typography>
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
+                  Chưa chọn mục tiêu. Dùng chuột click hoặc nhập tọa độ để đặt điểm đến.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
         </Stack>
       </Stack>
     </PageFrame>
