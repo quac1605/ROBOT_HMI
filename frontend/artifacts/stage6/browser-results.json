@@ -94,12 +94,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1620,
+                      "duration": 1472,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:36:53.888Z",
+                      "startTime": "2026-09-18T01:29:10.915Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -128,12 +128,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3001,
+                      "duration": 3047,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:36:56.149Z",
+                      "startTime": "2026-09-18T01:29:12.911Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -162,12 +162,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2684,
+                      "duration": 2335,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:36:59.167Z",
+                      "startTime": "2026-09-18T01:29:15.968Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -196,12 +196,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1507,
+                      "duration": 1351,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:01.863Z",
+                      "startTime": "2026-09-18T01:29:18.312Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -211,7 +211,7 @@
               ],
               "id": "16b301a3cc979d69c643-0edb752fa1da8c71008e",
               "file": "stage6.spec.js",
-              "line": 242,
+              "line": 248,
               "column": 7
             },
             {
@@ -230,12 +230,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1631,
+                      "duration": 1416,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:03.381Z",
+                      "startTime": "2026-09-18T01:29:19.672Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -245,7 +245,7 @@
               ],
               "id": "16b301a3cc979d69c643-d116b143852f4823cc16",
               "file": "stage6.spec.js",
-              "line": 267,
+              "line": 273,
               "column": 7
             },
             {
@@ -264,12 +264,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1578,
+                      "duration": 1417,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:05.026Z",
+                      "startTime": "2026-09-18T01:29:21.097Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -279,7 +279,7 @@
               ],
               "id": "16b301a3cc979d69c643-6910a2da6b145af19dd0",
               "file": "stage6.spec.js",
-              "line": 284,
+              "line": 290,
               "column": 7
             },
             {
@@ -298,12 +298,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1295,
+                      "duration": 1194,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:06.614Z",
+                      "startTime": "2026-09-18T01:29:22.523Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -313,7 +313,7 @@
               ],
               "id": "16b301a3cc979d69c643-8aead7c4d8c20ba1fec6",
               "file": "stage6.spec.js",
-              "line": 333,
+              "line": 339,
               "column": 7
             },
             {
@@ -332,12 +332,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1601,
+                      "duration": 1495,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:07.918Z",
+                      "startTime": "2026-09-18T01:29:23.724Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -347,7 +347,7 @@
               ],
               "id": "16b301a3cc979d69c643-fc9a899912ab0ddea086",
               "file": "stage6.spec.js",
-              "line": 386,
+              "line": 392,
               "column": 7
             },
             {
@@ -366,12 +366,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1290,
+                      "duration": 1108,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:09.527Z",
+                      "startTime": "2026-09-18T01:29:25.226Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -381,7 +381,7 @@
               ],
               "id": "16b301a3cc979d69c643-cb1f720d270aaf6fe91a",
               "file": "stage6.spec.js",
-              "line": 423,
+              "line": 429,
               "column": 7
             },
             {
@@ -400,12 +400,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3856,
+                      "duration": 3525,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:10.829Z",
+                      "startTime": "2026-09-18T01:29:26.343Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -415,7 +415,7 @@
               ],
               "id": "16b301a3cc979d69c643-52683a957860b001f27f",
               "file": "stage6.spec.js",
-              "line": 449,
+              "line": 455,
               "column": 7
             },
             {
@@ -434,12 +434,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3223,
+                      "duration": 3077,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:14.697Z",
+                      "startTime": "2026-09-18T01:29:29.876Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -449,7 +449,7 @@
               ],
               "id": "16b301a3cc979d69c643-d310a2a3206444a35a8f",
               "file": "stage6.spec.js",
-              "line": 467,
+              "line": 473,
               "column": 7
             },
             {
@@ -468,12 +468,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3898,
+                      "duration": 3641,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:17.931Z",
+                      "startTime": "2026-09-18T01:29:32.962Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -483,7 +483,7 @@
               ],
               "id": "16b301a3cc979d69c643-0880ac670e56832e9730",
               "file": "stage6.spec.js",
-              "line": 489,
+              "line": 495,
               "column": 7
             },
             {
@@ -502,12 +502,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 6231,
+                      "duration": 5736,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:21.838Z",
+                      "startTime": "2026-09-18T01:29:36.611Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -517,7 +517,7 @@
               ],
               "id": "16b301a3cc979d69c643-a3ff48f74328c7f23b98",
               "file": "stage6.spec.js",
-              "line": 516,
+              "line": 522,
               "column": 7
             },
             {
@@ -536,12 +536,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2203,
+                      "duration": 1809,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:28.079Z",
+                      "startTime": "2026-09-18T01:29:42.354Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -551,7 +551,7 @@
               ],
               "id": "16b301a3cc979d69c643-58eee00eb5c553404a9c",
               "file": "stage6.spec.js",
-              "line": 572,
+              "line": 578,
               "column": 7
             },
             {
@@ -570,12 +570,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2175,
+                      "duration": 1946,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-15T06:37:30.293Z",
+                      "startTime": "2026-09-18T01:29:44.171Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -585,8 +585,433 @@
               ],
               "id": "16b301a3cc979d69c643-adafff27bf78802fb702",
               "file": "stage6.spec.js",
-              "line": 600,
+              "line": 606,
               "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "stage7.spec.js",
+      "file": "stage7.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Chặng 7 — remediation acceptance",
+          "file": "stage7.spec.js",
+          "line": 28,
+          "column": 6,
+          "specs": [
+            {
+              "title": "C7-01: preview và activate chạy qua facade/schema thật",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3509,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:29:46.139Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-60e0f8a85bf0cb289551",
+              "file": "stage7.spec.js",
+              "line": 39,
+              "column": 9
+            },
+            {
+              "title": "C7-02: tuyến hai waypoint succeeded không nhảy về pose cũ",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3870,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:29:49.655Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-3df738bf68b5c8bdf769",
+              "file": "stage7.spec.js",
+              "line": 54,
+              "column": 9
+            },
+            {
+              "title": "C7-03: đổi map ẩn overlay cũ; quay lại vẫn theo dõi mission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3633,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:29:53.536Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-16fe23538fdbd680e746",
+              "file": "stage7.spec.js",
+              "line": 68,
+              "column": 9
+            },
+            {
+              "title": "C7-04: telemetry stale hiện đúng chất lượng và khóa submit",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4405,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:29:57.178Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-7d27b0e01c66367b14c2",
+              "file": "stage7.spec.js",
+              "line": 83,
+              "column": 9
+            },
+            {
+              "title": "C7-05: sửa một waypoint, lưu/nạp tuyến không tự gửi mission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2459,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:01.593Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-7181c6e37009a2175473",
+              "file": "stage7.spec.js",
+              "line": 98,
+              "column": 9
+            },
+            {
+              "title": "C7-06: page navigation không làm mất mission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3627,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:04.061Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-c3a4caab7e2c6c6356ef",
+              "file": "stage7.spec.js",
+              "line": 117,
+              "column": 9
+            },
+            {
+              "title": "C7-07: scenario goal-rejected hiển thị failed có mã lỗi",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2207,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:07.696Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-baac9943d9a29a5b1376",
+              "file": "stage7.spec.js",
+              "line": 128,
+              "column": 9
+            },
+            {
+              "title": "C7-08: timeout giữ requestId, người dùng retry cùng ý định",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2207,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:09.914Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-2c1a0b63d3b4756590f9",
+              "file": "stage7.spec.js",
+              "line": 138,
+              "column": 9
+            },
+            {
+              "title": "C7-09: hủy vẫn khả dụng khi POST create chưa trả nhưng WS đã accepted",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2546,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:12.132Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-8383fccf4bbe445bf895",
+              "file": "stage7.spec.js",
+              "line": 160,
+              "column": 9
+            },
+            {
+              "title": "C7-10: mất nguồn pose giữa mission dừng/fail; heartbeat không giả tracking mới",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4507,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:14.684Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-01dbbb30b2b33d48146c",
+              "file": "stage7.spec.js",
+              "line": 180,
+              "column": 9
+            },
+            {
+              "title": "C7-11: sửa draft đang preview không nhận path cũ; edit không đổi mission đã gửi",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2741,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:19.200Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-34835cd210dc8cc69224",
+              "file": "stage7.spec.js",
+              "line": 200,
+              "column": 9
+            },
+            {
+              "title": "C7-12: double-click submit chỉ tạo một POST và một mission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2303,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-18T01:30:21.950Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f2add28a12cfeffd7731-5d360582d0aa532883b2",
+              "file": "stage7.spec.js",
+              "line": 229,
+              "column": 9
             }
           ]
         }
@@ -595,9 +1020,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-15T06:36:53.168Z",
-    "duration": 39636.693999999996,
-    "expected": 15,
+    "startTime": "2026-09-18T01:29:10.356Z",
+    "duration": 74461.293,
+    "expected": 27,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

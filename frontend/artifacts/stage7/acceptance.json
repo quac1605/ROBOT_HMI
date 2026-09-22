@@ -1,0 +1,351 @@
+{
+  "stage": 7,
+  "scope": "MockRobotClient only; not real-robot safety certification",
+  "generatedAt": "2026-09-18T01:30:57.478Z",
+  "passed": true,
+  "node": {
+    "tests": 141,
+    "passed": 141
+  },
+  "browser": {
+    "total": 27,
+    "stage7": 12
+  },
+  "checks": [
+    {
+      "name": "Node auto-discovery: >=141 bài thực chạy và tất cả passed",
+      "passed": true
+    },
+    {
+      "name": "Node: 0 fail",
+      "passed": true
+    },
+    {
+      "name": "Node: 0 cancelled",
+      "passed": true
+    },
+    {
+      "name": "Node: 0 skipped",
+      "passed": true
+    },
+    {
+      "name": "Node: 0 todo",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-01:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-02:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-03:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-04:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-05:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-06:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-07:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-08:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-09:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-10:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-11:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-12:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-13:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-14:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-15:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-16:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-17:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-18:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy kiểm thử độc lập I7-19:",
+      "passed": true
+    },
+    {
+      "name": "Đã chạy cả 23 bài C7 services/workflow",
+      "passed": true
+    },
+    {
+      "name": "Browser evidence chứa đủ 12 case C7",
+      "passed": true
+    },
+    {
+      "name": "Có đúng C7-01..12, không trùng",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 1: Official 4x3 — blob production có exact RGBA và row flip",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 2: 200x160 và origin pi/2 — robot/goal dùng cùng transform, không double rotate",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 3: Pan/zoom/resize/numeric/bounds giữ world goal và đổi viewBox đúng",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 4: Deferred A→B→C — chỉ latest C publish, active/pending không vượt 1",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 5: Deferred decode + context switch — A không commit vào B",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 6: Same geometry giữ viewBox; geometry đổi giữa pointerDown/Up hủy goal",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 7: blob/decode/SVG error giữ last-good, error code đúng, URL cân bằng",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 8: StrictMode unmount khi toBlob pending — không late publish/error/rò URL",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 9: Double-start và getJob ngay sau accepted chỉ tạo một session",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 10: Mapping→Navigation→Mapping giữ session và live grid tiếp tục",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 11: Finish background cập nhật catalog và load exact saved revision",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 12: Save failure không tạo ready; retry giữ raster và chỉ tạo một map",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 13: Saved silence hợp lệ; live stale/offline/recovery không làm mới grid giả",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 14: Wrong frame/context pose bị ẩn; đúng frame/context hiện đúng ô",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: Case 15: Full reload ghi rõ mock in-memory, không tuyên bố backend recovery",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-01: preview và activate chạy qua facade/schema thật",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-02: tuyến hai waypoint succeeded không nhảy về pose cũ",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-03: đổi map ẩn overlay cũ; quay lại vẫn theo dõi mission",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-04: telemetry stale hiện đúng chất lượng và khóa submit",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-05: sửa một waypoint, lưu/nạp tuyến không tự gửi mission",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-06: page navigation không làm mất mission",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-07: scenario goal-rejected hiển thị failed có mã lỗi",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-08: timeout giữ requestId, người dùng retry cùng ý định",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-09: hủy vẫn khả dụng khi POST create chưa trả nhưng WS đã accepted",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-10: mất nguồn pose giữa mission dừng/fail; heartbeat không giả tracking mới",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-11: sửa draft đang preview không nhận path cũ; edit không đổi mission đã gửi",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C7-12: double-click submit chỉ tạo một POST và một mission",
+      "passed": true
+    },
+    {
+      "name": "Không có browser global error",
+      "passed": true
+    },
+    {
+      "name": "Browser evidence mới hơn source, package và cả hai bộ browser spec",
+      "passed": true
+    },
+    {
+      "name": "Toàn bộ Stage 6 evidence checker (gồm benchmark budgets và build freshness)",
+      "passed": true
+    }
+  ],
+  "sourceHashes": {
+    "../docs/test/scripts/check_stage6_evidence.mjs": "f5bdfb57723539a3f4414a092e379ba791e83321685a862ccb2517a9c7937022",
+    "../docs/test/scripts/check_stage7_evidence.mjs": "3af6ebdf6f2b775a15d39b1a4299cd4b73fd147da7706fa2e8305cbe1f489221",
+    "../docs/test/scripts/run_browser_tests.mjs": "e55f20291d1a28bc824c70fced13b6fb99075117f0ed848b4b681439c78d6355",
+    "../docs/test/browser/stage6.spec.js": "de28b71f96e29ac5e710d07023c6fc93fa6fab70f3e7f209489c6507c8d36e57",
+    "../docs/test/browser/stage7.spec.js": "9c74b7b5c3d04a7f48ae45488a38302f7508b6457fb62970eb6fe8f94f29b163",
+    "../docs/test/stage7/independent.test.mjs": "ad8b92f703a223bafe3c6d33dfe970e07cf68f0676837c16dca9e9f3e90e40e5",
+    "../docs/test/stage7/services.test.mjs": "82a476881d84baa5f41cbba19326492dba9c16cfaa6adbcf59545ef4e55ec712",
+    "../docs/test/stage7/workflow.test.mjs": "cec8284f395efd14f32a9c0fb377b818732cc0b8eff12322fb8f888b3d9d60de",
+    "artifacts/stage6/benchmark-results.json": "d39cb4f339c9d0bc77a04d84ea3a4b15baa5400d54d436bdafde99a76348e93d",
+    "artifacts/stage6/browser-results.json": "5801383da2b81e116c919a244d6c7789de21dd30d34cb710aa8c1dee85b83580",
+    "index.html": "4375f7e48442a2f3777a5d6a9cf5f1ebb1c8fa156cd6a2583995dcac9b241fab",
+    "package-lock.json": "1540fa7571ad4e030a40882d07a7a6cdb874b988d79a3f21750fb9411618057a",
+    "package.json": "eb542723c879d4655a5e1278b12f529b729fc6a1e8a9a8cf968dbc765fb6d54e",
+    "playwright.config.js": "2a7fd3d9b16c4251130bcc96d7d0a6e78959a9459cc017fddfbb69f51d89d727",
+    "src/App.css": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+    "src/App.jsx": "020d610732e5f5d8590fd468adbabcbd0e502864aa73e2760d11fa9962394361",
+    "src/assets/hero.png": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c",
+    "src/assets/react.svg": "35ef61ed53b323ae94a16a8ec659b3d0af3880698791133f23b084085ab1c2e5",
+    "src/assets/vite.svg": "5be21acd42eb7b896e517f4e0f0f11eb5c5d9e54fbbcebe9453f033008fcca6f",
+    "src/auth/AuthContext.js": "ae407d1a20d2fd92fb14fc09028e58f5ec0fa87da73a0e1855729878adeb14d1",
+    "src/auth/AuthProvider.jsx": "d2fca591a33317e9d863047ce0d63c64818ff4ed89c4b33f2cf9cadf94250d80",
+    "src/auth/RequireAuth.jsx": "059f86320db3471547b635e0b53de1e765e7e55c02bfbc4f306ec7f4c5631daa",
+    "src/clients/demoMap.js": "bd8476e37e5af55ce1d66388409e707286ca8db63bb52cb0c04d666878224f6f",
+    "src/clients/demoOccupancyGrid.js": "5dd3423def09679980c599e381af1cd0e882f40ef9ce960ab2750b5936bc8743",
+    "src/clients/index.js": "7d1416ea92e1c3855b8bf2675279191ced4c10dae79a3ce678275e5252903d5b",
+    "src/clients/mockJobs.js": "444abdc2524ca4603364701786fc69ca083f303c3ea1dd5fc63a8146bc1b20e7",
+    "src/clients/mockMapActivation.js": "e718d1cc563b5897d730bae8846e41fe23742be7a07aacf4af66bea0ff723df0",
+    "src/clients/mockMapGrid.js": "903b5773958459c1aebfd1f28c5092ae49ac0316e35d5451d5c8c4ce88a40cd9",
+    "src/clients/mockMapRepository.js": "7d5fcf8f005c7c2cac22515289a66496d476ee0971770969f08e37f52c65beec",
+    "src/clients/mockMapping.js": "8f4776ebf438b34d47647cf8eb9c749f52b69f4533f45688f57482d7e3ed61f3",
+    "src/clients/mockMissions.js": "0b5590cd7ea520d2f392b46a0671b5804b57f410f3c815c027c3a7fd537440a6",
+    "src/clients/mockRobotClient.js": "586905a3ce0009013909d146c85fe6cd4c5ca7826ce9cbe63744c3da2b602f8a",
+    "src/clients/mockRoutes.js": "62a39def4c7a0a7b2dfae2a1f488c5d5141a21a0bc3ec4b15c4d3b652576f3f3",
+    "src/clients/mockTelemetry.js": "a589d01cc781a4ad51e273c7d6b69b1d69bc03d7063254808d7bb1e12baf76fd",
+    "src/clients/sharedRobotState.js": "f169ee1def7a1946e9887d5180301633ce5c41e9830c75724735591ac09e847a",
+    "src/components/MappingOperationCoordinator.jsx": "486064f7d64a5509df7c0356eea0f41fa1c38f06dbca20108c06dd3e41ccf2c6",
+    "src/components/RobotOperationCoordinator.jsx": "6f0d502bcba206afe67ba14532edfd50defd56259387c039026f62f64f623dc6",
+    "src/components/layout/AppShell.jsx": "85e3ee9e5c14addbb8bc3b0d8c26a06383d61f161853dfcca3d4be30b67b7b7e",
+    "src/components/layout/PageFrame.jsx": "64e9a3700ac6e3d682b2c8245b19bdd0350fff3335cb7af611dbba0be9a4a8ee",
+    "src/components/map/Map2D.jsx": "a78884fc523034bb9d0f47466b89bf467bf4c205b86b3e4211b8853019643555",
+    "src/components/navigation/MissionPanel.jsx": "2b4bd46fc4177a7ed6ea14c94551d42c4bf5bfb4a9e3009dd62f015b7c8670d1",
+    "src/components/navigation/NavigationLegend.jsx": "874e371117cbdb09fedced7ae599dbe5774089ae54eca9e3795c683960fcb841",
+    "src/components/navigation/NavigationWorkspace.jsx": "e91c8695b07c54310e7fc1d7b37445dce6cce17f08c338b5da80aaed8f7f653d",
+    "src/components/navigation/RouteLibrary.jsx": "8bb83c193e8ba640e5e482664572d17e06170e88773c8cfbd3af15797b0d01a0",
+    "src/components/navigation/WaypointEditor.jsx": "93481b87112dcc543b161b0af7e3459311d0d3a525c570f14941ea42292b139d",
+    "src/components/status/Metric.jsx": "c6c77771e569875108b6a5c508417a4b799a8d0fb2d40acc297b922cf31e73bc",
+    "src/components/status/TelemetryBridge.jsx": "5d0960a660237f3b8d409c49b595762e277457eefc4d7ab7bb6e3a08b939b848",
+    "src/hooks/useMapGrid.js": "7ff85dce81a965fea883525976b1ba7e12f1a15620fa712fa388c1d305593e35",
+    "src/hooks/useOccupancyRaster.js": "36f4cd64fb5f53823b57f82257b263ff2babf0855e9b3c9db60f6f8108b16100",
+    "src/hooks/useRobotClient.js": "231c89a0acf5a7dd2ae9c4be0741dc5590c610c15b92f999e5ec8a7709d4a60f",
+    "src/hooks/useRobotFreshness.js": "706bb5e84e71b6cf867f7f22ab50890d7238eac248ad1b21b0237334737b76c2",
+    "src/index.css": "4cf7b58c3c1e42654266732bf113eaee3a88ce86d3a9ea76c10aac31776ca038",
+    "src/main.jsx": "d27d379641a471f7b7b2157037670a833793f9e5edcbe9fe684d4b55c11ee21b",
+    "src/pages/LoginPage.jsx": "1f09c73a81fdb9433c0b0f660266e74a909468222313e0337c65c1fabcec72ce",
+    "src/pages/MappingPage.jsx": "9769dbb06a536046ffddba1d7abff17cfeabf185d910b4ffb6db4d2d9b6b23cd",
+    "src/pages/NavigationPage.jsx": "6a668c31d21d40bed5453275aa60e899b6613b18643d20a8f00bbb1492548c28",
+    "src/pages/StatusPage.jsx": "3b4b4ba60a2438d73dd0a74e56cb8e316fad13c244782fa43be1802d7c724e35",
+    "src/pages/TeleopPage.jsx": "57a5a7986e259f3557c4caa75a2391698ddce63e4d65e9f0d30a47e44d71b2da",
+    "src/schemas/job.js": "830f6afa123d28e73536cee1677e10c70b28d0791a55f9b112932f70326a224d",
+    "src/schemas/mapGrid.js": "7f13932f112bc5c88f170d469cf6fb1ab85853f5a19eb92ed093482feff4421f",
+    "src/schemas/mapping.js": "b25d1aa5c394e14ed9f47b6f989a4445a99856992ee6c052ef7bb78540a735f6",
+    "src/schemas/mission.js": "8c3b11262e887ea918f94ab3b0f4436bf035df83d1a6e6232b202c1c85a02fe6",
+    "src/schemas/robotState.js": "34f48887ba3bc66bc284caf57b17174d00fc3380a81032a6ffe751cfc8d8f293",
+    "src/state/mappingWorkflowStore.js": "f89b5fae34c76e52c92254baad606990253c7f9e72f100db010e47ce519d6e4e",
+    "src/state/missionStore.js": "eab245442f9da1acc629785fe4fedbc896b1833a8a9b25d089bb68c55f620bd9",
+    "src/state/navigationWorkflowStore.js": "3a569572f92ab7d24f702f23da38522eb352293685edd0ea70c3feed3d56d611",
+    "src/stores/robotStore.js": "279d4a82301dc39971a1e6cdf8c338d4d27102be7237622a81a041c1d8a774ca",
+    "src/utils/idempotencyRegistry.js": "5bf49aa77b9b3146d9f2e4fa6790b26e3cec22f3e9505fdef0f49f1eb9ca1486",
+    "src/utils/lifecycleTimers.js": "4a1400df5e2153daeb41fbcf0828dd8231edeeb979372324c3347fa97329752d",
+    "src/utils/mapCoordinates.js": "ef9f8afcc533199c28385a393e409c8a14fc92e1858961e7c002ea690feb68fd",
+    "src/utils/mapGridEventGate.js": "478056ddbee7621c133fcb73ae36447b95e4ab98124c959913519edc79ebda22",
+    "src/utils/mapRenderModel.js": "6b1159e8fa61989b1b852b0183eb59fbd3041773aad593e2a7f4fab41d6477d6",
+    "src/utils/missionState.js": "32257bc5d6952ff80433e0b6cf05025ec29ddaaf192d47dc4fa8aa7d14910e64",
+    "src/utils/navigationCommands.js": "08aaedd5f08204f98297cdd4ce5a732607d21bee9ed607a31c85e905f31a88c5",
+    "src/utils/navigationCoordinator.js": "2f6ca00a7dd4d7dea0168d75ea9aa9b2cd84589bf3fb6d6a2ad57f9bbe726323",
+    "src/utils/navigationEventGate.js": "d1169f4c0f6f7222b3c82f7abd9d00edc2b65156669cfda00538ee3585557ff6",
+    "src/utils/navigationGuards.js": "3d0ae7452acba5505339aefdb592301e299e48e83bdf4161116fa86d91a64789",
+    "src/utils/navigationPolicy.js": "4040b26f174c29ecc25f28c1b244d5b98ae0134db5b04010a68c510d21c54df1",
+    "src/utils/normalizeOccupancyGrid.js": "45823515de65aad37e09f695ee7b122419c09ae6341fa3a84469c4d76ca8ab1d",
+    "src/utils/occupancyRasterController.js": "566354270ad24d76c6f07a6c295e514a3bd24b9bf217fa6e9fe17fa09fe65ed8",
+    "src/utils/occupancyToRgba.js": "781b7869cfb25c0becc66de69c36ce5d85954fc54fd38bc81813a101a3c6482d",
+    "src/utils/poseQuality.js": "6312bc2fa29abaceab6edb89ce68e51e5e2585d365ab6b8a9515cca9e3d9d297",
+    "src/utils/rasterRuntime.js": "978d0f359dedb53c6d25c952bdd3df7551cc8d583d1a619251477eac8da87766",
+    "src/utils/sketchToWaypoints.js": "3d138840a1dad6cd7617132d07d09ea731923c9a2e8a50f6bdb0741c2fd2d85a",
+    "src/utils/stableStringify.js": "a906cbe2e1717a495260f0cea4b31933e3a87807f33df90dfe78f2448869ae93",
+    "test/integrationProbe.test.js": "057768308063f26f6625c1b4f37493051c2a6c320e82c449c986329c6b2d4b3f",
+    "test/mapCoordinates.test.js": "6a08cfb5bc843583e97f5c1685899062cc1c59e73ae8d9f42f5453696f906f9b",
+    "test/mapGridEventGate.test.js": "6f00f808c5a7832da457519a91b0239f8cef211a3f96521f65fbb8dccca3e7b6",
+    "test/mapGridSchema.test.js": "f63152e59d1038b8baad8ada5dac6a80a3441bfb8b8e80b811a363bf797cd9b7",
+    "test/mappingSchema.test.js": "c943ccee161f56ac66f5b31a4cb2dfc619f086cd7f623d958ce4dd93ec4b9505",
+    "test/mappingWorkflowStore.test.js": "25f921151e77280c4d3b55422183ea079ddfc14b896e53804e81d8cb70e2c764",
+    "test/mockMapGrid.test.js": "81370eda777fcdb38bcf7f5983090a5b43e2a97ee89676becb14dc367a1b6f5a",
+    "test/mockMapRepository.test.js": "6365c3b732be36102f4decec2853653548b6c64d532f9924c62bac8b4896be8f",
+    "test/mockMapping.test.js": "a51b3c37bf031aa79952c002f48a3247a1e773169f58a76b3d84d9eff112c43b",
+    "test/mockRobotClient.test.js": "b6354ff6999f5cadc5b7debbcedd525e24e2d50f6296a53fdfc4ad055ca7dd48",
+    "test/mockTelemetry.test.js": "229ba3e8266b4862753a73e0953618b70d5bae89714f6deb0fdb7ad1120ddfb5",
+    "test/normalizeOccupancyGrid.test.js": "f9269fc0557450a7b916f50e3813948a6576f6e5fbd1db1dbd897f10b60a974b",
+    "test/occupancyRasterController.test.js": "08393179cdcbdea4ec0a229351a02e65dc2364e3a7a389d34fb477dc8ffbcc40",
+    "test/occupancyToRgba.test.js": "dfaca0bd34c4a00819a6424d3b3d2a47f96bffb3c47d5ad4b88d0df1d5a9f4b5",
+    "test/poseQuality.test.js": "6ec8cee7a8b6274f2c60bbd1cea86e5104f3fad773ad8afcccc73756032cced0",
+    "test/sharedRobotState.test.js": "2bc9c8937e00439dd4d4e9368ddca022a84ec8aeafbb65404b705b7bac5dc457",
+    "test/stage7Independent.test.js": "0d9aa4d81874cc211353f4db9172a1b93a07730dc036c74463251308fc8fd360",
+    "test/stage7Services.test.js": "0de0f0c5237895aa0da3128eca2f1b9370b537584fd4f0a6586eb88a695697a9",
+    "test/stage7Workflow.test.js": "fdf5bac41be84ee32a85b4ab4e78964d37b5b6a45ded8c7f2319e95d5d433276",
+    "vite.config.js": "e1eefd0ed1639c88d1213884ef760516884db9e168190e223fee6b063ad3e088"
+  }
+}

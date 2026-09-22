@@ -8,7 +8,7 @@ export const RobotStateSchema = z.object({
   localization: z.object({
     status: z.enum(['tracking', 'lost', 'unknown']),
     reason: z.string().nullable(),
-  }),
+  }).strict(),
   pose: z.object({
     frameId: z.string().trim().min(1).max(128),
     x: finite,
@@ -16,15 +16,16 @@ export const RobotStateSchema = z.object({
     yaw: finite,
   }).strict().nullable(),
   poseSourceUpdateAgeMs: finite.nonnegative().nullable(),
-  velocity: z.object({ linearX: finite, angularZ: finite }).nullable(),
+  velocity: z.object({ linearX: finite, angularZ: finite }).strict().nullable(),
   batteryPercent: finite.min(0).max(100).nullable(),
   physicalEstopActive: z.boolean().nullable(),
-  motionInhibited: z.boolean().optional(),
-  motionInhibitReason: z.string().nullable().optional(),
+  motionInhibited: z.boolean(),
+  motionInhibitReason: z.string().nullable(),
   receivedAt: z.string(),
   activeMap: z.object({
     id: z.string().min(1),
     revision: z.string().min(1),
-  }).nullable(),
+  }).strict().nullable(),
   activeMappingSessionId: z.string().min(1).nullable(),
+  activeMissionId: z.string().min(1).max(128).nullable(),
 }).strict();

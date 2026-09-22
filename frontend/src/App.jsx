@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router';
 import AppShell from './components/layout/AppShell.jsx';
-import MappingOperationCoordinator from './components/MappingOperationCoordinator.jsx';
+import RobotOperationCoordinator from './components/RobotOperationCoordinator.jsx';
 import RequireAuth from './auth/RequireAuth.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import StatusPage from './pages/StatusPage.jsx';
@@ -18,9 +18,9 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route
           element={
-            <MappingOperationCoordinator>
+            <RobotOperationCoordinator>
               <AppShell />
-            </MappingOperationCoordinator>
+            </RobotOperationCoordinator>
           }
         >
           <Route index element={<Navigate to="/status" replace />} />

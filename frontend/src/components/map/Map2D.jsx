@@ -27,11 +27,16 @@ export default function Map2D({
   poseQuality = 'reliable',
   goal,
   path = null,
+  routeDraft = null,
+  previewPath = null,
+  plannedPath = null,
+  trajectory = null,
   showGrid = true,
   showRobot = true,
   showPath = true,
   tool = 'goal',
   onGoalChange,
+  onWaypointAdd,
 }) {
   const svgRef = useRef(null);
   const drag = useRef(null);
@@ -145,15 +150,29 @@ export default function Map2D({
       // ignore
     }
 
-    if (start.tool !== 'goal') return;
-    const end = toSvg(event.clientX, event.clientY);
-    if (!end) return;
-    const position = svgToWorld(start.point, geometry);
-    if (!isInsideMap(position, geometry)) return;
-    const target = svgToWorld(end, geometry);
-    const moved = Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) >= 5;
-    const yaw = moved ? Math.atan2(target.y - position.y, target.x - position.x) : (goal?.yaw ?? 0);
-    onGoalChange?.({ frameId: geometry.frameId || 'map', ...position, yaw });
+    // A. Nếu là chế độ Waypoint: Click chọn thêm 1 điểm vào tuyến
+    if (start.tool === 'waypoint') {
+      const position = svgToWorld(start.point, geometry);
+      if (!isInsideMap(position, geometry)) return;
+      onWaypointAdd?.({
+        frameId: geometry.frameId || 'map',
+        x: Number(position.x.toFixed(3)),
+        y: Number(position.y.toFixed(3)),
+        yaw: 0,
+      });
+      return;
+    }
+    // B. Nếu là chế độ Goal: Chọn 1 đích và kéo để chỉnh góc quay Yaw
+    if (start.tool === 'goal') {
+      const end = toSvg(event.clientX, event.clientY);
+      if (!end) return;
+      const position = svgToWorld(start.point, geometry);
+      if (!isInsideMap(position, geometry)) return;
+      const target = svgToWorld(end, geometry);
+      const moved = Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) >= 5;
+      const yaw = moved ? Math.atan2(target.y - position.y, target.x - position.x) : (goal?.yaw ?? 0);
+      onGoalChange?.({ frameId: geometry.frameId || 'map', ...position, yaw });
+    }
   }
 
   function pointerCancel(event) {
@@ -267,6 +286,7 @@ export default function Map2D({
           }}
           onDragStart={(e) => e.preventDefault()}
         >
+          {/* 1. LỚP NỀN RASTER BẢN ĐỒ PHẢI ĐẶT Ở ĐẦU TIÊN (NẰM DƯỚI CÙNG) */}
           {/* Lớp hiển thị ảnh Occupancy Grid nguyên tử */}
           <image
             data-testid="map2d-raster"
@@ -281,7 +301,83 @@ export default function Map2D({
             onLoad={model.onLoad}
             onError={model.onError}
           />
-
+          {/* 2. CÁC LỚP TUYẾN ĐƯỜNG ĐẶT TIẾP THEO ĐỂ NẰM ĐÈ LÊN TRÊN BẢN ĐỒ */}
+          {/* Trajectory (Vệt bánh xe thực tế) - Chấm tròn màu cyan */}
+          {trajectory && trajectory.length > 0 && (
+            <g id="trajectory-layer">
+              {trajectory.map((p, idx) => {
+                const svgPt = worldToSvg(p, geometry);
+                return <circle key={`traj-${idx}`} cx={svgPt.x} cy={svgPt.y} r="1.5" fill="#00bcd4" opacity="0.7" />;
+              })}
+            </g>
+          )}
+          {/* Planned Path (Đường do robot lập) - Nét liền màu xanh lá */}
+          {plannedPath && plannedPath.length > 1 && (
+            <polyline
+              id="planned-path"
+              fill="none"
+              stroke="#2e7d32"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={plannedPath.map((p) => {
+                const pt = worldToSvg(p, geometry);
+                return `${pt.x},${pt.y}`;
+              }).join(' ')}
+            />
+          )}
+          {/* Preview Path (Đường xem trước) - Nét đứt màu xanh dương */}
+          {previewPath && previewPath.length > 1 && (
+            <polyline
+              id="preview-path"
+              fill="none"
+              stroke="#0288d1"
+              strokeWidth="2.5"
+              strokeDasharray="6 3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={previewPath.map((p) => {
+                const pt = worldToSvg(p, geometry);
+                return `${pt.x},${pt.y}`;
+              }).join(' ')}
+            />
+          )}
+          {/* Route Draft (Ý định đang soạn thảo) - Nét đứt màu cam & đánh số điểm */}
+          {routeDraft?.poses && routeDraft.poses.length > 0 && (
+            <g id="route-draft-layer">
+              {routeDraft.poses.length > 1 && (
+                <polyline
+                  fill="none"
+                  stroke="#ff9800"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                  points={routeDraft.poses.map((p) => {
+                    const pt = worldToSvg(p, geometry);
+                    return `${pt.x},${pt.y}`;
+                  }).join(' ')}
+                />
+              )}
+              {routeDraft.poses.map((p, idx) => {
+                const pt = worldToSvg(p, geometry);
+                return (
+                  <g key={`draft-wp-${idx}`}>
+                    <circle cx={pt.x} cy={pt.y} r="5" fill="#ff9800" stroke="#fff" strokeWidth="1.5" />
+                    <text
+                      x={pt.x}
+                      y={pt.y - 8}
+                      textAnchor="middle"
+                      fill="#e65100"
+                      fontSize="10"
+                      fontWeight="bold"
+                    >
+                      {idx + 1}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
+          {/* 3. LỚP VẼ ROBOT VÀ GOAL (NẰM TRÊN CÙNG) */}
           {/* Vị trí Robot Footprint VISTAR 1 (809mm x 500mm theo mét) */}
           {showRobot && robotPoint && (
             <g

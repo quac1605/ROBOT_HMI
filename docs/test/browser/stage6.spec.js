@@ -196,7 +196,13 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     const goalText = page.getByText(/Tọa độ: X =/);
     await expect(goalText).toContainText('1.00m');
     await expect(goalText).toContainText('2.00m');
-    await expect(page.getByRole('button', { name: 'Bắt đầu di chuyển' })).toBeDisabled();
+    // Stage 7 intentionally enables the real Submit control. Preserve the
+    // original safety intent: editing a draft alone must not send a mission.
+    await expect(page.getByTestId('mission-submit')).toBeEnabled();
+    expect(await page.evaluate(async () => {
+      const { robotClient } = await import('/src/clients/index.js');
+      return (await robotClient.getActiveMission()).mission;
+    })).toBeNull();
     await expect(page.getByText(/Chưa gửi mission/)).toBeVisible();
     const initial = await page.locator(SVG).getAttribute('viewBox');
     await page.getByRole('button', { name: 'Phóng to bản đồ' }).click();

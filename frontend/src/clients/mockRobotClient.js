@@ -3,263 +3,236 @@ import { createMockTelemetry } from './mockTelemetry.js';
 import { createMockMapGrid } from './mockMapGrid.js';
 import { createMockMappingService } from './mockMapping.js';
 import { createMockMapRepository } from './mockMapRepository.js';
+import { createIdempotencyRegistry } from '../utils/idempotencyRegistry.js';
+import { createMockJobService } from './mockJobs.js';
+import { createMockMapActivationService } from './mockMapActivation.js';
+import { createMockRouteService } from './mockRoutes.js';
+import { createMockMissionService } from './mockMissions.js';
+import { RobotStateSchema } from '../schemas/robotState.js';
 import {
-  ListMapsResponseSchema,
-  GetMapResponseSchema,
-  GetActiveMappingSessionResponseSchema,
-  StartMappingResponseSchema,
-  FinishMappingResponseSchema,
-  JobSchema,
+  ListMapsResponseSchema, GetMapResponseSchema, GetActiveMappingSessionResponseSchema,
+  StartMappingResponseSchema, FinishMappingResponseSchema, JobSchema
 } from '../schemas/mapping.js';
 import { MapGridSnapshotSchema, preflightMapGrid } from '../schemas/mapGrid.js';
+import { NavigationJobEventSchema } from '../schemas/job.js';
+import {
+  ActivateMapResponseSchema, PreviewRouteResponseSchema, SaveRouteResponseSchema,
+  ListRoutesResponseSchema, CreateMissionResponseSchema, GetMissionResponseSchema,
+  GetActiveMissionResponseSchema, CancelMissionResponseSchema, MissionEventEnvelopeSchema,
+  NavigationPathEnvelopeSchema, NavigationPathQuerySchema, preflightNavigationPath
+} from '../schemas/mission.js';
+import { navigationError } from '../utils/navigationPolicy.js';
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function createInitialRobotSnapshot() {
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+function initialState() {
   return {
-    robotId: 'robot-01',
-    mode: 'idle',
-    rosConnected: true,
+    robotId: 'robot-01', mode: 'idle', rosConnected: true,
     localization: { status: 'tracking', reason: null },
     activeMap: { id: 'map-demo', revision: 'rev-1' },
-    activeMappingSessionId: null,
+    activeMappingSessionId: null, activeMissionId: null,
+    motionInhibited: false, motionInhibitReason: null,
     pose: { frameId: 'map', x: 4.12, y: 1.8, yaw: 0.415388 },
-    poseSourceUpdateAgeMs: 0,
-    velocity: { linearX: 0, angularZ: 0 },
-    batteryPercent: 78,
-    physicalEstopActive: false,
-    receivedAt: new Date().toISOString(),
+    poseSourceUpdateAgeMs: 0, velocity: { linearX: 0, angularZ: 0 },
+    batteryPercent: 78, physicalEstopActive: false, receivedAt: new Date().toISOString(),
   };
+}
+function loadUser() {
+  try {
+    if (typeof window === 'undefined') return null;
+    const stored = JSON.parse(window.localStorage.getItem('mock_robot_client_user') || 'null');
+    return stored?.id === 'demo-admin' && stored?.username === 'admin' ? stored : null;
+  } catch { return null; }
+}
+function persistUser(user) {
+  try {
+    if (typeof window === 'undefined') return;
+    if (user) window.localStorage.setItem('mock_robot_client_user', JSON.stringify(user));
+    else window.localStorage.removeItem('mock_robot_client_user');
+  } catch { /* Storage có thể bị browser chặn; auth in-memory vẫn dùng được. */ }
 }
 
 export function createMockRobotClient() {
-  let user = null;
+  let user = loadUser();
   let disposed = false;
   let lifecycleEpoch = 0;
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = window.localStorage.getItem('mock_robot_client_user');
-      if (stored) {
-        user = JSON.parse(stored);
-      }
-    } catch {
-      // ignore
-    }
-  }
-  const activeSubscriptions = new Map();
-
-  const sharedRobotState = createSharedRobotState(createInitialRobotSnapshot());
-
+  let loginSequence = 0;
+  const subscriptions = new Set();
+  const sharedRobotState = createSharedRobotState(initialState());
+  const idempotency = createIdempotencyRegistry();
+  const jobService = createMockJobService();
   const mapRepository = createMockMapRepository();
   const mapGridService = createMockMapGrid({ mapRepository });
   const telemetry = createMockTelemetry({ sharedRobotState });
+  // Không chuyển job Chặng 6 sang service mới trong bản sửa này.
   const mappingService = createMockMappingService({
-    sharedRobotState,
-    mapGridService,
-    mapRepository,
+    sharedRobotState, mapGridService, mapRepository,
     onMappingStarted: () => telemetry.beginMappingSession(),
   });
-
-  function appError(code, message) {
-    const err = new Error(message);
-    err.code = code;
-    return err;
-  }
+  const mapActivationService = createMockMapActivationService({
+    sharedRobotState, telemetry, jobService, mapRepository, idempotency,
+  });
+  const routeService = createMockRouteService({ jobService, mapRepository, idempotency });
+  const missionService = createMockMissionService({ sharedRobotState, telemetry, mapRepository, idempotency });
 
   function requireUsable() {
-    if (disposed) {
-      throw appError('CLIENT_DISPOSED', 'RobotClient đã bị hủy');
-    }
+    if (disposed) throw navigationError('CLIENT_DISPOSED', 'RobotClient đã dispose.');
   }
-
   function requireAuthenticated() {
     requireUsable();
-    if (!user) {
-      throw appError('UNAUTHENTICATED', 'Yêu cầu đăng nhập để thực hiện thao tác này');
-    }
+    if (!user) throw navigationError('UNAUTHENTICATED', 'Yêu cầu đăng nhập.');
+    return user.id;
   }
-
-  function clearStoredUser() {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.removeItem('mock_robot_client_user');
-      } catch {
-        // ignore
-      }
-    }
+  async function validatedCall(schema, work) {
+    const principalId = requireAuthenticated();
+    const epoch = lifecycleEpoch;
+    const raw = await work(principalId);
+    requireAuthenticated();
+    if (epoch !== lifecycleEpoch) throw navigationError('OPERATION_SUPERSEDED', 'Phản hồi thuộc phiên cũ.');
+    return schema.parse(raw);
   }
-
+  function register(factory) {
+    requireAuthenticated();
+    const epoch = lifecycleEpoch;
+    let closed = false;
+    const unsubscribe = factory(() => !closed && !disposed && epoch === lifecycleEpoch && Boolean(user));
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      subscriptions.delete(close);
+      unsubscribe();
+    };
+    subscriptions.add(close);
+    return close;
+  }
   function closeAllSubscriptions() {
-    activeSubscriptions.forEach((unsubscribe) => {
-      try {
-        unsubscribe();
-      } catch (err) {
-        console.error('Lỗi khi hủy subscription:', err);
-      }
-    });
-    activeSubscriptions.clear();
+    for (const close of [...subscriptions]) close();
   }
-
   function resetUserWorkflow() {
     closeAllSubscriptions();
+    // Producer/timer phải dừng trước khi xóa resource hoặc reset state.
+    missionService.clear();
+    mapActivationService.clear();
+    routeService.clear();
     mappingService.reset();
+    idempotency.clear();
+    jobService.clear();
     telemetry.reset();
-    sharedRobotState.reset(createInitialRobotSnapshot());
-  }
-
-  function registerSubscription(unsubFn) {
-    requireUsable();
-    const subId = `sub-${Math.random().toString(36).substring(2, 9)}`;
-    activeSubscriptions.set(subId, unsubFn);
-    return () => {
-      if (activeSubscriptions.has(subId)) {
-        unsubFn();
-        activeSubscriptions.delete(subId);
-      }
-    };
+    sharedRobotState.reset(initialState());
   }
 
   return {
     kind: 'mock',
     async login({ username, password }) {
       requireUsable();
-      const epoch = ++lifecycleEpoch;
+      // A login attempt is not a session replacement. In particular a failed
+      // re-login must not revoke subscriptions while the robot is navigating.
+      const attempt = ++loginSequence;
+      const epoch = lifecycleEpoch;
       await delay(300);
       requireUsable();
-      if (epoch !== lifecycleEpoch) {
-        throw appError('AUTH_OPERATION_SUPERSEDED', 'Yêu cầu đăng nhập đã bị thay thế');
+      if (attempt !== loginSequence || epoch !== lifecycleEpoch) {
+        throw navigationError('AUTH_OPERATION_SUPERSEDED', 'Login đã bị thay thế.');
       }
-      if (username !== 'admin' || password !== 'demo-only') {
-        throw new Error('Sai tài khoản hoặc mật khẩu demo.');
-      }
+      if (username !== 'admin' || password !== 'demo-only') throw new Error('Sai tài khoản hoặc mật khẩu demo.');
+      if (!user) lifecycleEpoch += 1;
       user = { id: 'demo-admin', username: 'admin' };
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem('mock_robot_client_user', JSON.stringify(user));
-        } catch {
-          // ignore
-        }
-      }
+      persistUser(user);
       return { user: { ...user } };
     },
-    async getSession() {
-      requireUsable();
-      if (!user && typeof window !== 'undefined') {
-        try {
-          const stored = window.localStorage.getItem('mock_robot_client_user');
-          if (stored) {
-            user = JSON.parse(stored);
-          }
-        } catch {
-          // ignore
-        }
-      }
-      return { user: user ? { ...user } : null };
-    },
+    async getSession() { requireUsable(); return { user: user ? { ...user } : null }; },
     async logout() {
       requireUsable();
-      const epoch = ++lifecycleEpoch;
-      await delay(100);
-      if (disposed || epoch !== lifecycleEpoch) return;
-      // Logout is a service boundary: revoke listeners, cancel unfinished jobs
-      // and discard an unsaved mapping session before another user can log in.
-      resetUserWorkflow();
+      loginSequence += 1;
+      lifecycleEpoch += 1;
       user = null;
-      clearStoredUser();
+      persistUser(null);
+      resetUserWorkflow();
+      await delay(100);
     },
-
-    // Telemetry - Bắt buộc xác thực
-    async getRobotState() {
-      requireAuthenticated();
-      return sharedRobotState.getSnapshot();
-    },
+    getRobotState() { return validatedCall(RobotStateSchema, () => sharedRobotState.getSnapshot()); },
     subscribeRobotState(listener) {
-      requireAuthenticated();
-      const unsub = telemetry.subscribe(listener);
-      return registerSubscription(unsub);
+      return register(active => telemetry.subscribe(raw => { if (active()) listener(RobotStateSchema.parse(raw)); }));
     },
-    setDemoScenario(name) {
-      requireAuthenticated();
-      telemetry.setScenario(name);
+    setDemoScenario(name) { requireAuthenticated(); telemetry.setScenario(name); },
+    getDemoScenario() { requireAuthenticated(); return telemetry.getScenario(); },
+    setDemoMissionScenario(name) { requireAuthenticated(); missionService.setScenario(name); },
+    listMaps() { return validatedCall(ListMapsResponseSchema, () => mappingService.listMaps()); },
+    getMap(id, revision) { return validatedCall(GetMapResponseSchema, () => mappingService.getMap(id, revision)); },
+    getMapGrid(context) {
+      return validatedCall(MapGridSnapshotSchema, async () => {
+        const raw = await mapGridService.getMapGrid(context);
+        preflightMapGrid(raw);
+        return raw;
+      });
     },
-    getDemoScenario() {
-      requireAuthenticated();
-      return telemetry.getScenario();
-    },
-    // Chuyển tiếp options.subscriptionId xuống service
     subscribeMapGrid(context, listener, options = {}) {
-      requireAuthenticated();
-      const unsub = mapGridService.subscribeMapGrid(context, listener, options);
-      return registerSubscription(unsub);
+      return register(active => mapGridService.subscribeMapGrid(context, event => {
+        if (active()) listener(event);
+      }, options));
     },
-
-    // 9 Phương thức của Chặng 6 có kiểm tra Auth & Validate Zod Schema
-    async listMaps() {
-      requireAuthenticated();
-      const raw = await mappingService.listMaps();
-      return ListMapsResponseSchema.parse(raw);
+    getActiveMappingSession() {
+      return validatedCall(GetActiveMappingSessionResponseSchema, () => mappingService.getActiveMappingSession());
     },
-
-    async getMap(mapId, revision) {
-      requireAuthenticated();
-      const raw = await mappingService.getMap(mapId, revision);
-      return GetMapResponseSchema.parse(raw);
-    },
-
-    async getMapGrid(context) {
-      requireAuthenticated();
-      const raw = await mapGridService.getMapGrid(context);
-      preflightMapGrid(raw);
-      return MapGridSnapshotSchema.parse(raw);
-    },
-
-    async getActiveMappingSession() {
-      requireAuthenticated();
-      const raw = await mappingService.getActiveMappingSession();
-      return GetActiveMappingSessionResponseSchema.parse(raw);
-    },
-
-    async startMapping(args) {
-      requireAuthenticated();
-      const raw = await mappingService.startMapping(args, user.id);
-      return StartMappingResponseSchema.parse(raw);
-    },
-
-    async finishMapping(args) {
-      requireAuthenticated();
-      const raw = await mappingService.finishMapping(args, user.id);
-      return FinishMappingResponseSchema.parse(raw);
-    },
-
+    startMapping(args) { return validatedCall(StartMappingResponseSchema, principal => mappingService.startMapping(args, principal)); },
+    finishMapping(args) { return validatedCall(FinishMappingResponseSchema, principal => mappingService.finishMapping(args, principal)); },
     subscribeJobs(listener) {
-      requireAuthenticated();
-      const unsub = mappingService.subscribeJobs(listener);
-      return registerSubscription(unsub);
+      return register(active => {
+        const first = mappingService.subscribeJobs(raw => { if (active()) listener(JobSchema.parse(raw)); });
+        const second = jobService.subscribeJobs(raw => { if (active()) listener(NavigationJobEventSchema.parse(raw)); });
+        return () => { first(); second(); };
+      });
     },
-
-    async getJob(jobId) {
-      requireAuthenticated();
-      const raw = await mappingService.getJob(jobId);
-      return JobSchema.parse(raw);
+    getJob(jobId) {
+      return validatedCall(JobSchema, async () => {
+        try { return await mappingService.getJob(jobId); }
+        catch (error) {
+          if (error.code !== 'JOB_NOT_FOUND') throw error;
+          return jobService.getJob(jobId);
+        }
+      });
     },
-
+    activateMap(args) { return validatedCall(ActivateMapResponseSchema, principal => mapActivationService.activateMap(args, principal)); },
+    previewRoute(args) { return validatedCall(PreviewRouteResponseSchema, principal => routeService.previewRoute(args, principal)); },
+    saveRoute(args) { return validatedCall(SaveRouteResponseSchema, principal => routeService.saveRoute(args, principal)); },
+    listRoutes(query) { return validatedCall(ListRoutesResponseSchema, () => routeService.listRoutes(query)); },
+    createMission(args) { return validatedCall(CreateMissionResponseSchema, principal => missionService.createMission(args, principal)); },
+    getMission(id) { return validatedCall(GetMissionResponseSchema, () => missionService.getMission(id)); },
+    getActiveMission() { return validatedCall(GetActiveMissionResponseSchema, () => missionService.getActiveMission()); },
+    cancelMission(args) { return validatedCall(CancelMissionResponseSchema, principal => missionService.cancelMission(args, principal)); },
+    subscribeMissions(listener) {
+      return register(active => missionService.subscribeMissions(raw => {
+        if (active()) listener(MissionEventEnvelopeSchema.parse(raw));
+      }));
+    },
+    subscribeNavigationPath(query, listener) {
+      requireAuthenticated();
+      const checked = NavigationPathQuerySchema.parse(query);
+      return register(active => missionService.subscribeNavigationPath(checked, raw => {
+        if (!active()) return;
+        preflightNavigationPath(raw);
+        listener(NavigationPathEnvelopeSchema.parse(raw));
+      }));
+    },
     dispose() {
       if (disposed) return;
+      loginSequence += 1;
       lifecycleEpoch += 1;
+      disposed = true;
       closeAllSubscriptions();
+      missionService.dispose();
+      mapActivationService.dispose();
+      routeService.dispose();
       mappingService.dispose();
       mapGridService.dispose();
+      jobService.dispose();
+      idempotency.clear();
       telemetry.dispose();
-      sharedRobotState.reset(createInitialRobotSnapshot());
+      sharedRobotState.reset(initialState());
       user = null;
-      clearStoredUser();
-      disposed = true;
+      persistUser(null);
     },
-
-    _mapGridService: mapGridService,
-    _mappingService: mappingService,
-    _telemetry: telemetry,
-    _mapRepository: mapRepository,
-    _sharedRobotState: sharedRobotState,
+    _mapGridService: mapGridService, _mappingService: mappingService, _telemetry: telemetry,
+    _mapRepository: mapRepository, _sharedRobotState: sharedRobotState, _jobService: jobService,
+    _missionService: missionService, _routeService: routeService, _mapActivationService: mapActivationService,
   };
 }

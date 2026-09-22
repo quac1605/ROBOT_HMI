@@ -61,7 +61,7 @@ const applicationInputs = [
 ];
 
 const canonicalNodeTests = collectFiles('../docs/test')
-  .filter((file) => file.endsWith('.test.js'))
+  .filter((file) => /\.test\.m?js$/.test(file))
   .map((file) => path.resolve(file))
   .sort();
 const discoveredProxies = collectFiles('test')
@@ -69,13 +69,13 @@ const discoveredProxies = collectFiles('test')
 const proxiedNodeTests = discoveredProxies
   .flatMap((file) => {
     const source = fs.readFileSync(file, 'utf8');
-    return [...source.matchAll(/import\s+['"]([^'"]+\.test\.js)['"]/g)]
+    return [...source.matchAll(/import\s+['"]([^'"]+\.test\.m?js)['"]/g)]
       .map((match) => path.resolve(path.dirname(file), match[1]));
   })
   .sort();
 check(
   JSON.stringify(proxiedNodeTests) === JSON.stringify(canonicalNodeTests),
-  'Node auto-discovery proxy phủ đúng một lần toàn bộ canonical docs/test/**/*.test.js'
+  'Node auto-discovery proxy phủ đúng một lần toàn bộ canonical docs/test/**/*.test.{js,mjs}'
 );
 
 const nodeTestResult = spawnSync(process.execPath, ['--test'], {
