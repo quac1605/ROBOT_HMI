@@ -2,7 +2,8 @@ import { navigationError } from '../utils/navigationPolicy.js';
 
 // Đây là nguồn pose mô phỏng CHUNG. Mission/activation phải dùng commitPose(),
 // không tự cập nhật pose rồi để telemetry phát lại một vị trí khác.
-export function createMockTelemetry({ sharedRobotState }) {
+// SAU:
+export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
   const initialPose = { frameId: 'map', x: 4.12, y: 1.8, yaw: 0.415388 };
   const contextKey = state => state.activeMappingSessionId
     ? JSON.stringify(['mapping', state.activeMappingSessionId])
@@ -84,10 +85,10 @@ export function createMockTelemetry({ sharedRobotState }) {
     },
     commitPose(pose, robotPatch = {}) {
       assertActive();
-      // Fault injection freezes the localization SOURCE, even while a mission
-      // proposes new positions. A command is not a confirmed pose sample.
-      // Caller must not commit progress/activation when confirmation is absent.
       if (scenario === 'pose-heartbeat') return false;
+      if (robotPatch?.velocity && motionSource) {
+        motionSource.writeCommand(robotPatch.velocity);
+      }
       sourcePose = { frameId: 'map', ...structuredClone(pose) };
       sourceContext = contextKey({ ...sharedRobotState.getSnapshot(), ...robotPatch });
       lastSourceUpdateAt = performance.now();
@@ -97,6 +98,7 @@ export function createMockTelemetry({ sharedRobotState }) {
       });
       return true;
     },
+
     setScenario(next) {
       assertActive();
       if (!['online', 'offline', 'lost', 'stale', 'unknown-battery', 'pose-heartbeat'].includes(next)) {

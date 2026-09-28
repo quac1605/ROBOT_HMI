@@ -4,7 +4,10 @@ import { createLifecycleTimers } from '../utils/lifecycleTimers.js';
 import { navigationError, errorDto, ZERO_VELOCITY } from '../utils/navigationPolicy.js';
 import { gridToWorld } from '../utils/mapCoordinates.js';
 
-export function createMockMapActivationService({ sharedRobotState, telemetry, jobService, mapRepository, idempotency }) {
+export function createMockMapActivationService({ sharedRobotState, telemetry, jobService, mapRepository, idempotency, motionGate }) {
+    if (!motionGate || typeof motionGate.enter !== 'function' || typeof motionGate.assert !== 'function') {
+        throw new TypeError('Shared motionGate is required');
+    }
     const timers = createLifecycleTimers();
     let ownerJobId = null;
 
@@ -19,6 +22,7 @@ export function createMockMapActivationService({ sharedRobotState, telemetry, jo
     return {
         activateMap(raw, principalId = 'demo-admin') {
             const payload = ActivateMapRequestSchema.parse(raw);
+            const admissionTicket = motionGate.enter(); // Xin vé TRƯỚC khi await
             const epoch = timers.capture();
             return idempotency.run({
                 principalId, operation: 'activateMap',
@@ -26,6 +30,7 @@ export function createMockMapActivationService({ sharedRobotState, telemetry, jo
             }, async () => {
                 const map = await mapRepository.getMap(payload.mapId, payload.mapRevision);
                 timers.assert(epoch);
+                motionGate.assert(admissionTicket); // Kiểm tra vé SAU await map
                 const valid = checkSavedMap(map);
                 if (!valid.ok) throw navigationError(valid.code, valid.reason);
                 const control = telemetry.getControlState();
@@ -33,7 +38,7 @@ export function createMockMapActivationService({ sharedRobotState, telemetry, jo
                     robotSnapshot: control.snapshot, transportStale: control.transportStale,
                 });
                 if (!check.ok) throw navigationError(check.code, check.reason);
-
+                motionGate.assert(admissionTicket); // Kiểm tra vé ngay trước khi claim state
                 // Không có await giữa check và claim. Mapping/mission đều sẽ thấy localizing.
                 sharedRobotState.update({
                     mode: 'localizing', localization: { status: 'unknown', reason: 'Đang kích hoạt map mock' },
@@ -81,6 +86,27 @@ export function createMockMapActivationService({ sharedRobotState, telemetry, jo
                 return { jobId: job.jobId, status: 'accepted' };
             });
         },
+        // Thêm VÀO object return {}, trước method clear()
+        stopForControl() {
+            // Bước 1: Hủy timers (fence activateMap đang await mapRepository.getMap)
+            timers.clear();
+
+            // Bước 2: Lưu jobId trước khi release
+            const jobId = ownerJobId;
+
+            // Bước 3: Gọi release() (helper nội bộ: trả idle nếu mode còn localizing)
+            release();
+
+            // Bước 4: Terminalize job nếu có
+            if (jobId) {
+                jobService.updateJob(jobId, {
+                    status: 'failed',
+                    result: null,
+                    error: { code: 'STOP_REQUESTED', message: 'Dừng kích hoạt map theo yêu cầu operator.' },
+                });
+            }
+        },
+
         clear() { timers.clear(); release(); },
         reset() { this.clear(); },
         dispose() { this.clear(); timers.dispose(); },

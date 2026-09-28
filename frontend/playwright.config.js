@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { browserLaunchOptions } from '../docs/test/scripts/browser_launch_options.mjs';
 
 export default defineConfig({
   testDir: '../docs/test/browser',
@@ -29,5 +30,11 @@ export default defineConfig({
       VITE_ENABLE_STAGE6_TEST_CONTROLS: 'true',
     },
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium', channel: 'chrome' } }],
+  projects: [{
+    name: 'chromium',
+    use: {
+      browserName: 'chromium',
+      launchOptions: browserLaunchOptions(),
+    },
+  }],
 });
