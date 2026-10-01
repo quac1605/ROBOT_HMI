@@ -1,0 +1,1235 @@
+TAP version 13
+# Subtest: Integration Probe 1: Khớp subscriptionId tuyệt đối giữa Client và Event Gate
+ok 1 - Integration Probe 1: Khớp subscriptionId tuyệt đối giữa Client và Event Gate
+  ---
+  duration_ms: 620.640344
+  type: 'test'
+  ...
+# Subtest: Integration Probe 2: Luồng SLAM hoàn chỉnh, getJob() không ném ZodError và trả mapRevision
+ok 2 - Integration Probe 2: Luồng SLAM hoàn chỉnh, getJob() không ném ZodError và trả mapRevision
+  ---
+  duration_ms: 1556.473722
+  type: 'test'
+  ...
+# Subtest: Integration Probe 3: Chặn finish đồng thời và bảo vệ auth sau logout
+ok 3 - Integration Probe 3: Chặn finish đồng thời và bảo vệ auth sau logout
+  ---
+  duration_ms: 1434.438527
+  type: 'test'
+  ...
+# Subtest: TC-9.2-200X160: Origin (0,0,0), world (1,2) -> grid (20,40) -> svg (20,120)
+ok 4 - TC-9.2-200X160: Origin (0,0,0), world (1,2) -> grid (20,40) -> svg (20,120)
+  ---
+  duration_ms: 4.534353
+  type: 'test'
+  ...
+# Subtest: TC-9.3-ROTATED: Origin (10,-3, pi/2), grid (20,40) -> world (8,-2) và ngược lại
+ok 5 - TC-9.3-ROTATED: Origin (10,-3, pi/2), grid (20,40) -> world (8,-2) và ngược lại
+  ---
+  duration_ms: 0.677302
+  type: 'test'
+  ...
+# Subtest: TC-9.4-BOUNDS-ROUNDTRIP: Round-trip World -> SVG -> World có sai số dưới 1e-9
+ok 6 - TC-9.4-BOUNDS-ROUNDTRIP: Round-trip World -> SVG -> World có sai số dưới 1e-9
+  ---
+  duration_ms: 0.380427
+  type: 'test'
+  ...
+# Subtest: TC-9.4-BOUNDS-1: isInsideMap nhận diện đúng trong và ngoài ranh giới
+ok 7 - TC-9.4-BOUNDS-1: isInsideMap nhận diện đúng trong và ngoài ranh giới
+  ---
+  duration_ms: 0.395477
+  type: 'test'
+  ...
+# Subtest: TC-9.4-BOUNDS-2: Điểm sát biên dưới của map xoay 90° (8, -3) phải được chấp nhận
+ok 8 - TC-9.4-BOUNDS-2: Điểm sát biên dưới của map xoay 90° (8, -3) phải được chấp nhận
+  ---
+  duration_ms: 0.394878
+  type: 'test'
+  ...
+# Subtest: TC-9.4-BOUNDS-3: Biên trên và biên phải nghiêm ngặt không được tính vào map
+ok 9 - TC-9.4-BOUNDS-3: Biên trên và biên phải nghiêm ngặt không được tính vào map
+  ---
+  duration_ms: 0.307968
+  type: 'test'
+  ...
+# Subtest: TC-9.4-BOUNDS-4: Điểm sát mép trong của biên trên/phải (< width, < height) phải được chấp nhận
+ok 10 - TC-9.4-BOUNDS-4: Điểm sát mép trong của biên trên/phải (< width, < height) phải được chấp nhận
+  ---
+  duration_ms: 0.339349
+  type: 'test'
+  ...
+# Subtest: C5-02: worldYawToSvgDegrees chuyển đổi chuẩn xác với cả +π/2 và -π/2 (4 cases)
+ok 11 - C5-02: worldYawToSvgDegrees chuyển đổi chuẩn xác với cả +π/2 và -π/2 (4 cases)
+  ---
+  duration_ms: 0.293554
+  type: 'test'
+  ...
+# Subtest: C5-01: resolveVisiblePose chặn hiển thị robot khi sai context map dù cùng frameId
+ok 12 - C5-01: resolveVisiblePose chặn hiển thị robot khi sai context map dù cùng frameId
+  ---
+  duration_ms: 1.268221
+  type: 'test'
+  ...
+# Subtest: Gate bỏ qua response đến muộn của generation cũ
+ok 13 - Gate bỏ qua response đến muộn của generation cũ
+  ---
+  duration_ms: 1.851384
+  type: 'test'
+  ...
+# Subtest: Gate bỏ qua initial response nếu subscription event đã tới trước
+ok 14 - Gate bỏ qua initial response nếu subscription event đã tới trước
+  ---
+  duration_ms: 11.491048
+  type: 'test'
+  ...
+# Subtest: Gate bỏ qua lỗi initial request đến muộn sau subscription grid hợp lệ
+ok 15 - Gate bỏ qua lỗi initial request đến muộn sau subscription grid hợp lệ
+  ---
+  duration_ms: 2.366003
+  type: 'test'
+  ...
+# Subtest: Gate xử lý đúng Stream Epoch và lọc sequence cũ/trùng
+ok 16 - Gate xử lý đúng Stream Epoch và lọc sequence cũ/trùng
+  ---
+  duration_ms: 2.062571
+  type: 'test'
+  ...
+# Subtest: Gate bỏ qua event sai subscriptionId hoặc sai context
+ok 17 - Gate bỏ qua event sai subscriptionId hoặc sai context
+  ---
+  duration_ms: 0.779941
+  type: 'test'
+  ...
+# Subtest: map.status đến trước không làm mất initial grid hợp lệ
+ok 18 - map.status đến trước không làm mất initial grid hợp lệ
+  ---
+  duration_ms: 3.024948
+  type: 'test'
+  ...
+# Subtest: Grid lỗi hoặc sai frameId giữ nguyên last-good snapshot
+ok 19 - Grid lỗi hoặc sai frameId giữ nguyên last-good snapshot
+  ---
+  duration_ms: 2.102398
+  type: 'test'
+  ...
+# Subtest: Payload status sai bị từ chối trước khi poison stream cursor
+ok 20 - Payload status sai bị từ chối trước khi poison stream cursor
+  ---
+  duration_ms: 2.685465
+  type: 'test'
+  ...
+# Subtest: Live mapping từ chối cả frame sai đầu tiên khi đã khai báo expectedFrameId
+ok 21 - Live mapping từ chối cả frame sai đầu tiên khi đã khai báo expectedFrameId
+  ---
+  duration_ms: 2.458791
+  type: 'test'
+  ...
+# Subtest: Exact grid dedupe xác nhận phục hồi lỗi nhưng không yêu cầu raster lại
+ok 22 - Exact grid dedupe xác nhận phục hồi lỗi nhưng không yêu cầu raster lại
+  ---
+  duration_ms: 3.104088
+  type: 'test'
+  ...
+# Subtest: preflightMapGrid từ chối dữ liệu không phải object hoặc thiếu grid.info
+ok 23 - preflightMapGrid từ chối dữ liệu không phải object hoặc thiếu grid.info
+  ---
+  duration_ms: 3.265279
+  type: 'test'
+  ...
+# Subtest: preflightMapGrid từ chối width/height không phải số nguyên dương
+ok 24 - preflightMapGrid từ chối width/height không phải số nguyên dương
+  ---
+  duration_ms: 0.784717
+  type: 'test'
+  ...
+# Subtest: preflightMapGrid từ chối bản đồ vượt giới hạn dimension hoặc tổng số ô (MAP_TOO_LARGE)
+ok 25 - preflightMapGrid từ chối bản đồ vượt giới hạn dimension hoặc tổng số ô (MAP_TOO_LARGE)
+  ---
+  duration_ms: 0.697222
+  type: 'test'
+  ...
+# Subtest: preflightMapGrid từ chối khi data.length không khớp width * height
+ok 26 - preflightMapGrid từ chối khi data.length không khớp width * height
+  ---
+  duration_ms: 0.38452
+  type: 'test'
+  ...
+# Subtest: preflightMapGrid từ chối ô ngoài phạm vi [-1, 100] hoặc không phải số nguyên
+ok 27 - preflightMapGrid từ chối ô ngoài phạm vi [-1, 100] hoặc không phải số nguyên
+  ---
+  duration_ms: 0.905674
+  type: 'test'
+  ...
+# Subtest: preflightMapGrid chấp nhận bản đồ hợp lệ
+ok 28 - preflightMapGrid chấp nhận bản đồ hợp lệ
+  ---
+  duration_ms: 0.349844
+  type: 'test'
+  ...
+# Subtest: MapGridSnapshotSchema parse thành công snapshot hợp lệ
+ok 29 - MapGridSnapshotSchema parse thành công snapshot hợp lệ
+  ---
+  duration_ms: 9.462465
+  type: 'test'
+  ...
+# Subtest: MapGridSnapshotSchema từ chối frame_id rỗng hoặc chỉ có khoảng trắng
+ok 30 - MapGridSnapshotSchema từ chối frame_id rỗng hoặc chỉ có khoảng trắng
+  ---
+  duration_ms: 2.327387
+  type: 'test'
+  ...
+# Subtest: parseMapGridSnapshot giữ strict metadata và cell validation trên hot path
+ok 31 - parseMapGridSnapshot giữ strict metadata và cell validation trên hot path
+  ---
+  duration_ms: 4.267905
+  type: 'test'
+  ...
+# Subtest: MapGridEventEnvelopeSchema phân loại đúng cả 3 loại event
+ok 32 - MapGridEventEnvelopeSchema phân loại đúng cả 3 loại event
+  ---
+  duration_ms: 6.545176
+  type: 'test'
+  ...
+# Subtest: TC-VAL-01: parseRawMapMessage từ chối chuỗi UTF-8 vượt quá 2 MiB trước khi parse JSON
+ok 33 - TC-VAL-01: parseRawMapMessage từ chối chuỗi UTF-8 vượt quá 2 MiB trước khi parse JSON
+  ---
+  duration_ms: 21.283916
+  type: 'test'
+  ...
+# Subtest: TC-VAL-02: parseRawMapMessage parse thành công chuỗi JSON hợp lệ trong giới hạn 2 MiB
+ok 34 - TC-VAL-02: parseRawMapMessage parse thành công chuỗi JSON hợp lệ trong giới hạn 2 MiB
+  ---
+  duration_ms: 0.397871
+  type: 'test'
+  ...
+# Subtest: TC-VAL-03: preflightMapGrid từ chối trường lạ ngoài contract (strict preflight)
+ok 35 - TC-VAL-03: preflightMapGrid từ chối trường lạ ngoài contract (strict preflight)
+  ---
+  duration_ms: 0.380543
+  type: 'test'
+  ...
+# Subtest: TC-VAL-04: preflightMapGrid từ chối metadata vượt trần 16 KiB
+ok 36 - TC-VAL-04: preflightMapGrid từ chối metadata vượt trần 16 KiB
+  ---
+  duration_ms: 0.461125
+  type: 'test'
+  ...
+# Subtest: TC-VAL-05: preflightMapGrid từ chối getter/accessor
+ok 37 - TC-VAL-05: preflightMapGrid từ chối getter/accessor
+  ---
+  duration_ms: 0.327038
+  type: 'test'
+  ...
+# Subtest: TC-VAL-06: ShallowMapGridEventEnvelopeSchema từ chối trường lạ trên envelope
+ok 38 - TC-VAL-06: ShallowMapGridEventEnvelopeSchema từ chối trường lạ trên envelope
+  ---
+  duration_ms: 1.068964
+  type: 'test'
+  ...
+# Subtest: TC-MAP-SCHEMA-01: StartMappingRequestSchema kiểm tra tính hợp lệ và từ chối trường lạ
+ok 39 - TC-MAP-SCHEMA-01: StartMappingRequestSchema kiểm tra tính hợp lệ và từ chối trường lạ
+  ---
+  duration_ms: 4.570462
+  type: 'test'
+  ...
+# Subtest: TC-MAP-SCHEMA-02: FinishMappingRequestSchema kiểm tra tính hợp lệ
+ok 40 - TC-MAP-SCHEMA-02: FinishMappingRequestSchema kiểm tra tính hợp lệ
+  ---
+  duration_ms: 0.976771
+  type: 'test'
+  ...
+# Subtest: TC-MAP-SCHEMA-03: MappingSessionSchema chỉ chấp nhận 4 trạng thái hợp lệ
+ok 41 - TC-MAP-SCHEMA-03: MappingSessionSchema chỉ chấp nhận 4 trạng thái hợp lệ
+  ---
+  duration_ms: 2.419513
+  type: 'test'
+  ...
+# Subtest: TC-MAP-SCHEMA-04: JobSchema kiểm tra bất biến status cho start_mapping
+ok 42 - TC-MAP-SCHEMA-04: JobSchema kiểm tra bất biến status cho start_mapping
+  ---
+  duration_ms: 7.085014
+  type: 'test'
+  ...
+# Subtest: TC-MAP-SCHEMA-05: JobSchema kiểm tra bất biến status cho finish_mapping
+ok 43 - TC-MAP-SCHEMA-05: JobSchema kiểm tra bất biến status cho finish_mapping
+  ---
+  duration_ms: 0.835753
+  type: 'test'
+  ...
+# Subtest: accepted Start tạo session starting đồng bộ và giữ chính xác tên người dùng
+ok 44 - accepted Start tạo session starting đồng bộ và giữ chính xác tên người dùng
+  ---
+  duration_ms: 3.325524
+  type: 'test'
+  ...
+# Subtest: start completed không thay tên phiên bằng giá trị mặc định
+ok 45 - start completed không thay tên phiên bằng giá trị mặc định
+  ---
+  duration_ms: 7.302291
+  type: 'test'
+  ...
+# Subtest: accepted Finish chuyển session sang finishing trước lần await đầu tiên
+ok 46 - accepted Finish chuyển session sang finishing trước lần await đầu tiên
+  ---
+  duration_ms: 1.132706
+  type: 'test'
+  ...
+# Subtest: null recovery xóa session/viewer mapping cũ nhưng giữ saved viewer hợp lệ
+ok 47 - null recovery xóa session/viewer mapping cũ nhưng giữ saved viewer hợp lệ
+  ---
+  duration_ms: 4.928617
+  type: 'test'
+  ...
+# Subtest: TC-GRID-01: mockMapGrid trả về bản sao độc lập (không bị mutate)
+ok 48 - TC-GRID-01: mockMapGrid trả về bản sao độc lập (không bị mutate)
+  ---
+  duration_ms: 190.718546
+  type: 'test'
+  ...
+# Subtest: TC-GRID-02: mockMapGrid hủy timer đăng ký an toàn khi unsubscribe ngay lập tức
+ok 49 - TC-GRID-02: mockMapGrid hủy timer đăng ký an toàn khi unsubscribe ngay lập tức
+  ---
+  duration_ms: 31.213671
+  type: 'test'
+  ...
+# Subtest: TC-GRID-03: Hai subscribers cùng session dùng chung 1 producer timer; unsubscribe A không ảnh hưởng B
+ok 50 - TC-GRID-03: Hai subscribers cùng session dùng chung 1 producer timer; unsubscribe A không ảnh hưởng B
+  ---
+  duration_ms: 584.480554
+  type: 'test'
+  ...
+# Subtest: TC-GRID-04: Subscribe vào fake session không tạo session mới và trả SESSION_NOT_FOUND
+ok 51 - TC-GRID-04: Subscribe vào fake session không tạo session mới và trả SESSION_NOT_FOUND
+  ---
+  duration_ms: 31.031688
+  type: 'test'
+  ...
+# Subtest: TC-GRID-05: Động cơ khám phá SLAM chuyển ô unknown (-1) thành free (0) và tăng revision
+ok 52 - TC-GRID-05: Động cơ khám phá SLAM chuyển ô unknown (-1) thành free (0) và tăng revision
+  ---
+  duration_ms: 2.271945
+  type: 'test'
+  ...
+# Subtest: TC-GRID-06: Kịch bản wrong_frame clone frame_id odom mà không mutate grid gốc
+ok 53 - TC-GRID-06: Kịch bản wrong_frame clone frame_id odom mà không mutate grid gốc
+  ---
+  duration_ms: 552.619817
+  type: 'test'
+  ...
+# Subtest: TC-GRID-07: Kịch bản expand_geometry mở rộng kích thước lên 220x180 đúng 39,600 ô
+ok 54 - TC-GRID-07: Kịch bản expand_geometry mở rộng kích thước lên 220x180 đúng 39,600 ô
+  ---
+  duration_ms: 3.815573
+  type: 'test'
+  ...
+# Subtest: TC-GRID-08: dispose() dọn dẹp sạch sẽ toàn bộ live sessions và producer timers
+ok 55 - TC-GRID-08: dispose() dọn dẹp sạch sẽ toàn bộ live sessions và producer timers
+  ---
+  duration_ms: 0.306091
+  type: 'test'
+  ...
+# Subtest: TC-GRID-09: đổi nhãn scenario về live không giả mạo source update
+ok 56 - TC-GRID-09: đổi nhãn scenario về live không giả mạo source update
+  ---
+  duration_ms: 35.732778
+  type: 'test'
+  ...
+# Subtest: prepareSaved không công khai record trước commit và commit xuất hiện nguyên tử
+ok 57 - prepareSaved không công khai record trước commit và commit xuất hiện nguyên tử
+  ---
+  duration_ms: 210.059652
+  type: 'test'
+  ...
+# Subtest: prepareSaved lỗi geometry/assets không làm lộ map ready và read trả clone
+ok 58 - prepareSaved lỗi geometry/assets không làm lộ map ready và read trả clone
+  ---
+  duration_ms: 143.024558
+  type: 'test'
+  ...
+# Subtest: TC-MAP-00: Start giữ idle/pose null đến khi xác nhận và bảo toàn đúng tên phiên
+ok 59 - TC-MAP-00: Start giữ idle/pose null đến khi xác nhận và bảo toàn đúng tên phiên
+  ---
+  duration_ms: 600.467983
+  type: 'test'
+  ...
+# Subtest: TC-MAP-01: Idempotency kiểm soát đúng conflict trên cùng requestId
+ok 60 - TC-MAP-01: Idempotency kiểm soát đúng conflict trên cùng requestId
+  ---
+  duration_ms: 33.946775
+  type: 'test'
+  ...
+# Subtest: TC-MAP-02: 20 Finish đồng thời với request ID khác nhau: chỉ 1 accepted, 19 bị FINISH_ALREADY_IN_PROGRESS
+ok 61 - TC-MAP-02: 20 Finish đồng thời với request ID khác nhau: chỉ 1 accepted, 19 bị FINISH_ALREADY_IN_PROGRESS
+  ---
+  duration_ms: 1036.356506
+  type: 'test'
+  ...
+# Subtest: TC-MAP-03: SAVE_FAILED giữ nguyên session; Retry với requestId mới thành công và parse được mapId/mapRevision
+ok 62 - TC-MAP-03: SAVE_FAILED giữ nguyên session; Retry với requestId mới thành công và parse được mapId/mapRevision
+  ---
+  duration_ms: 1588.56833
+  type: 'test'
+  ...
+# Subtest: TC-MAP-04: failNextSaveForSession mô phỏng lỗi lưu bản đồ đúng 1 lần và không tạo map rác trong catalog
+ok 63 - TC-MAP-04: failNextSaveForSession mô phỏng lỗi lưu bản đồ đúng 1 lần và không tạo map rác trong catalog
+  ---
+  duration_ms: 1027.101691
+  type: 'test'
+  ...
+# Subtest: TC-MAP-05: Chặn finishMapping khi phiên còn ở trạng thái starting
+ok 64 - TC-MAP-05: Chặn finishMapping khi phiên còn ở trạng thái starting
+  ---
+  duration_ms: 24.142247
+  type: 'test'
+  ...
+# Subtest: mockRobotClient từ chối tất cả API telemetry và mapping trước khi login
+ok 65 - mockRobotClient từ chối tất cả API telemetry và mapping trước khi login
+  ---
+  duration_ms: 141.06832
+  type: 'test'
+  ...
+# Subtest: mockRobotClient cho phép gọi API sau khi login thành công
+ok 66 - mockRobotClient cho phép gọi API sau khi login thành công
+  ---
+  duration_ms: 407.591648
+  type: 'test'
+  ...
+# Subtest: logout dọn dẹp sạch sẽ toàn bộ active subscriptions và chuyển trạng thái về unauthenticated
+ok 67 - logout dọn dẹp sạch sẽ toàn bộ active subscriptions và chuyển trạng thái về unauthenticated
+  ---
+  duration_ms: 736.635863
+  type: 'test'
+  ...
+# Subtest: Start không phát pose cũ trước xác nhận và pose đầu mapping thuộc nguồn session mới
+ok 68 - Start không phát pose cũ trước xác nhận và pose đầu mapping thuộc nguồn session mới
+  ---
+  duration_ms: 1032.160144
+  type: 'test'
+  ...
+# Subtest: logout hủy phiên mapping chưa lưu; dispose toàn client là idempotent và chặn API mới
+ok 69 - logout hủy phiên mapping chưa lưu; dispose toàn client là idempotent và chặn API mới
+  ---
+  duration_ms: 731.203836
+  type: 'test'
+  ...
+# Subtest: pose heartbeat cập nhật receipt nhưng không làm mới tuổi nguồn pose
+ok 70 - pose heartbeat cập nhật receipt nhưng không làm mới tuổi nguồn pose
+  ---
+  duration_ms: 705.396719
+  type: 'test'
+  ...
+# Subtest: beginMappingSession đặt lại pose source thay vì dùng tọa độ saved-map cũ
+ok 71 - beginMappingSession đặt lại pose source thay vì dùng tọa độ saved-map cũ
+  ---
+  duration_ms: 1.712536
+  type: 'test'
+  ...
+# Subtest: quaternionToEuler tính chuẩn xác các góc yaw 2D
+ok 72 - quaternionToEuler tính chuẩn xác các góc yaw 2D
+  ---
+  duration_ms: 1.116689
+  type: 'test'
+  ...
+# Subtest: quaternionToEuler từ chối quaternion chưa chuẩn hóa (norm != 1)
+ok 73 - quaternionToEuler từ chối quaternion chưa chuẩn hóa (norm != 1)
+  ---
+  duration_ms: 0.746129
+  type: 'test'
+  ...
+# Subtest: normalizeOccupancyGrid từ chối bản đồ có độ nghiêng roll 3D
+ok 74 - normalizeOccupancyGrid từ chối bản đồ có độ nghiêng roll 3D
+  ---
+  duration_ms: 7.669364
+  type: 'test'
+  ...
+# Subtest: normalizeOccupancyGrid chuẩn hóa đúng geometry và timestamps
+ok 75 - normalizeOccupancyGrid chuẩn hóa đúng geometry và timestamps
+  ---
+  duration_ms: 0.881233
+  type: 'test'
+  ...
+# Subtest: normalizeOccupancyGrid từ chối bản đồ có độ nghiêng 3D (roll/pitch)
+ok 76 - normalizeOccupancyGrid từ chối bản đồ có độ nghiêng 3D (roll/pitch)
+  ---
+  duration_ms: 0.505706
+  type: 'test'
+  ...
+# Subtest: normalizeOccupancyGrid từ chối khi data.length không khớp width * height
+ok 77 - normalizeOccupancyGrid từ chối khi data.length không khớp width * height
+  ---
+  duration_ms: 0.279617
+  type: 'test'
+  ...
+# Subtest: Controller chuyển đổi candidate và promote sang displayed khi acknowledgeLoaded
+ok 78 - Controller chuyển đổi candidate và promote sang displayed khi acknowledgeLoaded
+  ---
+  duration_ms: 33.736961
+  type: 'test'
+  ...
+# Subtest: Queue invariant: khi A đang chuyển đổi, nhận B rồi C thì B bị hủy, C được chuyển đổi
+ok 79 - Queue invariant: khi A đang chuyển đổi, nhận B rồi C thì B bị hủy, C được chuyển đổi
+  ---
+  duration_ms: 22.4595
+  type: 'test'
+  ...
+# Subtest: Xử lý lỗi toBlob null và decode error thu hồi candidate an toàn
+ok 80 - Xử lý lỗi toBlob null và decode error thu hồi candidate an toàn
+  ---
+  duration_ms: 11.636304
+  type: 'test'
+  ...
+# Subtest: acknowledgeImageError rollback về displayed raster an toàn
+ok 81 - acknowledgeImageError rollback về displayed raster an toàn
+  ---
+  duration_ms: 23.152783
+  type: 'test'
+  ...
+# Subtest: dispose() thu hồi toàn bộ Blob URL và chặn callback đến muộn
+ok 82 - dispose() thu hồi toàn bộ Blob URL và chặn callback đến muộn
+  ---
+  duration_ms: 15.580339
+  type: 'test'
+  ...
+# Subtest: Controller không khởi động toBlob thứ hai trước khi native encode hiện tại kết thúc
+ok 83 - Controller không khởi động toBlob thứ hai trước khi native encode hiện tại kết thúc
+  ---
+  duration_ms: 5.717437
+  type: 'test'
+  ...
+# Subtest: Runtime chờ callback native toBlob sau abort và không báo slot rảnh sớm
+ok 84 - Runtime chờ callback native toBlob sau abort và không báo slot rảnh sớm
+  ---
+  duration_ms: 1.564012
+  type: 'test'
+  ...
+# Subtest: Runtime dùng chung giữ một encode active và chỉ một request mới nhất chờ
+ok 85 - Runtime dùng chung giữ một encode active và chỉ một request mới nhất chờ
+  ---
+  duration_ms: 5.229521
+  type: 'test'
+  ...
+# Subtest: resetCounters giữ ownership của URL đang sống để vẫn thu hồi được
+ok 86 - resetCounters giữ ownership của URL đang sống để vẫn thu hồi được
+  ---
+  duration_ms: 0.827728
+  type: 'test'
+  ...
+# Subtest: Debug registry chỉ chứa controller còn sống và trả latest publish
+ok 87 - Debug registry chỉ chứa controller còn sống và trả latest publish
+  ---
+  duration_ms: 4.237693
+  type: 'test'
+  ...
+# Subtest: occupancyToRgba ánh xạ đúng bảng màu đặc trưng
+ok 88 - occupancyToRgba ánh xạ đúng bảng màu đặc trưng
+  ---
+  duration_ms: 1.830178
+  type: 'test'
+  ...
+# Subtest: TC-9.1-OFFICIAL-4X3: official fixture 4x3 deep-compare đủ 48 RGBA bytes
+ok 89 - TC-9.1-OFFICIAL-4X3: official fixture 4x3 deep-compare đủ 48 RGBA bytes
+  ---
+  duration_ms: 1.688826
+  type: 'test'
+  ...
+# Subtest: occupancyToRgba ném lỗi khi ô có giá trị ngoài phạm vi [-1, 100]
+ok 90 - occupancyToRgba ném lỗi khi ô có giá trị ngoài phạm vi [-1, 100]
+  ---
+  duration_ms: 1.049588
+  type: 'test'
+  ...
+# Subtest: pose quality phân biệt transport heartbeat và tuổi nguồn pose
+ok 91 - pose quality phân biệt transport heartbeat và tuổi nguồn pose
+  ---
+  duration_ms: 1.819722
+  type: 'test'
+  ...
+# Subtest: offline và localization lost có ưu tiên cao hơn freshness
+ok 92 - offline và localization lost có ưu tiên cao hơn freshness
+  ---
+  duration_ms: 0.405984
+  type: 'test'
+  ...
+# Subtest: M1: frontend schema paths re-export shared contracts
+ok 93 - M1: frontend schema paths re-export shared contracts
+  ---
+  duration_ms: 223.37149
+  type: 'test'
+  ...
+# Subtest: M1: frontend helper paths re-export shared control core
+ok 94 - M1: frontend helper paths re-export shared control core
+  ---
+  duration_ms: 15.94965
+  type: 'test'
+  ...
+# Subtest: sharedRobotState cô lập hoàn toàn patch object không bị mutate từ bên ngoài
+ok 95 - sharedRobotState cô lập hoàn toàn patch object không bị mutate từ bên ngoài
+  ---
+  duration_ms: 3.604037
+  type: 'test'
+  ...
+# Subtest: sharedRobotState cô lập functional updater
+ok 96 - sharedRobotState cô lập functional updater
+  ---
+  duration_ms: 1.09268
+  type: 'test'
+  ...
+# Subtest: sharedRobotState cô lập từng listener: Listener A mutate không ảnh hưởng Listener B
+ok 97 - sharedRobotState cô lập từng listener: Listener A mutate không ảnh hưởng Listener B
+  ---
+  duration_ms: 3.282898
+  type: 'test'
+  ...
+# Subtest: sharedRobotState cô lập input của reset()
+ok 98 - sharedRobotState cô lập input của reset()
+  ---
+  duration_ms: 0.837162
+  type: 'test'
+  ...
+# Subtest: listener ném ở initial delivery không bị giữ lại khi subscribe thất bại
+ok 99 - listener ném ở initial delivery không bị giữ lại khi subscribe thất bại
+  ---
+  duration_ms: 2.023641
+  type: 'test'
+  ...
+# Subtest: reset cô lập lỗi listener và vẫn phát snapshot cho listener kế tiếp
+ok 100 - reset cô lập lỗi listener và vẫn phát snapshot cho listener kế tiếp
+  ---
+  duration_ms: 3.112932
+  type: 'test'
+  ...
+# Subtest: I7-01: heartbeat không làm mới pose khi mission đang chạy; phải fail POSE_STALE
+ok 101 - I7-01: heartbeat không làm mới pose khi mission đang chạy; phải fail POSE_STALE
+  ---
+  duration_ms: 2247.998273
+  type: 'test'
+  ...
+# Subtest: I7-02: activate không được giả xác nhận localization khi nguồn pose bị đóng băng
+ok 102 - I7-02: activate không được giả xác nhận localization khi nguồn pose bị đóng băng
+  ---
+  duration_ms: 641.363098
+  type: 'test'
+  ...
+# Subtest: I7-03: query routes/path phải strict tại facade, không im lặng bỏ field sai
+ok 103 - I7-03: query routes/path phải strict tại facade, không im lặng bỏ field sai
+  ---
+  duration_ms: 329.249881
+  type: 'test'
+  ...
+# Subtest: I7-04: snapshot không được chứa kind/index/error mâu thuẫn hoặc active terminal
+ok 104 - I7-04: snapshot không được chứa kind/index/error mâu thuẫn hoặc active terminal
+  ---
+  duration_ms: 0.828668
+  type: 'test'
+  ...
+# Subtest: I7-05: cancel terminal event thắng timeout đến muộn, không trả UI về uncertain
+ok 105 - I7-05: cancel terminal event thắng timeout đến muộn, không trả UI về uncertain
+  ---
+  duration_ms: 0.57496
+  type: 'test'
+  ...
+# Subtest: I7-06: completed job event thắng GET timeout, không hồi sinh activation pending
+ok 106 - I7-06: completed job event thắng GET timeout, không hồi sinh activation pending
+  ---
+  duration_ms: 1.181266
+  type: 'test'
+  ...
+# Subtest: I7-07: runtime fault kết thúc mission và zero velocity
+ok 107 - I7-07: runtime fault kết thúc mission và zero velocity
+  ---
+  duration_ms: 896.10167
+  type: 'test'
+  ...
+# Subtest: I7-07: runtime E-stop kết thúc mission và zero velocity
+ok 108 - I7-07: runtime E-stop kết thúc mission và zero velocity
+  ---
+  duration_ms: 893.579064
+  type: 'test'
+  ...
+# Subtest: I7-07: runtime inhibit kết thúc mission và zero velocity
+ok 109 - I7-07: runtime inhibit kết thúc mission và zero velocity
+  ---
+  duration_ms: 885.876847
+  type: 'test'
+  ...
+# Subtest: I7-08: hai mission khác requestId chạy đồng thời chỉ một bên giành được robot
+ok 110 - I7-08: hai mission khác requestId chạy đồng thời chỉ một bên giành được robot
+  ---
+  duration_ms: 329.884349
+  type: 'test'
+  ...
+# Subtest: I7-09: activate vs mapping và mission vs mapping không đồng sở hữu mode
+ok 111 - I7-09: activate vs mapping và mission vs mapping không đồng sở hữu mode
+  ---
+  duration_ms: 329.05314
+  type: 'test'
+  ...
+# Subtest: I7-10: cancel executing/gần đích/sau terminal không hồi sinh timer
+ok 112 - I7-10: cancel executing/gần đích/sau terminal không hồi sinh timer
+  ---
+  duration_ms: 1331.617857
+  type: 'test'
+  ...
+# Subtest: I7-11: activation lỗi giữa job giữ map cũ và không chiếm lại fault mode
+ok 113 - I7-11: activation lỗi giữa job giữ map cũ và không chiếm lại fault mode
+  ---
+  duration_ms: 629.878147
+  type: 'test'
+  ...
+# Subtest: I7-12: schema chặn NaN/Infinity, kind count, path count/byte limit trước render
+ok 114 - I7-12: schema chặn NaN/Infinity, kind count, path count/byte limit trước render
+  ---
+  duration_ms: 2.281347
+  type: 'test'
+  ...
+# Subtest: I7-13: ma trận state machine; terminal không quay về executing/canceling
+ok 115 - I7-13: ma trận state machine; terminal không quay về executing/canceling
+  ---
+  duration_ms: 0.558813
+  type: 'test'
+  ...
+# Subtest: I7-14: thiếu cờ khóa chuyển động không được coi là đã cho phép chạy
+ok 116 - I7-14: thiếu cờ khóa chuyển động không được coi là đã cho phép chạy
+  ---
+  duration_ms: 330.999438
+  type: 'test'
+  ...
+# Subtest: I7-15: duplicate preview/save atomically một resource, clone độc lập; context/bounds bị kiểm tra
+ok 117 - I7-15: duplicate preview/save atomically một resource, clone độc lập; context/bounds bị kiểm tra
+  ---
+  duration_ms: 327.498635
+  type: 'test'
+  ...
+# Subtest: I7-16: logout khi executing dừng producer, không phát mission/path vào user mới
+ok 118 - I7-16: logout khi executing dừng producer, không phát mission/path vào user mới
+  ---
+  duration_ms: 1231.837916
+  type: 'test'
+  ...
+# Subtest: I7-17: reconnect/epoch mới cùng missionId lấy lại path và bỏ callback subscription cũ
+ok 119 - I7-17: reconnect/epoch mới cùng missionId lấy lại path và bỏ callback subscription cũ
+  ---
+  duration_ms: 42.506325
+  type: 'test'
+  ...
+# Subtest: I7-18: gộp JobSchema không được nới lỏng contract mapping của Chặng 6
+ok 120 - I7-18: gộp JobSchema không được nới lỏng contract mapping của Chặng 6
+  ---
+  duration_ms: 1.104733
+  type: 'test'
+  ...
+# Subtest: I7-19: login lại khi đã authenticated không âm thầm cắt mission subscriptions
+ok 121 - I7-19: login lại khi đã authenticated không âm thầm cắt mission subscriptions
+  ---
+  duration_ms: 1527.300551
+  type: 'test'
+  ...
+# Subtest: C7 registry: hai caller trước await dùng đúng một promise/resource
+ok 122 - C7 registry: hai caller trước await dùng đúng một promise/resource
+  ---
+  duration_ms: 14.324016
+  type: 'test'
+  ...
+# Subtest: C7 job: preview completed giữ path, reject field rác
+ok 123 - C7 job: preview completed giữ path, reject field rác
+  ---
+  duration_ms: 13.490073
+  type: 'test'
+  ...
+# Subtest: C7 preview/save/list đi qua facade/schema và giữ exact map revision
+ok 124 - C7 preview/save/list đi qua facade/schema và giữ exact map revision
+  ---
+  duration_ms: 558.045855
+  type: 'test'
+  ...
+# Subtest: C7 activation: duplicate đồng thời cùng id trả một job; pending khóa navigate
+ok 125 - C7 activation: duplicate đồng thời cùng id trả một job; pending khóa navigate
+  ---
+  duration_ms: 887.407658
+  type: 'test'
+  ...
+# Subtest: C7 activation: request strict và map nonexistent bị từ chối
+ok 126 - C7 activation: request strict và map nonexistent bị từ chối
+  ---
+  duration_ms: 335.325323
+  type: 'test'
+  ...
+# Subtest: C7 mission: duplicate/conflict, accepted cancel không resurrect
+ok 127 - C7 mission: duplicate/conflict, accepted cancel không resurrect
+  ---
+  duration_ms: 591.275885
+  type: 'test'
+  ...
+# Subtest: C7 mission: đi qua waypoint, schema robot đúng, không snap-back sau terminal
+ok 128 - C7 mission: đi qua waypoint, schema robot đúng, không snap-back sau terminal
+  ---
+  duration_ms: 1648.914108
+  type: 'test'
+  ...
+# Subtest: C7 runtime: dừng/fail khi lost
+ok 129 - C7 runtime: dừng/fail khi lost
+  ---
+  duration_ms: 744.920503
+  type: 'test'
+  ...
+# Subtest: C7 runtime: dừng/fail khi offline
+ok 130 - C7 runtime: dừng/fail khi offline
+  ---
+  duration_ms: 728.291602
+  type: 'test'
+  ...
+# Subtest: C7 runtime: dừng/fail khi stale
+ok 131 - C7 runtime: dừng/fail khi stale
+  ---
+  duration_ms: 733.966419
+  type: 'test'
+  ...
+# Subtest: C7 failure scenario: goal-rejected
+ok 132 - C7 failure scenario: goal-rejected
+  ---
+  duration_ms: 440.825238
+  type: 'test'
+  ...
+# Subtest: C7 failure scenario: blocked-failed
+ok 133 - C7 failure scenario: blocked-failed
+  ---
+  duration_ms: 838.834702
+  type: 'test'
+  ...
+# Subtest: C7 logout/dispose: hủy preview/activation timer trước khi xóa job
+ok 134 - C7 logout/dispose: hủy preview/activation timer trước khi xóa job
+  ---
+  duration_ms: 1558.090592
+  type: 'test'
+  ...
+# Subtest: C7 lifecycle: response getMap đến sau dispose không tạo operation
+ok 135 - C7 lifecycle: response getMap đến sau dispose không tạo operation
+  ---
+  duration_ms: 678.327252
+  type: 'test'
+  ...
+# Subtest: C7 store: bỏ sequence cũ, đổi epoch đòi recovery và không nhận lại epoch đã retire
+ok 136 - C7 store: bỏ sequence cũ, đổi epoch đòi recovery và không nhận lại epoch đã retire
+  ---
+  duration_ms: 13.344503
+  type: 'test'
+  ...
+# Subtest: C7 store: path sai mission/map không ghi đè; path cũ bị bỏ theo sequence
+ok 137 - C7 store: path sai mission/map không ghi đè; path cũ bị bỏ theo sequence
+  ---
+  duration_ms: 2.952289
+  type: 'test'
+  ...
+# Subtest: C7 store: sửa draft/đổi map vô hiệu preview đang chờ; cùng revision giữ draft
+ok 138 - C7 store: sửa draft/đổi map vô hiệu preview đang chờ; cùng revision giữ draft
+  ---
+  duration_ms: 5.944923
+  type: 'test'
+  ...
+# Subtest: C7 store: event completed đến trước response được bind lại, snapshot accepted không hạ trạng thái
+ok 139 - C7 store: event completed đến trước response được bind lại, snapshot accepted không hạ trạng thái
+  ---
+  duration_ms: 1.184371
+  type: 'test'
+  ...
+# Subtest: C7 waypoint: sửa/xóa/reorder giữ ID các điểm còn lại, không thay tuyến bằng một điểm
+ok 140 - C7 waypoint: sửa/xóa/reorder giữ ID các điểm còn lại, không thay tuyến bằng một điểm
+  ---
+  duration_ms: 1.668837
+  type: 'test'
+  ...
+# Subtest: C7 freshness: stale transport và source age null đều khóa submit
+ok 141 - C7 freshness: stale transport và source age null đều khóa submit
+  ---
+  duration_ms: 0.492349
+  type: 'test'
+  ...
+# Subtest: C7 coordinator: REST chậm không đè mission event mới, callback sau dispose bị bỏ
+ok 142 - C7 coordinator: REST chậm không đè mission event mới, callback sau dispose bị bỏ
+  ---
+  duration_ms: 23.844839
+  type: 'test'
+  ...
+# Subtest: C7 retry: HTTP timeout sau accepted, mission đã terminal vẫn replay cùng requestId
+ok 143 - C7 retry: HTTP timeout sau accepted, mission đã terminal vẫn replay cùng requestId
+  ---
+  duration_ms: 735.301014
+  type: 'test'
+  ...
+# Subtest: C7 request: response của auth generation cũ không hồi sinh store
+ok 144 - C7 request: response của auth generation cũ không hồi sinh store
+  ---
+  duration_ms: 0.365683
+  type: 'test'
+  ...
+# Subtest: N8-05: watchdog không arm trước command đầu; TTL vẫn revoke
+ok 145 - N8-05: watchdog không arm trước command đầu; TTL vẫn revoke
+  ---
+  duration_ms: 4.759662
+  type: 'test'
+  ...
+# Subtest: N8-09: command sau deadline không hồi sinh dù timer chưa chạy
+ok 146 - N8-09: command sau deadline không hồi sinh dù timer chưa chạy
+  ---
+  duration_ms: 2.127793
+  type: 'test'
+  ...
+# Subtest: N8-07: sequence replay không nuôi watchdog
+ok 147 - N8-07: sequence replay không nuôi watchdog
+  ---
+  duration_ms: 0.519364
+  type: 'test'
+  ...
+# Subtest: N8-08: token cũ còn TTL dùng được sau token mới phát
+ok 148 - N8-08: token cũ còn TTL dùng được sau token mới phát
+  ---
+  duration_ms: 0.406387
+  type: 'test'
+  ...
+# Subtest: N8-11: revoke không biến fault thành idle
+ok 149 - N8-11: revoke không biến fault thành idle
+  ---
+  duration_ms: 0.477464
+  type: 'test'
+  ...
+# Subtest: N8-01: schemas nhận DTO hợp lệ, reject unknown fields, NaN/Infinity, sequence ngoài safe integer
+ok 150 - N8-01: schemas nhận DTO hợp lệ, reject unknown fields, NaN/Infinity, sequence ngoài safe integer
+  ---
+  duration_ms: 2.426009
+  type: 'test'
+  ...
+# Subtest: N8-02: hai session cùng service không release/send thay nhau; subscriber khác không thấy token
+ok 151 - N8-02: hai session cùng service không release/send thay nhau; subscriber khác không thấy token
+  ---
+  duration_ms: 4.625011
+  type: 'test'
+  ...
+# Subtest: N8-03: acquire idempotent; requestId đổi payload/operation bị conflict; replay không tạo owner mới
+ok 152 - N8-03: acquire idempotent; requestId đổi payload/operation bị conflict; replay không tạo owner mới
+  ---
+  duration_ms: 1.227536
+  type: 'test'
+  ...
+# Subtest: N8-04: acquire guard ma trận: E-stop, inhibit, ROS false, stale transport, mode khác idle
+ok 153 - N8-04: acquire guard ma trận: E-stop, inhibit, ROS false, stale transport, mode khác idle
+  ---
+  duration_ms: 3.903074
+  type: 'test'
+  ...
+# Subtest: N8-06: command hợp lệ cập nhật velocity; negative bounds đúng; vượt limits bị reject
+ok 154 - N8-06: command hợp lệ cập nhật velocity; negative bounds đúng; vượt limits bị reject
+  ---
+  duration_ms: 103.399387
+  type: 'test'
+  ...
+# Subtest: N8-10: lease expiry đang hold revoke; old command sau reacquire không ảnh hưởng owner mới
+ok 155 - N8-10: lease expiry đang hold revoke; old command sau reacquire không ảnh hưởng owner mới
+  ---
+  duration_ms: 193.882258
+  type: 'test'
+  ...
+# Subtest: N8-12: manual stop không có lease vẫn zero + cancel mission; stop hai lần không nhân đôi terminal
+ok 156 - N8-12: manual stop không có lease vẫn zero + cancel mission; stop hai lần không nhân đôi terminal
+  ---
+  duration_ms: 1.72281
+  type: 'test'
+  ...
+# Subtest: N8-13: stop sau createMission/activateMap trước claim: chặn request mới trong stop
+ok 157 - N8-13: stop sau createMission/activateMap trước claim: chặn request mới trong stop
+  ---
+  duration_ms: 0.891835
+  type: 'test'
+  ...
+# Subtest: N8-14: stop idempotent; replay stop cũ không dừng lease mới; manual stop ID mới thì dừng
+ok 158 - N8-14: stop idempotent; replay stop cũ không dừng lease mới; manual stop ID mới thì dừng
+  ---
+  duration_ms: 0.514386
+  type: 'test'
+  ...
+# Subtest: N8-15: accepted/command zero không đủ confirm; source sample mới đúng generation mới confirm
+ok 159 - N8-15: accepted/command zero không đủ confirm; source sample mới đúng generation mới confirm
+  ---
+  duration_ms: 80.169784
+  type: 'test'
+  ...
+# Subtest: N8-16: selector toàn bộ reason, các ranh giới thời gian, camera policy; input thiếu field fail closed
+ok 160 - N8-16: selector toàn bộ reason, các ranh giới thời gian, camera policy; input thiếu field fail closed
+  ---
+  duration_ms: 0.407139
+  type: 'test'
+  ...
+# Subtest: N8-17: single publisher: hai start chỉ một timer; owner khác release không dừng nhầm
+ok 161 - N8-17: single publisher: hai start chỉ một timer; owner khác release không dừng nhầm
+  ---
+  duration_ms: 0.268463
+  type: 'test'
+  ...
+# Subtest: N8-18: tick đọc store/clock mới; synchronous send throw ngừng loop
+ok 162 - N8-18: tick đọc store/clock mới; synchronous send throw ngừng loop
+  ---
+  duration_ms: 0.114162
+  type: 'test'
+  ...
+# Subtest: N8-19: event duplicate/out-of-order/epoch cũ bỏ; epoch mới fail closed
+ok 163 - N8-19: event duplicate/out-of-order/epoch cũ bỏ; epoch mới fail closed
+  ---
+  duration_ms: 1.606599
+  type: 'test'
+  ...
+# Subtest: N8-20: snapshot trả trễ không ghi đè newer state
+ok 164 - N8-20: snapshot trả trễ không ghi đè newer state
+  ---
+  duration_ms: 0.964326
+  type: 'test'
+  ...
+# Subtest: N8-21: late acquire response sau stop bị abandon
+ok 165 - N8-21: late acquire response sau stop bị abandon
+  ---
+  duration_ms: 350.589569
+  type: 'test'
+  ...
+# Subtest: N8-22: camera callback cleanup và unsupported camera descriptor
+ok 166 - N8-22: camera callback cleanup và unsupported camera descriptor
+  ---
+  duration_ms: 331.049503
+  type: 'test'
+  ...
+# Subtest: N8-23: logout/dispose clear timers/listeners; 3 vòng login/logout vẫn chạy bình thường
+ok 167 - N8-23: logout/dispose clear timers/listeners; 3 vòng login/logout vẫn chạy bình thường
+  ---
+  duration_ms: 1243.604181
+  type: 'test'
+  ...
+# Subtest: N8-24: façade validate input/output, sendVelocity trả undefined đồng bộ
+ok 168 - N8-24: façade validate input/output, sendVelocity trả undefined đồng bộ
+  ---
+  duration_ms: 348.927467
+  type: 'test'
+  ...
+# Subtest: N8-25: StrictMode / mount cycle không làm tăng subscriber/timer
+ok 169 - N8-25: StrictMode / mount cycle không làm tăng subscriber/timer
+  ---
+  duration_ms: 326.266808
+  type: 'test'
+  ...
+# Subtest: N8-26: control request registry bounded retention, clear session
+ok 170 - N8-26: control request registry bounded retention, clear session
+  ---
+  duration_ms: 0.199093
+  type: 'test'
+  ...
+# Subtest: U8-01: mock/hardware/unknown profile chỉ nhận đúng kind stop evidence; reject ACK giả/thiếu metadata
+ok 171 - U8-01: mock/hardware/unknown profile chỉ nhận đúng kind stop evidence; reject ACK giả/thiếu metadata
+  ---
+  duration_ms: 0.726132
+  type: 'test'
+  ...
+# Subtest: U8-02: camera descriptor front/rear giữ mapping; thiếu reader hoặc kind không biết phải fail closed
+ok 172 - U8-02: camera descriptor front/rear giữ mapping; thiếu reader hoặc kind không biết phải fail closed
+  ---
+  duration_ms: 0.180568
+  type: 'test'
+  ...
+# Subtest: U8-03: cameraStreamClient đóng reader, tracks, video và frame callback; late onStream sau close bị bỏ
+ok 173 - U8-03: cameraStreamClient đóng reader, tracks, video và frame callback; late onStream sau close bị bỏ
+  ---
+  duration_ms: 0.180561
+  type: 'test'
+  ...
+# Subtest: U8-04: play reject, video error, thiếu frame API đều clear health; không gửi onFrame sau cleanup
+ok 174 - U8-04: play reject, video error, thiếu frame API đều clear health; không gửi onFrame sau cleanup
+  ---
+  duration_ms: 0.074709
+  type: 'test'
+  ...
+# Subtest: U8-05: browserLaunchOptions trả đúng cấu hình, reject hai nguồn cấu hình xung đột
+ok 175 - U8-05: browserLaunchOptions trả đúng cấu hình, reject hai nguồn cấu hình xung đột
+  ---
+  duration_ms: 0.117917
+  type: 'test'
+  ...
+# Subtest: U8-06: DTO velocity m/s-rad/s giữ dấu và số hữu hạn; fake ROS sink nhận đúng vector
+ok 176 - U8-06: DTO velocity m/s-rad/s giữ dấu và số hữu hạn; fake ROS sink nhận đúng vector
+  ---
+  duration_ms: 0.064789
+  type: 'test'
+  ...
+# Subtest: T8-01: chỉ nguồn được chọn mới được publish; khác nguồn bị reject
+ok 177 - T8-01: chỉ nguồn được chọn mới được publish; khác nguồn bị reject
+  ---
+  duration_ms: 0.115964
+  type: 'test'
+  ...
+# Subtest: T8-02: boot epoch và generation cũ bị fence dù sequence mới
+ok 178 - T8-02: boot epoch và generation cũ bị fence dù sequence mới
+  ---
+  duration_ms: 0.043792
+  type: 'test'
+  ...
+# Subtest: T8-03: deadline cũ được xét trước command mới, tại ranh giới cũng reject
+ok 179 - T8-03: deadline cũ được xét trước command mới, tại ranh giới cũng reject
+  ---
+  duration_ms: 0.081063
+  type: 'test'
+  ...
+# Subtest: T8-04: replay, số không hữu hạn và vượt limits đều reject, không sửa state
+ok 180 - T8-04: replay, số không hữu hạn và vượt limits đều reject, không sửa state
+  ---
+  duration_ms: 0.177599
+  type: 'test'
+  ...
+# Subtest: T8-05: stopping/blocked/idle không tự fallback sang navigation
+ok 181 - T8-05: stopping/blocked/idle không tự fallback sang navigation
+  ---
+  duration_ms: 0.06107
+  type: 'test'
+  ...
+# Subtest: T8-06: Twist đúng dấu/đơn vị, không phát thành phần ngoài robot vi sai
+ok 182 - T8-06: Twist đúng dấu/đơn vị, không phát thành phần ngoài robot vi sai
+  ---
+  duration_ms: 0.116146
+  type: 'test'
+  ...
+# Subtest: T8-07: facade/schema thật reject acquire/velocity payload có trường tự nhận authority/source/priority
+ok 183 - T8-07: facade/schema thật reject acquire/velocity payload có trường tự nhận authority/source/priority
+  ---
+  duration_ms: 328.032732
+  type: 'test'
+  ...
+# Subtest: T8-08: khi mission đang giữ quyền, acquire bị chặn; manual stop preempt mission; confirmation cần sample mới
+ok 184 - T8-08: khi mission đang giữ quyền, acquire bị chặn; manual stop preempt mission; confirmation cần sample mới
+  ---
+  duration_ms: 687.413711
+  type: 'test'
+  ...
+# Subtest: F8-N01: docs assets match manifest, are distinct H.264 MP4 with faststart
+ok 185 - F8-N01: docs assets match manifest, are distinct H.264 MP4 with faststart
+  ---
+  duration_ms: 1.990065
+  type: 'test'
+  ...
+# Subtest: F8-N02: build emits only both MP4 files at unchanged URLs
+ok 186 - F8-N02: build emits only both MP4 files at unchanged URLs
+  ---
+  duration_ms: 1.550196
+  type: 'test'
+  ...
+# Subtest: F8-N03: dev video supports HEAD/ranges without exposing other docs
+ok 187 - F8-N03: dev video supports HEAD/ranges without exposing other docs
+  ---
+  duration_ms: 33.398986
+  type: 'test'
+  ...
+# Subtest: N8-H01: acquire rejects missing/nonfinite observation metadata and stale epoch/revision
+ok 188 - N8-H01: acquire rejects missing/nonfinite observation metadata and stale epoch/revision
+  ---
+  duration_ms: 1.476338
+  type: 'test'
+  ...
+# Subtest: N8-H02: stationary observation is stale at the exact 200 ms boundary
+ok 189 - N8-H02: stationary observation is stale at the exact 200 ms boundary
+  ---
+  duration_ms: 0.32482
+  type: 'test'
+  ...
+# Subtest: N8-H03: stop re-entry from mission callback serializes and latest stop confirms
+ok 190 - N8-H03: stop re-entry from mission callback serializes and latest stop confirms
+  ---
+  duration_ms: 0.696394
+  type: 'test'
+  ...
+# Subtest: N8-H04: one revoke notification per active session, no duplicate owner event
+ok 191 - N8-H04: one revoke notification per active session, no duplicate owner event
+  ---
+  duration_ms: 0.55623
+  type: 'test'
+  ...
+# Subtest: N8-H05: cancel before first nonzero measurement still zeros desired command
+ok 192 - N8-H05: cancel before first nonzero measurement still zeros desired command
+  ---
+  duration_ms: 748.347462
+  type: 'test'
+  ...
+# Subtest: N8-H06: source frozen through mission terminal can later confirm the SAME stop
+ok 193 - N8-H06: source frozen through mission terminal can later confirm the SAME stop
+  ---
+  duration_ms: 693.574618
+  type: 'test'
+  ...
+# Subtest: N8-H07: snapshot with no stop cannot clear a locally pending stop
+ok 194 - N8-H07: snapshot with no stop cannot clear a locally pending stop
+  ---
+  duration_ms: 0.644563
+  type: 'test'
+  ...
+# Subtest: N8-H08: old granted/snapshot cannot lower generation inside same stream epoch
+ok 195 - N8-H08: old granted/snapshot cannot lower generation inside same stream epoch
+  ---
+  duration_ms: 0.431026
+  type: 'test'
+  ...
+# Subtest: N8-H09: replacement lease clears previous heartbeat token and ACK
+ok 196 - N8-H09: replacement lease clears previous heartbeat token and ACK
+  ---
+  duration_ms: 0.34749
+  type: 'test'
+  ...
+# Subtest: N8-H10: heartbeat requires exact generation, not greater-or-equal
+ok 197 - N8-H10: heartbeat requires exact generation, not greater-or-equal
+  ---
+  duration_ms: 0.18564
+  type: 'test'
+  ...
+# Subtest: N8-H11: no lease means late command ACK is ignored
+ok 198 - N8-H11: no lease means late command ACK is ignored
+  ---
+  duration_ms: 0.208862
+  type: 'test'
+  ...
+# Subtest: N8-H12: revoked generation fences subsequent stale grant
+ok 199 - N8-H12: revoked generation fences subsequent stale grant
+  ---
+  duration_ms: 0.477008
+  type: 'test'
+  ...
+# Subtest: N8-H13: registry is bounded without forgetting replay/conflict fingerprints
+ok 200 - N8-H13: registry is bounded without forgetting replay/conflict fingerprints
+  ---
+  duration_ms: 0.251565
+  type: 'test'
+  ...
+# Subtest: N8-H14: capacity exhaustion stops motion and cannot clear its inhibit on confirmation
+ok 201 - N8-H14: capacity exhaustion stops motion and cannot clear its inhibit on confirmation
+  ---
+  duration_ms: 105.370885
+  type: 'test'
+  ...
+# Subtest: N8-H15: late acquire response already revoked is released and never owned by page
+ok 202 - N8-H15: late acquire response already revoked is released and never owned by page
+  ---
+  duration_ms: 0.215483
+  type: 'test'
+  ...
+# Subtest: N8-H16: a new unconfigured coordinator cannot inherit mock profile from a previous client
+ok 203 - N8-H16: a new unconfigured coordinator cannot inherit mock profile from a previous client
+  ---
+  duration_ms: 0.185625
+  type: 'test'
+  ...
+# Subtest: N8-H17: matching snapshot reconciles stop whose accepted response/event was lost
+ok 204 - N8-H17: matching snapshot reconciles stop whose accepted response/event was lost
+  ---
+  duration_ms: 0.325323
+  type: 'test'
+  ...
+1..204
+# tests 204
+# suites 0
+# pass 204
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12578.297343
+

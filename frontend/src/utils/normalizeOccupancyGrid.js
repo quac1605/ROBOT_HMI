@@ -1,4 +1,4 @@
-import { preflightMapGrid, MapGridSnapshotSchema } from '../schemas/mapGrid.js';
+import { parseMapGridSnapshot } from '../schemas/mapGrid.js';
 
 export function quaternionToEuler({ x, y, z, w }) {
     const norm = Math.hypot(x, y, z, w);
@@ -22,21 +22,11 @@ export function quaternionToEuler({ x, y, z, w }) {
 }
 
 export function normalizeOccupancyGrid(snapshot) {
-    // 1. Preflight kiểm tra kích thước thô
-    preflightMapGrid(snapshot);
-
-    // 2. Validate sâu toàn bộ snapshot
-    const parsed = MapGridSnapshotSchema.safeParse(snapshot);
-    if (!parsed.success) {
-        const err = new Error(`Dữ liệu bản đồ không hợp lệ: ${parsed.error.issues[0]?.message || 'Lỗi schema'}`);
-        err.code = 'INVALID_MAP_DATA';
-        throw err;
-    }
-
-    const { grid, context, gridRevision } = parsed.data;
+    // 1. Preflight toàn bộ cell và Zod-validate metadata strict tại source chuẩn.
+    const { grid, context, gridRevision } = parseMapGridSnapshot(snapshot);
     const { roll, pitch, yaw } = quaternionToEuler(grid.info.origin.orientation);
 
-    // 3. Từ chối nếu có độ nghiêng 3D
+    // 2. Từ chối nếu có độ nghiêng 3D
     if (Math.abs(roll) > 1e-4 || Math.abs(pitch) > 1e-4) {
         const err = new Error('Bản đồ có độ nghiêng 3D (roll/pitch) không được hỗ trợ trong 2D viewer');
         err.code = 'UNSUPPORTED_MAP_ORIENTATION';
@@ -55,7 +45,7 @@ export function normalizeOccupancyGrid(snapshot) {
         },
     };
 
-    // 4. Chỉ ép sang Int8Array sau khi toàn bộ dữ liệu đã hợp lệ
+    // 3. Chỉ ép sang Int8Array sau khi toàn bộ dữ liệu đã hợp lệ
     const cells = new Int8Array(grid.data);
 
     return {

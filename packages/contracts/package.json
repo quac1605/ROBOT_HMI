@@ -1,0 +1,21 @@
+{
+  "name": "@robot-hmi/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/conformance.test.js"
+  },
+  "exports": {
+    "./robotState": "./src/robotState.js",
+    "./camera": "./src/camera.js",
+    "./job": "./src/job.js",
+    "./mapping": "./src/mapping.js",
+    "./mission": "./src/mission.js",
+    "./control": "./src/control.js",
+    "./mapGrid": "./src/mapGrid.js"
+  },
+  "dependencies": {
+    "zod": "4.5.4"
+  }
+}

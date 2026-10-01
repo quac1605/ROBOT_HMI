@@ -10,6 +10,7 @@ import { projectRoot, readUbuntuEnvironment } from './ubuntu_environment.mjs';
 const environment = readUbuntuEnvironment();
 const root = projectRoot;
 const front = path.join(root, 'frontend');
+const contracts = path.join(root, 'packages/contracts');
 const resolve = relative => path.join(root, relative);
 const hash = filename => createHash('sha256').update(fs.readFileSync(filename)).digest('hex');
 const startedMs = Date.now();
@@ -40,6 +41,15 @@ function inputSnapshot() {
     'frontend/artifacts/stage6/quality-budgets.json',
     'docs/chang-08-independent-review-round2/probe.mjs',
     'docs/chang-08-independent-review-round2/browser-probe.mjs',
+    'packages/contracts/src',
+    'packages/contracts/test',
+    'packages/contracts/package.json',
+    'packages/contracts/package-lock.json',
+    'packages/control-domain/src',
+    'packages/control-domain/package.json',
+    'packages/control-domain/package-lock.json',
+    'backend/package.json',
+    'backend/package-lock.json',
   ]) add(item);
   for (const item of ['frontend/public', '.nvmrc', '.gitignore', '.gitattributes']) add(item, true);
   return Object.fromEntries([...new Set(files)].sort().map(file => [file, hash(resolve(file))]));
@@ -143,6 +153,7 @@ try {
   writeJson('environment.json', environment);
   before = inputSnapshot();
   writeJson('inputs-before.json', before);
+  await run('contracts-conformance', 'npm', ['test'], contracts, 2 * 60_000);
   await run('stage8-full', 'npm', ['run', 'verify:stage8'], front, 30 * 60_000);
   await run('independent-module', process.execPath,
     ['docs/chang-08-independent-review-round2/probe.mjs'], root, 5 * 60_000);
@@ -179,7 +190,7 @@ const evidenceHashes = Object.fromEntries(fs.readdirSync(out).sort()
   .filter(name => fs.statSync(path.join(out, name)).isFile())
   .map(name => [name, hash(path.join(out, name))]));
 writeJson('run-summary.json', {
-  scope: 'Ubuntu Stage8 mock baseline + independent probes; not Stage9 acceptance',
+  scope: 'M1 shared contracts conformance + Ubuntu Stage8 mock baseline + independent probes; not Stage9 acceptance',
   runId, startedAt: new Date(startedMs).toISOString(), finishedAt: new Date().toISOString(),
   passed: failure === null, hardwareReady: false, environment, steps, failure, evidenceHashes,
 });

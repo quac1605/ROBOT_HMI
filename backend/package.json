@@ -1,0 +1,10 @@
+{
+  "name": "@robot-hmi/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@robot-hmi/contracts": "file:../packages/contracts",
+    "@robot-hmi/control-domain": "file:../packages/control-domain"
+  }
+}

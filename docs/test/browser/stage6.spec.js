@@ -522,28 +522,30 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
   test('Case 13: Saved silence hợp lệ; live stale/offline/recovery không làm mới grid giả', async ({ page }) => {
     const started = await startSession(page, 'Freshness Browser');
     await expect(page.locator(RASTER)).toBeVisible();
-    const before = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     await page.evaluate((sessionId) => {
       const controls = window.__STAGE6_TEST_CONTROLS__;
       controls.setMapScenario(sessionId, 'pause');
       controls.emitSessionNow(sessionId);
     }, started.mappingSessionId);
+    const before = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     await page.waitForTimeout(2_250);
     await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.emitSessionNow(sessionId), started.mappingSessionId);
     await expect(page.getByText(/Nguồn: stale/)).toBeVisible();
     const stale = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     expect(stale.gridRevision).toBe(before.gridRevision);
     expect(stale.grid.header.stamp).toEqual(before.grid.header.stamp);
-    await page.evaluate((sessionId) => {
+    const liveWithoutSourceUpdate = await page.evaluate((sessionId) => {
       const controls = window.__STAGE6_TEST_CONTROLS__;
       controls.setMapScenario(sessionId, 'live');
       controls.emitSessionNow(sessionId);
+      const snapshot = controls.getLiveSessionSnapshot(sessionId);
+      // Giữ producer đứng yên để test quan sát event stale vừa phát mà không
+      // chạy đua với tick live hợp lệ kế tiếp (chu kỳ 500 ms).
+      controls.setMapScenario(sessionId, 'pause');
+      return snapshot;
     }, started.mappingSessionId);
     await expect(page.getByText(/Nguồn: stale/)).toBeVisible();
-    expect((await page.evaluate(
-      (sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId),
-      started.mappingSessionId
-    )).gridRevision).toBe(stale.gridRevision);
+    expect(liveWithoutSourceUpdate.gridRevision).toBe(stale.gridRevision);
     await page.evaluate((sessionId) => {
       const controls = window.__STAGE6_TEST_CONTROLS__;
       controls.setMapScenario(sessionId, 'offline');
