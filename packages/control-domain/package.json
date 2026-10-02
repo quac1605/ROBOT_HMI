@@ -11,7 +11,9 @@
     "./controlRequestRegistry": "./src/controlRequestRegistry.js",
     "./stableStringify": "./src/stableStringify.js",
     "./controlEvidence": "./src/controlEvidence.js",
-    "./controlStreamFence": "./src/controlStreamFence.js"
+    "./controlStreamFence": "./src/controlStreamFence.js",
+    "./mockMotionSource": "./src/mockMotionSource.js",
+    "./controlAuthority": "./src/controlAuthority.js"
   },
   "dependencies": {
     "@robot-hmi/contracts": "file:../contracts"

@@ -22,7 +22,7 @@ export const MapAssetSchema = z
   .object({
     type: z.enum(['grid_json', 'yaml_meta', 'preview_png']),
     source: z.literal('mock'),
-    storage: z.literal('memory'),
+    storage: z.enum(['memory', 'filesystem']),
     status: z.enum(['pending', 'ready']),
   })
   .strict();
@@ -94,4 +94,3 @@ export const FinishMappingResponseSchema = z
     status: z.literal('accepted'),
   })
   .strict();
-
