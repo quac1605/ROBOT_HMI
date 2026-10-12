@@ -14,6 +14,11 @@ import { WebSocket } from 'ws';
 import { assertTestTarget } from '../scripts/assert-test-target.mjs';
 import { acquireMapFixtureLock } from './helpers/testDatabaseLock.mjs';
 import { createServerRuntime } from '../src/server.js';
+import { createBackendRobotState } from '../src/runtime.js';
+import { createMappingService } from '../src/services/mappingService.js';
+import { createJobService } from '../src/services/jobService.js';
+import { createMotionAdmissionGate } from '@robot-hmi/control-domain/motionAdmissionGate';
+import { createMappingDriveGate } from '@robot-hmi/control-domain/mappingDriveGate';
 import {
     StartMappingResponseSchema,
     FinishMappingResponseSchema,
@@ -23,6 +28,82 @@ import { ActivateMapResponseSchema } from '@robot-hmi/contracts/mission';
 import { JobSchema } from '@robot-hmi/contracts/job';
 
 const { Pool } = pg;
+
+test('Bài 2: Stop trong await cập nhật Start không mở gate lái sau đó', async () => {
+    await assertTestTarget(process.env);
+    const releaseLock = await acquireMapFixtureLock();
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const principal = `mapping_race_${randomUUID()}`;
+    const state = createBackendRobotState();
+    state.update({ rosConnected: true, physicalEstopActive: false,
+        motionInhibited: false, motionInhibitReason: null });
+    const motionGate = createMotionAdmissionGate();
+    const mappingDriveGate = createMappingDriveGate();
+    let stopAdapterCalled = false;
+    let releaseCompleted;
+    let notifyCompleted;
+    const completedReached = new Promise(resolve => { notifyCompleted = resolve; });
+    const completeBarrier = new Promise(resolve => { releaseCompleted = resolve; });
+    const realJobs = createJobService({ pool });
+    const jobService = {
+        ...realJobs,
+        async updateJob(targetPool, jobId, options) {
+            const result = await realJobs.updateJob(targetPool, jobId, options);
+            if (options.status === 'completed') {
+                notifyCompleted();
+                await completeBarrier; // DB đã completed nhưng caller chưa qua await.
+            }
+            return result;
+        },
+    };
+    const service = createMappingService({
+        pool, motionGate, mappingDriveGate, sharedRobotState: state, jobService,
+        mapPersistence: {}, assertMappingFinishSafe: () => { throw new Error('UNUSED'); },
+        adapter: {
+            startMapping() {},
+            finishMapping() { stopAdapterCalled = true; },
+        },
+    });
+    let pending;
+    let timeoutHandle;
+    try {
+        pending = service.startMapping({ name: 'Start race', requestId: randomUUID() }, principal);
+        await Promise.race([
+            completedReached,
+            new Promise((_, reject) => {
+                timeoutHandle = setTimeout(() => reject(new Error('START_RACE_TIMEOUT')), 3000);
+            }),
+        ]);
+        const reserved = mappingDriveGate.getState();
+        assert.equal(reserved.phase, 'starting');
+        assert.equal(state.getSnapshot().activeMappingSessionId, reserved.mappingSessionId);
+        assert.equal(mappingDriveGate.canDrive(reserved.mappingSessionId), false);
+        motionGate.beginStop();
+        state.update({ motionInhibited: true, motionInhibitReason: 'CONTROL_STOP_PENDING' });
+        releaseCompleted();
+        await assert.rejects(pending, { code: 'MOTION_ADMISSION_BLOCKED' });
+        assert.equal(mappingDriveGate.canDrive(reserved.mappingSessionId), false);
+        assert.equal(state.getSnapshot().mode, 'fault');
+        assert.equal(state.getSnapshot().motionInhibited, true);
+        assert.equal(stopAdapterCalled, true);
+        const jobs = await pool.query('SELECT status FROM jobs WHERE principal=$1', [principal]);
+        assert.equal(jobs.rows[0].status, 'completed', 'Catch không được downgrade job completed');
+    } finally {
+        clearTimeout(timeoutHandle);
+        releaseCompleted();
+        await pending?.catch(() => {});
+        try {
+            await pool.query('DELETE FROM events WHERE principal=$1', [principal]);
+            await pool.query('DELETE FROM idempotency_requests WHERE principal_scope=$1', [principal]);
+            await pool.query('DELETE FROM jobs WHERE principal=$1', [principal]);
+            const sessionId = mappingDriveGate.getState()?.mappingSessionId;
+            if (sessionId) await pool.query('DELETE FROM mapping_sessions WHERE id=$1', [sessionId]);
+        } finally {
+            await pool.end();
+            await releaseLock();
+        }
+    }
+});
 
 test('M8 Slice 3: Mapping Workflow (Start -> Active -> Finish -> Jobs -> Activate)', async () => {
     await assertTestTarget(process.env);
@@ -49,6 +130,7 @@ test('M8 Slice 3: Mapping Workflow (Start -> Active -> Finish -> Jobs -> Activat
     let createdMapId;
     let mappingSessionId;
     let ws;
+    let mapWs;
     let originalStoreAssetForCleanup;
     const cookies = new Set();
     const releaseMapFixtureLock = await acquireMapFixtureLock();
@@ -194,6 +276,119 @@ test('M8 Slice 3: Mapping Workflow (Start -> Active -> Finish -> Jobs -> Activat
             body: JSON.stringify({ name: 'Another Map', requestId: randomUUID() }),
         });
         assert.equal(conflictStartRes.status, 409);
+
+        mapWs = new WebSocket(`ws://127.0.0.1:${port}/map-stream`, {
+            headers: { Cookie: authCookie, Origin: origin },
+        });
+        const mapEvents = [];
+        mapWs.on('message', data => {
+            try { mapEvents.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+        });
+        await new Promise((resolve, reject) => {
+            mapWs.once('open', resolve);
+            mapWs.once('error', reject);
+        });
+        mapWs.send(JSON.stringify({ version: 1, type: 'map.subscribe',
+            subscriptionId: 'mapping-live',
+            context: { kind: 'mapping', mappingSessionId } }));
+        const firstGridDeadline = Date.now() + 2000;
+        while (!mapEvents.some(e => e.type === 'map.grid' &&
+            e.subscriptionId === 'mapping-live') && Date.now() < firstGridDeadline) {
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.ok(mapEvents.some(e => e.type === 'map.grid' &&
+            e.subscriptionId === 'mapping-live'), 'WS phải có grid từ source đã lấy mẫu');
+
+        // Bài 2: lái đúng session qua authority thật; hai tab không thể cùng
+        // giữ lease. Map chỉ mở thêm ô sau mẫu vận tốc đo từ mock source.
+        const authority = started.robotRuntime.controlAuthority;
+        const owner = authority.createSession('mapping-workflow-owner');
+        const other = authority.createSession('mapping-workflow-other');
+        let freshnessToken = null;
+        const unsubscribeControl = authority.subscribeControl(owner, event => {
+            if (event.type === 'control.heartbeat') {
+                freshnessToken = event.payload.freshnessToken;
+            }
+        });
+        await assert.rejects(() => authority.acquireControl({
+            requestId: randomUUID(),
+            context: { kind: 'mapping', mappingSessionId: randomUUID() },
+        }, owner), { code: 'MAPPING_CONTEXT_MISMATCH' });
+        const lease = await authority.acquireControl({
+            requestId: randomUUID(),
+            context: { kind: 'mapping', mappingSessionId },
+        }, owner);
+        assert.deepEqual(lease.limits, { maxLinearX: 0.3, maxAngularZ: 0.3 });
+        await assert.rejects(() => authority.acquireControl({
+            requestId: randomUUID(),
+            context: { kind: 'mapping', mappingSessionId },
+        }, other), { code: 'CONTROL_BUSY' });
+        const initialGrid = started.robotRuntime.adapter.getMappingGrid(mappingSessionId);
+        for (let sequence = 1; sequence <= 12; sequence += 1) {
+            authority.sendVelocity({
+                leaseId: lease.leaseId, sequence, freshnessToken,
+                linearX: 0.3, angularZ: 0,
+            }, owner);
+            await new Promise(resolve => setTimeout(resolve, 45));
+        }
+        const driven = started.robotRuntime.adapter.getMappingObservation(mappingSessionId);
+        assert.ok(driven.pose.x > 2.05, 'Pose phải đi theo mẫu vận tốc đã đo');
+        assert.ok(driven.snapshot.gridRevision > initialGrid.gridRevision);
+        assert.equal(started.robotRuntime.sharedRobotState.getSnapshot().mode, 'mapping');
+        const revisionDeadline = Date.now() + 2000;
+        const newRevisions = () => new Set(mapEvents
+            .filter(e => e.type === 'map.grid' && e.subscriptionId === 'mapping-live' &&
+                e.payload.gridRevision > initialGrid.gridRevision)
+            .map(e => e.payload.gridRevision));
+        while (newRevisions().size < 2 && Date.now() < revisionDeadline) {
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.ok(newRevisions().size >= 2, 'WS cần ít nhất hai revision sau lái tay');
+
+        // HTTP Finish phải từ chối lease đang giữ bằng 409, không tạo job/map.
+        const unsafeFinish = await fetch(`${baseUrl}/api/mapping/finish`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json',
+                'X-CSRF-Token': authCsrf, Cookie: authCookie, Origin: origin },
+            body: JSON.stringify({ mappingSessionId, name: 'Premature map',
+                requestId: randomUUID() }),
+        });
+        assert.equal(unsafeFinish.status, 409);
+        assert.equal((await unsafeFinish.json()).error.code, 'CONTROL_BUSY');
+        assert.equal(started.robotRuntime.mappingDriveGate.canDrive(mappingSessionId), true);
+
+        await authority.requestStop({ requestId: randomUUID() }, owner);
+        let confirmed = false;
+        const confirmationDeadline = Date.now() + 1000;
+        while (Date.now() < confirmationDeadline) {
+            const control = await authority.getControlState(owner);
+            if (control.payload.stop?.status === 'confirmed') { confirmed = true; break; }
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.equal(confirmed, true, 'Stop phải có mẫu zero mới đúng generation');
+        unsubscribeControl();
+
+        // Đóng băng nguồn không được giả làm heartbeat tươi. Map stream phải
+        // báo stale và Finish phải từ chối đến khi có mẫu zero mới.
+        started.robotRuntime.adapter.setFrozen(true);
+        const staleDeadline = Date.now() + 3000;
+        while (!mapEvents.some(e => e.type === 'map.status' &&
+            e.subscriptionId === 'mapping-live' && e.payload.sourceState === 'stale') &&
+            Date.now() < staleDeadline) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        assert.ok(mapEvents.some(e => e.type === 'map.status' &&
+            e.payload.sourceState === 'stale'), 'WS phải báo source stale');
+        const staleFinish = await fetch(`${baseUrl}/api/mapping/finish`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json',
+                'X-CSRF-Token': authCsrf, Cookie: authCookie, Origin: origin },
+            body: JSON.stringify({ mappingSessionId, name: 'Stale map',
+                requestId: randomUUID() }),
+        });
+        assert.equal(staleFinish.status, 409);
+        assert.equal((await staleFinish.json()).error.code, 'ROBOT_NOT_STATIONARY');
+        started.robotRuntime.adapter.setFrozen(false);
+        started.robotRuntime.adapter.sample();
+        mapWs.close();
 
         // 4. POST /api/mapping/finish
         // Fail exactly one asset write. A failed save must preserve the live
@@ -389,6 +584,7 @@ test('M8 Slice 3: Mapping Workflow (Start -> Active -> Finish -> Jobs -> Activat
             started.assetStore.storeAsset = originalStoreAssetForCleanup;
         }
         ws?.close();
+        mapWs?.close();
         try {
             await runtime.stop();
             // Chỉ xóa fixture thuộc principal của test; không chạm session

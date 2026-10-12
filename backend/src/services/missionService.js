@@ -180,9 +180,18 @@ export function createMissionService({
             try {
                 assertCurrent?.();
                 mission = await missionsRepo.getMissionById(missionId);
-                if (!mission) throw new Error('COMMITTED_MISSION_MISSING');
                 motionGate.assert(ticket);
                 assertCurrent?.();
+                const dispatchState = sharedRobotState.getSnapshot();
+                if (dispatchState.mode !== 'idle' || dispatchState.activeMappingSessionId !== null ||
+                    dispatchState.activeMissionId !== null || dispatchState.motionInhibited !== false ||
+                    dispatchState.rosConnected !== true || dispatchState.physicalEstopActive !== false ||
+                    dispatchState.localization?.status !== 'tracking' ||
+                    dispatchState.activeMap?.id !== dto.mapId || dispatchState.activeMap?.revision !== dto.mapRevision) {
+                    throw Object.assign(new Error('MISSION_DISPATCH_SUPERSEDED'), {
+                        code: 'MISSION_DISPATCH_SUPERSEDED', status: 409,
+                    });
+                }
                 handle = adapter.beginMission(missionId);
                 sharedRobotState.update({
                     mode: 'navigating',

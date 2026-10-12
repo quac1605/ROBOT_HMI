@@ -58,7 +58,9 @@ export default function RouteLibrary({ currentMap }) {
   return (
     <Stack spacing={1}>
       <Typography variant="subtitle2">Thư viện tuyến demo</Typography>
-      <Typography variant="caption">Lưu trong bộ nhớ; logout hoặc tải lại toàn bộ trang sẽ mất tuyến.</Typography>
+      <Typography variant="caption">{client.kind === 'remote'
+        ? 'Tuyến được lưu trên backend theo đúng phiên bản bản đồ.'
+        : 'Lưu trong bộ nhớ; logout hoặc tải lại toàn bộ trang sẽ mất tuyến.'}</Typography>
       <TextField size="small" label="Tên tuyến" value={name} onChange={event => setName(event.target.value)} />
       <Button data-testid="save-route" disabled={busy || !name.trim() || !nav.waypoints.length || !checkSavedMap(currentMap).ok}
         onClick={save}>Lưu tuyến</Button>

@@ -4,6 +4,7 @@
  * ROBOT RUNTIME & SINGLE AUTHORITY COMPOSITION (M8 / F8.1 - F8.6).
  */
 import { createMotionAdmissionGate } from '@robot-hmi/control-domain/motionAdmissionGate';
+import { createMappingDriveGate } from '@robot-hmi/control-domain/mappingDriveGate';
 import { createControlAuthority } from '@robot-hmi/control-domain/controlAuthority';
 import { RobotStateSchema } from '@robot-hmi/contracts/robotState';
 import { createMockRosAdapter } from './ros/mockRosAdapter.js';
@@ -76,6 +77,7 @@ export function createRobotRuntime({
 }) {
     const sharedRobotState = createBackendRobotState();
     const motionGate = createMotionAdmissionGate();
+    const mappingDriveGate = createMappingDriveGate();
 
     const adapter = createMockRosAdapter({
         sourceHealthy: () => {
@@ -105,6 +107,7 @@ export function createRobotRuntime({
         },
         motionGate,
         motionSource: adapter,
+        mappingDriveGate,
     });
 
     const controlSubjectRegistry = createControlSubjectRegistry(controlAuthority);
@@ -134,6 +137,8 @@ export function createRobotRuntime({
         mapPersistence,
         adapter,
         motionGate,
+        mappingDriveGate,
+        assertMappingFinishSafe: id => controlAuthority.assertMappingFinishSafe(id),
         sharedRobotState,
         jobService,
         lifecycle,
@@ -172,9 +177,30 @@ export function createRobotRuntime({
 
     const cameraService = createCameraService();
 
+    function publishMappingPose() {
+        const state = sharedRobotState.getSnapshot();
+        if (state.mode !== 'mapping' || !state.activeMappingSessionId) return;
+        let observation;
+        try { observation = adapter.getMappingObservation(state.activeMappingSessionId); }
+        catch { return; }
+        if (!observation) return;
+        sharedRobotState.update({
+            pose: observation.pose,
+            poseSourceUpdateAgeMs: observation.lastSourceUpdateAgeMs,
+            // Chỉ nguồn mới chứng minh tracking; heartbeat stale không giả tạo pose mới.
+            localization: observation.sourceState === 'live'
+                ? { status: 'tracking', reason: null }
+                : { status: 'lost', reason: 'MAPPING_POSE_STALE' },
+        });
+    }
+    const unsubscribeMappingPose = adapter.subscribeMapping(publishMappingPose);
+    const mappingAgeTimer = setInterval(publishMappingPose, 200);
+    mappingAgeTimer.unref?.();
+
     return {
         sharedRobotState,
         motionGate,
+        mappingDriveGate,
         adapter,
         controlAuthority,
         controlSubjectRegistry,
@@ -189,6 +215,9 @@ export function createRobotRuntime({
         missionService: missionServiceInstance,
         cameraService,
         dispose() {
+            clearInterval(mappingAgeTimer);
+            unsubscribeMappingPose();
+            mapGridService.dispose();
             missionServiceInstance.dispose();
             robotStateService.dispose();
             controlSubjectRegistry.dispose();

@@ -64,7 +64,9 @@ test('M8 Slice 4 & 5: Routes, Missions, Preemption via Stop & Camera Subsystem',
             robotId: `robot-nav-${randomUUID()}`, name: 'Navigation test map',
         });
         mapFixtureSessionId = session.id;
+        started.robotRuntime.sharedRobotState.update({ rosConnected: true });
         started.robotRuntime.adapter.startMapping(session.id);
+        started.robotRuntime.adapter.sample(); // Fixture map cần mẫu nguồn mock, Start không tự tạo grid.
         const snapshot = started.robotRuntime.adapter.getMappingGrid(session.id);
         const accepted = await started.mapPersistence.acceptFinish({
             principalScope: username, requestId: randomUUID(),

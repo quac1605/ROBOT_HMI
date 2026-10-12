@@ -35,6 +35,7 @@ export default function Map2D({
   showRobot = true,
   showPath = true,
   tool = 'goal',
+  viewportMaxHeight = '56vh',
   onGoalChange,
   onWaypointAdd,
 }) {
@@ -258,9 +259,9 @@ export default function Map2D({
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           style={{
             width: '100%',
-            maxWidth: `calc(56vh * ${geometry.width} / ${geometry.height})`,
+            maxWidth: `calc(${viewportMaxHeight} * ${geometry.width} / ${geometry.height})`,
             height: 'auto',
-            maxHeight: '56vh',
+            maxHeight: viewportMaxHeight,
             aspectRatio: `${geometry.width} / ${geometry.height}`,
             background: '#eceff1',
             touchAction: 'none',

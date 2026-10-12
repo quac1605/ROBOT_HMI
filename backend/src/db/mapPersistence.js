@@ -54,11 +54,21 @@ function assertMetadataMatchesGrid(metadata, snapshot) {
 }
 
 function assertRequiredMetadata(metadata) {
-  const kinds = metadata.assets.filter(asset => asset.status === 'ready' &&
-    asset.source === 'mock' && asset.storage === 'filesystem').map(asset => asset.type);
-  if (kinds.length !== REQUIRED_ASSETS.length ||
+  const ready = metadata.assets.filter(asset => asset.status === 'ready' &&
+    ['mock', 'ros'].includes(asset.source) && asset.storage === 'filesystem');
+  const kinds = ready.map(asset => asset.type);
+  const sources = new Set(ready.map(asset => asset.source));
+  if (sources.size !== 1 || kinds.length !== REQUIRED_ASSETS.length ||
       REQUIRED_ASSETS.some(asset => kinds.filter(kind => kind === asset.kind).length !== 1)) {
     throw mapError('MAP_ASSETS_INCOMPLETE', 400);
+  }
+}
+
+function assertAssetSourceMatchesGrid(metadata, snapshot) {
+  const required = metadata.assets.filter(asset =>
+    REQUIRED_ASSETS.some(item => item.kind === asset.type));
+  if (required.some(asset => asset.source !== snapshot.source)) {
+    throw mapError('MAP_CONTEXT_MISMATCH', 400);
   }
 }
 
@@ -84,12 +94,21 @@ export function createMapPersistence({ pool, assetStore }) {
   }
 
   // Accepted job, map identity, session transition and HTTP replay are one DB commit.
-  async function acceptFinish({ principalScope, requestId, mappingSessionId, name }) {
+  async function acceptFinish({
+    principalScope, requestId, mappingSessionId, name,
+    beforeAccept = () => {},
+  }) {
     const input = FinishMappingRequestSchema.parse({ requestId, mappingSessionId, name });
     return reserveBusinessOperation({
       pool, principalScope, requestId: input.requestId, operation: 'finish_mapping',
       payload: { mappingSessionId: input.mappingSessionId, name: input.name },
       create: async client => {
+        // Chỉ chạy cho operation mới; ledger replay đã trả về trước callback create.
+        // Callback phải đồng bộ: kiểm đứng yên và đóng gate trước await tiếp theo.
+        const result = beforeAccept();
+        if (result && typeof result.then === 'function') {
+          throw mapError('ASYNC_FINISH_ADMISSION_NOT_ALLOWED', 500);
+        }
         const session = await client.query(
           'SELECT id,robot_id,status FROM mapping_sessions WHERE id=$1 AND active=true FOR UPDATE',
           [input.mappingSessionId]);
@@ -189,7 +208,7 @@ export function createMapPersistence({ pool, assetStore }) {
         id: context.mapId, revision: context.revision, name: context.name,
         status: 'ready', ...geometry,
         assets: REQUIRED_ASSETS.map(({ kind }) => ({
-          type: kind, source: 'mock', storage: 'filesystem', status: 'ready',
+          type: kind, source: snapshot.source, storage: 'filesystem', status: 'ready',
         })),
         capabilities: { hasOccupancyGrid: true, hasSlamState: false,
           canResumeMapping: false, canLocalize: true, canNavigate: true },
@@ -266,7 +285,7 @@ export function createMapPersistence({ pool, assetStore }) {
   }
 
   async function getSavedGrid(mapId, revision) {
-    const { assets } = await getReadyMap(mapId, revision);
+    const { metadata, assets } = await getReadyMap(mapId, revision);
     const record = assets.find(asset => asset.asset_kind === 'grid_json');
     let bytes;
     try {
@@ -274,6 +293,7 @@ export function createMapPersistence({ pool, assetStore }) {
         { sha256: record.sha256, byteCount: Number(record.byte_count) });
     } catch { throw mapError('MAP_ASSET_UNAVAILABLE', 503); }
     const snapshot = parseMapGridSnapshot(JSON.parse(bytes.toString('utf8')));
+    assertAssetSourceMatchesGrid(metadata, snapshot);
     if (snapshot.context.kind !== 'saved' || snapshot.context.mapId !== mapId ||
         snapshot.context.mapRevision !== revision) throw mapError('MAP_CONTEXT_MISMATCH');
     return snapshot;
@@ -356,6 +376,7 @@ export function createMapPersistence({ pool, assetStore }) {
     if (snapshot.context.kind !== 'saved' || snapshot.context.mapId !== metadata.id ||
         snapshot.context.mapRevision !== metadata.revision) throw mapError('MAP_CONTEXT_MISMATCH', 400);
     assertMetadataMatchesGrid(metadata, snapshot);
+    assertAssetSourceMatchesGrid(metadata, snapshot);
     const written = [];
     try {
       for (const file of files) {

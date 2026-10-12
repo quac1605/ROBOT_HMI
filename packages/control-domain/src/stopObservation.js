@@ -1,5 +1,17 @@
 import { isZero } from './controlPolicy.js';
 
+// Drive đang chạy cần nguồn đo còn sống, dù mẫu đó có vận tốc khác zero.
+// Cùng epoch/cursor và tuổi monotonic ngăn heartbeat/packet cũ giả mạo freshness.
+export function acceptsFreshMotionSample({ sample, cursor, nowMono, maxAgeMs = 200 }) {
+    return Boolean(sample && cursor &&
+        typeof sample.sourceEpoch === 'string' && sample.sourceEpoch === cursor.sourceEpoch &&
+        Number.isSafeInteger(sample.sourceSequence) && sample.sourceSequence > 0 &&
+        sample.sourceSequence === cursor.sourceSequence &&
+        Number.isFinite(sample.observedMono) && Number.isFinite(nowMono) &&
+        nowMono >= sample.observedMono && nowMono - sample.observedMono < maxAgeMs &&
+        Number.isFinite(sample.velocity?.linearX) && Number.isFinite(sample.velocity?.angularZ));
+}
+
 export function acceptsStationarySample({ sample, cursor, command, requiredRevision, nowMono, maxAgeMs = 200 }) {
     return Boolean(sample && cursor && command &&
         sample.sourceEpoch === cursor.sourceEpoch && sample.sourceEpoch === command.sourceEpoch &&

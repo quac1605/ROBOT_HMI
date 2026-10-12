@@ -3,7 +3,7 @@ import { navigationError } from '../utils/navigationPolicy.js';
 // Đây là nguồn pose mô phỏng CHUNG. Mission/activation phải dùng commitPose(),
 // không tự cập nhật pose rồi để telemetry phát lại một vị trí khác.
 // SAU:
-export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
+export function createMockTelemetry({ sharedRobotState, motionSource = null, mappingSource = null }) {
   const initialPose = { frameId: 'map', x: 4.12, y: 1.8, yaw: 0.415388 };
   const contextKey = state => state.activeMappingSessionId
     ? JSON.stringify(['mapping', state.activeMappingSessionId])
@@ -15,6 +15,23 @@ export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
   let timer = null;
   let disposed = false;
   const subscribers = new Set();
+
+  const unsubscribeMotion = motionSource?.subscribe(sample => {
+    const state = sharedRobotState.getSnapshot();
+    if (disposed || !mappingSource || state.mode !== 'mapping' ||
+        !state.activeMappingSessionId || !['online', 'unknown-battery'].includes(scenario)) return;
+    if (!mappingSource.ingest(sample)) return;
+    const observation = mappingSource.get(state.activeMappingSessionId);
+    if (!observation) return;
+    sourcePose = observation.pose;
+    sourceContext = contextKey(state);
+    lastSourceUpdateAt = observation.observedMono;
+    sharedRobotState.update({
+      pose: structuredClone(sourcePose),
+      poseSourceUpdateAgeMs: observation.lastSourceUpdateAgeMs,
+      receivedAt: new Date().toISOString(),
+    });
+  });
 
   function assertActive() {
     if (disposed) throw navigationError('SERVICE_DISPOSED', 'Telemetry đã dispose.');
@@ -28,7 +45,7 @@ export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
     const hasContext = state.mode === 'mapping'
       ? Boolean(state.activeMappingSessionId)
       : Boolean(state.activeMap && !state.activeMappingSessionId && state.mode !== 'localizing');
-    const hasPose = connected && !lost && hasContext && sourceContext === contextKey(state);
+    const hasPose = connected && !lost && hasContext && sourceContext === contextKey(state) && Number.isFinite(lastSourceUpdateAt);
     const ownReasons = ['LOCALIZATION_LOST', 'ROS_UNAVAILABLE'];
     const externalInhibit = Boolean(state.motionInhibited && !ownReasons.includes(state.motionInhibitReason));
     return {
@@ -44,14 +61,19 @@ export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
       batteryPercent: scenario === 'unknown-battery' ? null : 78,
       pose: hasPose ? structuredClone(sourcePose) : null,
       poseSourceUpdateAgeMs: hasPose
-        ? freshSource ? 0 : Math.max(0, Math.round(performance.now() - lastSourceUpdateAt))
+        ? state.mode === 'mapping'
+          ? Math.max(0, Math.round(performance.now() - lastSourceUpdateAt))
+          : freshSource ? 0 : Math.max(0, Math.round(performance.now() - lastSourceUpdateAt))
         : null,
     };
   }
 
   function emit() {
     if (disposed || scenario === 'stale') return;
-    if (['online', 'unknown-battery'].includes(scenario)) lastSourceUpdateAt = performance.now();
+    if (!sharedRobotState.getSnapshot().activeMappingSessionId &&
+        ['online', 'unknown-battery'].includes(scenario)) {
+      lastSourceUpdateAt = performance.now();
+    }
     sharedRobotState.update({ ...derive(), receivedAt: new Date().toISOString() });
   }
 
@@ -115,12 +137,16 @@ export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
       emit();
     },
     setPositionX(x) { this.setPose({ ...sourcePose, x }); },
-    beginMappingSession() {
+    beginMappingSession(mappingSessionId) {
       assertActive();
+      if (!mappingSource || !motionSource) {
+        throw navigationError('MAPPING_SOURCE_REQUIRED', 'Thiếu nguồn mapping mô phỏng.');
+      }
+      mappingSource.start(mappingSessionId, motionSource.cursor());
       sourcePose = { frameId: 'map', x: 2, y: 2, yaw: 0 };
       sourceContext = contextKey(sharedRobotState.getSnapshot());
-      lastSourceUpdateAt = performance.now();
-      // Không emit trước khi mapping service xác nhận mode='mapping'.
+      // Chưa có observation thì derive không được tự nhận nguồn mới.
+      lastSourceUpdateAt = -Infinity;
     },
     reset() {
       if (disposed) return;
@@ -132,6 +158,10 @@ export function createMockTelemetry({ sharedRobotState, motionSource = null }) {
       sourceContext = JSON.stringify(['saved', 'map-demo', 'rev-1']);
       lastSourceUpdateAt = performance.now();
     },
-    dispose() { this.reset(); disposed = true; },
+    dispose() {
+      this.reset();
+      unsubscribeMotion?.();
+      disposed = true;
+    },
   };
 }

@@ -21,9 +21,8 @@ import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
 
 const navItems = [
   ['/status', 'Trạng thái'],
-  ['/mapping', 'Xây dựng bản đồ'],
+  ['/mapping', 'Tạo bản đồ & điều khiển'],
   ['/navigation', 'Đi đến đích'],
-  ['/teleop', 'Camera & điều khiển'],
 ];
 
 export default function AppShell() {

@@ -14,6 +14,7 @@
     "./mission": "./src/mission.js",
     "./control": "./src/control.js",
     "./mapGrid": "./src/mapGrid.js",
+    "./normalizeOccupancyGrid": "./src/normalizeOccupancyGrid.js",
     "./apiManifest": "./src/apiManifest.js",
     "./transport": "./src/transport.js"
   },

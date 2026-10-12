@@ -33,8 +33,11 @@ import {
   GetActiveMissionResponseSchema, CancelMissionResponseSchema, MissionEventEnvelopeSchema,
   NavigationPathEnvelopeSchema, NavigationPathQuerySchema, preflightNavigationPath
 } from '../schemas/mission.js';
+import { ConnectionStatusSchema } from '@robot-hmi/contracts/transport';
 import { navigationError } from '../utils/navigationPolicy.js';
 import { createMotionAdmissionGate } from '../utils/motionAdmissionGate.js';
+import { createMappingDriveGate } from '@robot-hmi/control-domain/mappingDriveGate';
+import { createMockMappingSource } from '@robot-hmi/control-domain/mockMappingSource';
 import { createMockCameraService } from './mockCamera.js';
 import { createMockControlService } from './mockControl.js';
 
@@ -73,14 +76,28 @@ export function createMockRobotClient() {
   let loginSequence = 0;
   let controlSessionId = null; // Session nội bộ của client hiện tại
   const subscriptions = new Set();
+  const connectionListeners = new Set();
   const sharedRobotState = createSharedRobotState(initialState());
   const idempotency = createIdempotencyRegistry();
   const jobService = createMockJobService();
   const mapRepository = createMockMapRepository();
-  const mapGridService = createMockMapGrid({ mapRepository });
 
-  // 1. Motion Gate dùng CHUNG cho toàn bộ hệ thống
+  function notifyConnectionStatus() {
+    const payload = ConnectionStatusSchema.parse({
+      status: user && !disposed ? 'connected' : 'disconnected',
+      connectionEpoch: lifecycleEpoch,
+      controlProfile: 'mock',
+    });
+    for (const listener of connectionListeners) {
+      try { listener(payload); } catch { /* ignore */ }
+    }
+  }
+
+  // 1. Motion Gate và Mapping Drive Gate dùng CHUNG cho toàn bộ hệ thống
   const motionGate = createMotionAdmissionGate();
+  const mappingDriveGate = createMappingDriveGate();
+  const mappingSource = createMockMappingSource();
+  const mapGridService = createMockMapGrid({ mapRepository, mappingSource });
 
   // 2. Motion Source mô phỏng cảm biến vận tốc độc lập
   let telemetryInstance = null;
@@ -92,15 +109,20 @@ export function createMockRobotClient() {
     },
   });
 
-  // 3. Telemetry nhận motionSource
-  const telemetry = createMockTelemetry({ sharedRobotState, motionSource });
+  // 3. Telemetry nhận motionSource và mappingSource
+  const telemetry = createMockTelemetry({ sharedRobotState, motionSource, mappingSource });
   telemetryInstance = telemetry;
   motionSource.sample();
+
+  let controlService = null;
 
   // 4. Các dịch vụ bản đồ, định vị và nhiệm vụ nhận motionGate
   const mappingService = createMockMappingService({
     sharedRobotState, mapGridService, mapRepository,
-    onMappingStarted: () => telemetry.beginMappingSession(),
+    onMappingStarted: ({ mappingSessionId }) => telemetry.beginMappingSession(mappingSessionId),
+    mappingDriveGate,
+    assertMappingFinishSafe: id => controlService.assertMappingFinishSafe(id),
+    motionGate,
   });
   const mapActivationService = createMockMapActivationService({
     sharedRobotState, telemetry, jobService, mapRepository, idempotency, motionGate,
@@ -112,9 +134,10 @@ export function createMockRobotClient() {
 
   const cameraService = createMockCameraService();
 
-  // 5. Control Service nhận cả motionGate và motionSource
-  const controlService = createMockControlService({
+  // 5. Control Service nhận cả motionGate, motionSource và mappingDriveGate
+  controlService = createMockControlService({
     sharedRobotState, telemetry, missionService, mapActivationService, motionGate, motionSource,
+    mappingDriveGate,
   });
 
   // 6. Cấp session cho user đã lưu sẵn (nếu có) sau khi controlService đã tồn tại
@@ -186,6 +209,7 @@ export function createMockRobotClient() {
     jobService.clear();
     telemetry.reset();
     sharedRobotState.reset(initialState());
+    notifyConnectionStatus();
   }
 
   return {
@@ -206,6 +230,7 @@ export function createMockRobotClient() {
       if (!controlSessionId) {
         controlSessionId = controlService.createSession();
       }
+      notifyConnectionStatus();
       return { user: { ...user } };
     },
     async getSession() { requireUsable(); return { user: user ? { ...user } : null }; },
@@ -282,11 +307,27 @@ export function createMockRobotClient() {
         listener(NavigationPathEnvelopeSchema.parse(raw));
       }));
     },
+    subscribeConnectionStatus(listener) {
+      requireUsable();
+      connectionListeners.add(listener);
+      try {
+        listener(ConnectionStatusSchema.parse({
+          status: user && !disposed ? 'connected' : 'disconnected',
+          connectionEpoch: lifecycleEpoch,
+          controlProfile: 'mock',
+        }));
+      } catch { /* ignore */ }
+      return () => {
+        connectionListeners.delete(listener);
+      };
+    },
     dispose() {
       if (disposed) return;
       loginSequence += 1;
       lifecycleEpoch += 1;
       disposed = true;
+      notifyConnectionStatus();
+      connectionListeners.clear();
       closeAllSubscriptions();
       if (controlSessionId) {
         controlService.revokeSession(controlSessionId);
@@ -297,6 +338,7 @@ export function createMockRobotClient() {
       routeService.dispose();
       mappingService.dispose();
       mapGridService.dispose();
+      mappingSource.dispose();
       jobService.dispose();
       controlService.dispose();
       motionSource.dispose();
@@ -331,7 +373,6 @@ export function createMockRobotClient() {
     sendVelocity(raw) {
       const sid = requireControlSession();
       controlService.sendVelocity(TeleopVelocityMessageSchema.parse(raw), sid);
-      // Synchronous void return - Không async / không return Promise
     },
     subscribeControl(listener) {
       const sid = requireControlSession();
@@ -350,6 +391,7 @@ export function createMockRobotClient() {
     _mapRepository: mapRepository, _sharedRobotState: sharedRobotState, _jobService: jobService,
     _missionService: missionService, _routeService: routeService, _mapActivationService: mapActivationService,
     _motionSource: motionSource, _controlService: controlService, _motionGate: motionGate,
+    _mappingSource: mappingSource, _mappingDriveGate: mappingDriveGate,
     _subscriptions: subscriptions,
   };
 }

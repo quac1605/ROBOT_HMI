@@ -45,11 +45,17 @@ test('pose heartbeat cập nhật receipt nhưng không làm mới tuổi nguồ
   telemetry.dispose();
 });
 
+import { createMockMappingSource } from '../../../packages/control-domain/src/mockMappingSource.js';
+import { createMockMotionSource } from '../../../packages/control-domain/src/mockMotionSource.js';
+
 test('beginMappingSession đặt lại pose source thay vì dùng tọa độ saved-map cũ', () => {
   const shared = createSharedRobotState(initialState());
   shared.update({ mode: 'mapping', activeMap: null, activeMappingSessionId: 'sess-new' });
-  const telemetry = createMockTelemetry({ sharedRobotState: shared });
-  telemetry.beginMappingSession();
+  const motionSource = createMockMotionSource({ sourceHealthy: () => true });
+  const mappingSource = createMockMappingSource();
+  const telemetry = createMockTelemetry({ sharedRobotState: shared, motionSource, mappingSource });
+  telemetry.beginMappingSession('sess-new');
+  motionSource.sample();
   telemetry.setScenario('online');
 
   assert.deepEqual(shared.getSnapshot().pose, {
@@ -59,4 +65,6 @@ test('beginMappingSession đặt lại pose source thay vì dùng tọa độ sa
     yaw: 0,
   });
   telemetry.dispose();
+  motionSource.dispose();
+  mappingSource.dispose();
 });

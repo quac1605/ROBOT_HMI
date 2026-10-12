@@ -21,21 +21,22 @@ test('F8-A01: docs MP4 bytes, ranges and existing public assets are served corre
   expect(favicon.headers()['content-type']).toContain('image/svg+xml');
 });
 
-async function teleop(page) {
+async function mapping(page) {
   await page.goto('/login');
   await page.locator('#login-username').fill('admin');
   await page.locator('#login-password').fill('demo-only');
   await page.locator('#login-submit-btn').click();
   await page.waitForURL('**/status');
-  await page.goto('/teleop');
+  await page.goto('/mapping');
 }
 
-test('F8-A02: TeleopPage decodes front/rear at 640x360 and video loops', async ({ page }) => {
+test('F8-A02: MappingPage decodes front/rear at 640x360 and video loops', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  await teleop(page);
-  const dpad = await page.getByTestId('dpad-forward').elementHandle();
+  await mapping(page);
+  const joystick = await page.getByTestId('mapping-joystick').elementHandle();
+  await expect(page.getByTestId('mapping-joystick')).toHaveAttribute('aria-disabled', 'true');
   for (const id of ['front', 'rear']) {
     await page.getByTestId(`camera-select-${id}`).click();
     const video = page.getByTestId(`camera-video-${id}`);
@@ -55,7 +56,7 @@ test('F8-A02: TeleopPage decodes front/rear at 640x360 and video loops', async (
     await video.evaluate(element => { element.currentTime = 11.7; });
     await expect.poll(() => video.evaluate(element => element.currentTime)).toBeLessThan(2);
   }
-  expect(await dpad.evaluate(element => element.isConnected)).toBe(true);
+  expect(await joystick.evaluate(element => element.isConnected)).toBe(true);
   expect(errors).toEqual([]);
 });
 

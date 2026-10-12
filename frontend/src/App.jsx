@@ -7,7 +7,6 @@ import LoginPage from './pages/LoginPage.jsx';
 import StatusPage from './pages/StatusPage.jsx';
 import MappingPage from './pages/MappingPage.jsx';
 import NavigationPage from './pages/NavigationPage.jsx';
-import TeleopPage from './pages/TeleopPage.jsx';
 
 export default function App() {
   return (
@@ -30,7 +29,7 @@ export default function App() {
           <Route path="/status" element={<StatusPage />} />
           <Route path="/mapping" element={<MappingPage />} />
           <Route path="/navigation" element={<NavigationPage />} />
-          <Route path="/teleop" element={<TeleopPage />} />
+          <Route path="/teleop" element={<Navigate to="/mapping" replace />} />
         </Route>
       </Route>
 

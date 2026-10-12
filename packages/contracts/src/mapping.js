@@ -21,7 +21,7 @@ export const FinishMappingRequestSchema = z
 export const MapAssetSchema = z
   .object({
     type: z.enum(['grid_json', 'yaml_meta', 'preview_png']),
-    source: z.literal('mock'),
+    source: z.enum(['mock', 'ros']),
     storage: z.enum(['memory', 'filesystem']),
     status: z.enum(['pending', 'ready']),
   })

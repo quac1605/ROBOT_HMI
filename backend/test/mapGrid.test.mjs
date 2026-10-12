@@ -215,6 +215,13 @@ test('M8 Slice 2: Map Management & Grid Streaming (HTTP /api/maps, /api/map-grid
         assert.equal(missingSource.status, 503);
         assert.equal((await missingSource.json()).error.code, 'MAPPING_GRID_UNAVAILABLE');
         started.robotRuntime.adapter.startMapping(live.id);
+        // Start chỉ tạo context; nguồn mock chưa healthy nên chưa có observation.
+        const beforeSample = await fetch(liveUrl, {
+            headers: { Cookie: authCookie, Origin: origin },
+        });
+        assert.equal(beforeSample.status, 503);
+        started.robotRuntime.sharedRobotState.update({ rosConnected: true });
+        started.robotRuntime.adapter.sample(); // Mẫu cảm biến zero thật của mock.
         const liveGridResponse = await fetch(liveUrl, {
             headers: { Cookie: authCookie, Origin: origin },
         });

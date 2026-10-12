@@ -1,6 +1,6 @@
 // utils/controlLeaseCore.js
-import { TeleopVelocityMessageSchema, ControlLimitsSchema } from '@robot-hmi/contracts/control';
-import { CONTROL_POLICY, ZERO } from './controlPolicy.js';
+import { TeleopVelocityMessageSchema, ControlLimitsSchema, ControlContextSchema } from '@robot-hmi/contracts/control';
+import { CONTROL_POLICY, ZERO, MANUAL_MAPPING_LIMITS, isFixedMappingVelocity } from './controlPolicy.js';
 
 export function createControlLeaseCore({
     now = () => performance.now(),    // Monotonic clock (performance.now)
@@ -9,11 +9,11 @@ export function createControlLeaseCore({
     policy = CONTROL_POLICY,
     limits = { maxLinearX: 0.2, maxAngularZ: 0.5 },
     // Callbacks (trusted internal, không phải plugin tùy ý):
-    checkAcquire,   // () => null | string — null = OK, string = error code
-    checkDrive,     // () => null | string — gọi mỗi tick và mỗi send
+    checkAcquire,   // (context) => null | string — null = OK, string = error code
+    checkDrive,     // (context) => null | string — gọi mỗi tick và mỗi send
     setVelocity,    // ({ linearX, angularZ }) => void — ghi vào sharedRobotState
-    claimMode,      // (leaseId) => void — đặt mode='teleop'
-    releaseMode,    // (leaseId) => void — trả mode='idle' nếu còn teleop
+    claimMode,      // (leaseId, context) => void — đặt mode='teleop' (hoặc giữ mode nếu mapping)
+    releaseMode,    // (leaseId, context) => void — trả mode='idle' nếu còn teleop
 }) {
     // Validate limits ngay khi tạo
     limits = ControlLimitsSchema.parse(limits);
@@ -34,7 +34,8 @@ export function createControlLeaseCore({
         leaseId: record.leaseId,
         controlGeneration: record.generation,
         expiresAt: record.expiresAt,
-        limits: structuredClone(limits),
+        limits: structuredClone(record.limits),
+        context: structuredClone(record.context),
     });
 
     // revoke: hủy owner, zero velocity, tăng generation
@@ -46,7 +47,7 @@ export function createControlLeaseCore({
         blocked = true;
         try {
             setVelocity(ZERO);
-            if (previous) releaseMode(previous.leaseId);
+            if (previous) releaseMode(previous.leaseId, structuredClone(previous.context));
         } finally { blocked = false; }
         if (previous) {
             revoked.push({
@@ -59,27 +60,44 @@ export function createControlLeaseCore({
         return generation;
     }
 
+    // Guard là callback đồng bộ nhưng có thể ném lỗi hoặc thu hồi lease qua
+    // một callback lồng nhau. Chỉ record đang thực sự sở hữu robot mới được
+    // phép đi tiếp; mọi lỗi guard phải chốt zero trước khi trả quyền điều khiển.
+    function checkRuntimeDrive(record) {
+        let reason;
+        try {
+            reason = checkDrive(structuredClone(record.context));
+        } catch {
+            reason = 'DRIVE_GUARD_ERROR';
+        }
+        if (owner !== record || generation !== record.generation) {
+            return 'LEASE_NOT_OWNED';
+        }
+        if (reason) revoke(reason);
+        return reason || null;
+    }
+
     // tick: được adapter gọi mỗi 25ms qua setInterval
     // Kiểm tra lease TTL và watchdog timeout
     function tick() {
         usable();
         if (!owner) return;
+        const record = owner;
         const time = now();
         // Lease hết hạn
-        if (time >= owner.deadline) {
+        if (time >= record.deadline) {
             revoke('LEASE_EXPIRED');
             return;
         }
         // Watchdog: chỉ arm SAU command hợp lệ đầu tiên (lastCommandAt !== null)
         // null = chưa có command nào → watchdog chưa chạy (lease vẫn valid)
-        if (owner.lastCommandAt !== null &&
-            time - owner.lastCommandAt >= policy.commandTimeoutMs) {
+        if (record.lastCommandAt !== null &&
+            time - record.lastCommandAt >= policy.commandTimeoutMs) {
             revoke('WATCHDOG_TIMEOUT');
             return;
         }
         // Kiểm tra điều kiện drive runtime
-        const reason = checkDrive();
-        if (reason) revoke(reason);
+        checkRuntimeDrive(record);
     }
 
     // assertOwner: dùng trong send/release để xác nhận người gọi là owner
@@ -98,17 +116,21 @@ export function createControlLeaseCore({
 
     return {
         // Xin quyền lái
-        acquire(sessionId) {
+        acquire(sessionId, rawContext = { kind: 'manual' }) {
             usable();
             sessionRequired(sessionId);
             tick();
             if (blocked) fail('CONTROL_MUTATION_IN_PROGRESS');
             if (owner) fail('CONTROL_BUSY');
-            const reason = checkAcquire();
+            const context = ControlContextSchema.parse(rawContext);
+            const reason = checkAcquire(structuredClone(context));
             if (reason) fail(reason);
 
             const record = {
                 sessionId,
+                context: structuredClone(context),
+                limits: ControlLimitsSchema.parse(context.kind === 'mapping'
+                    ? MANUAL_MAPPING_LIMITS : limits),
                 leaseId: uuid(),
                 generation: ++generation,
                 deadline: now() + policy.leaseTtlMs,           // Monotonic deadline
@@ -120,7 +142,7 @@ export function createControlLeaseCore({
 
             owner = record; // Claim TRƯỚC khi notify
             blocked = true;
-            try { claimMode(record.leaseId); }
+            try { claimMode(record.leaseId, structuredClone(record.context)); }
             catch (error) { blocked = false; revoke('CLAIM_FAILED'); throw error; }
             finally { blocked = false; }
 
@@ -180,14 +202,18 @@ export function createControlLeaseCore({
             if (message.sequence <= record.lastSequence) fail('SEQUENCE_REPLAY');
 
             // Kiểm tra giới hạn vận tốc
-            if (Math.abs(message.linearX) > limits.maxLinearX ||
-                Math.abs(message.angularZ) > limits.maxAngularZ) {
+            if (Math.abs(message.linearX) > record.limits.maxLinearX ||
+                Math.abs(message.angularZ) > record.limits.maxAngularZ) {
                 fail('VELOCITY_OUT_OF_BOUNDS');
             }
 
+            if (record.context.kind === 'mapping' && !isFixedMappingVelocity(message)) {
+                fail('VELOCITY_NOT_FIXED');
+            }
+
             // Kiểm tra điều kiện drive một lần nữa (runtime)
-            const reason = checkDrive();
-            if (reason) { revoke(reason); fail(reason); }
+            const reason = checkRuntimeDrive(record);
+            if (reason) fail(reason);
 
             // Cập nhật state — CHỈ SAU KHI tất cả checks pass
             record.lastSequence = message.sequence;

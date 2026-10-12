@@ -16,6 +16,20 @@ export const CONTROL_POLICY = Object.freeze({
     zeroTolerance: 1e-6,
 });
 
+export const MANUAL_DRIVE_SPEED = Object.freeze({ linearX: 0.3, angularZ: 0.3 });
+export const MANUAL_MAPPING_LIMITS = Object.freeze({
+    maxLinearX: MANUAL_DRIVE_SPEED.linearX,
+    maxAngularZ: MANUAL_DRIVE_SPEED.angularZ,
+});
+export function isFixedMappingVelocity(velocity) {
+    if (!velocity) return false;
+    const { linearX: v, angularZ: w } = velocity;
+    // Zero vẫn hợp lệ. Không dùng epsilon để nhận một tốc độ ngoài profile.
+    return (v === 0 && (w === 0 || Math.abs(w) === MANUAL_DRIVE_SPEED.angularZ)) ||
+        (w === 0 && Math.abs(v) === MANUAL_DRIVE_SPEED.linearX);
+}
+
+
 // ZERO velocity dùng làm sentinel
 export const ZERO = Object.freeze({ linearX: 0, angularZ: 0 });
 
@@ -36,25 +50,37 @@ export function isZero(velocity, epsilon = CONTROL_POLICY.zeroTolerance) {
 //
 // NGUYÊN TẮC FAIL-CLOSED: chỉ cho qua khi TƯỜNG MINH là OK.
 // null/undefined → chặn, không bỏ qua.
-export function controlRobotReasons(snapshot, transportStale, phase = 'acquire') {
+export function controlRobotReasons(snapshot, transportStale, phase = 'acquire', context = { kind: 'manual' }) {
     const reasons = [];
     if (!snapshot) return ['ROBOT_UNKNOWN'];
     if (transportStale !== false) reasons.push('TRANSPORT_UNHEALTHY');
     if (snapshot.rosConnected !== true) reasons.push('ROS_UNAVAILABLE');
-    // Chỉ cho qua khi rõ ràng là false — null nghĩa là chưa biết → chặn
     if (snapshot.physicalEstopActive !== false) reasons.push('ESTOP_ACTIVE_OR_UNKNOWN');
     if (snapshot.motionInhibited !== false) reasons.push('MOTION_INHIBITED_OR_UNKNOWN');
     if (snapshot.activeMissionId !== null) reasons.push('MISSION_ACTIVE_OR_UNKNOWN');
-    if (snapshot.activeMappingSessionId !== null) reasons.push('MAPPING_ACTIVE_OR_UNKNOWN');
-    if (snapshot.mode !== (phase === 'acquire' ? 'idle' : 'teleop')) reasons.push('MODE_NOT_ALLOWED');
+
+    if (context?.kind === 'mapping') {
+        if (typeof context.mappingSessionId !== 'string' || !context.mappingSessionId ||
+            snapshot.activeMappingSessionId !== context.mappingSessionId) {
+            reasons.push('MAPPING_CONTEXT_MISMATCH');
+        }
+        if (snapshot.mode !== 'mapping') reasons.push('MODE_NOT_ALLOWED');
+    } else if (context?.kind === 'manual') {
+        if (snapshot.activeMappingSessionId !== null) reasons.push('MAPPING_ACTIVE_OR_UNKNOWN');
+        if (snapshot.mode !== (phase === 'acquire' ? 'idle' : 'teleop')) reasons.push('MODE_NOT_ALLOWED');
+    } else {
+        reasons.push('CONTROL_CONTEXT_UNKNOWN');
+    }
+
     if (phase === 'acquire' && !isZero(snapshot.velocity)) reasons.push('ROBOT_NOT_STATIONARY');
     return reasons;
 }
 
+
 // Selector tổng hợp "có được lái không" — GỌI VỚI performance.now() MỖI LẦN SEND.
 // KHÔNG cache `now` từ lần render trước.
 // Trả { allowed: boolean, reasons: string[] }
-export function selectCanDrive({ authenticated, control, robot, camera, now }) {
+export function selectCanDrive({ authenticated, control, robot, camera, now, context = { kind: 'manual' } }) {
     const reasons = [];
     // fresh(at, ttl): at là timestamp monotonic khi nhận, ttl là ngưỡng ms
     const fresh = (at, ttl) =>
@@ -83,16 +109,31 @@ export function selectCanDrive({ authenticated, control, robot, camera, now }) {
         !(Number.isFinite(control.tokenDeadline) && now < control.tokenDeadline)) {
         reasons.push('TOKEN_EXPIRED');
     }
+
+    const leaseContext = control.lease?.context ?? { kind: 'manual' };
+    if (!context || leaseContext.kind !== context.kind ||
+        (context.kind === 'mapping' &&
+            leaseContext.mappingSessionId !== context.mappingSessionId)) {
+        reasons.push('MAPPING_CONTEXT_MISMATCH');
+    }
+
     // Guard robot state
     const robotFresh = !robot.error && fresh(robot.lastReceivedAt, CONTROL_POLICY.robotStaleMs);
     reasons.push(...controlRobotReasons(
         robot.snapshot,
         robotFresh ? false : true,
         'drive',
+        context,
     ));
+
     // Guard camera
     if (CONTROL_POLICY.cameraRequiredForTeleop) {
-        const cameraOk = !camera.error &&
+        // Một frame mới với hai ID cùng thiếu hoặc cùng sai không xác nhận
+        // người vận hành đang xem đúng một camera được ứng dụng hỗ trợ.
+        const cameraOk = ['front', 'rear'].includes(camera.selectedCameraId) &&
+            Number.isSafeInteger(camera.selectedGeneration) && camera.selectedGeneration >= 0 &&
+            Number.isSafeInteger(camera.generation) && camera.generation >= 0 &&
+            !camera.error &&
             camera.cameraId === camera.selectedCameraId &&
             camera.generation === camera.selectedGeneration &&
             fresh(camera.lastFrameAt, CONTROL_POLICY.cameraStaleMs);

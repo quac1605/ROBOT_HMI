@@ -267,7 +267,7 @@ export const RosOccupancyGridSchema = z
 
 export const MapGridSnapshotSchema = z
   .object({
-    source: z.literal('mock'),
+    source: z.enum(['mock', 'ros']),
     mode: z.literal('snapshot'),
     encoding: z.literal('occupancy-0-100-v1'),
     context: MapContextSchema,

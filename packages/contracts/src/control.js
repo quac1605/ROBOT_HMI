@@ -22,10 +22,18 @@ export const ControlLimitsSchema = z.object({
     maxAngularZ: z.number().finite().positive(),
 }).strict();
 
+
+// Context là ý định xin quyền; backend kiểm session thật trước khi cấp lease.
+export const ControlContextSchema = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('manual') }).strict(),
+    z.object({ kind: z.literal('mapping'), mappingSessionId: Id }).strict(),
+]);
+
 // --- Acquire (nhận quyền lái) ---
-// Browser gửi lên: chỉ requestId
+// Default chỉ để giữ client/fixture cũ. Mapping phải nêu đúng sessionId.
 export const AcquireControlRequestSchema = z.object({
     requestId: Id,
+    context: ControlContextSchema.default({ kind: 'manual' }),
 }).strict();
 
 // Server trả về: lease đầy đủ
@@ -33,8 +41,10 @@ export const AcquireControlResponseSchema = z.object({
     leaseId: Id,
     expiresAt: Iso,
     limits: ControlLimitsSchema,
+    context: ControlContextSchema.default({ kind: 'manual' }),
     controlGeneration: PositiveCounter,
 }).strict();
+
 
 // --- Release (trả quyền lái) ---
 export const ReleaseControlRequestSchema = z.object({

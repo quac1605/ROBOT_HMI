@@ -16,7 +16,13 @@ export function createMockMappingService({
   mapGridService,
   mapRepository,
   onMappingStarted = null,
+  mappingDriveGate,
+  assertMappingFinishSafe,
+  motionGate,
 }) {
+  if (!mappingDriveGate || typeof assertMappingFinishSafe !== 'function' || !motionGate) {
+    throw appError('MAPPING_DRIVE_DEPENDENCIES_REQUIRED', 'Thiếu dependencies điều khiển mapping.');
+  }
   let activeSession = null;
   const jobs = new Map();
   const jobListeners = new Set();
@@ -58,6 +64,7 @@ export function createMockMappingService({
     if (disposed) return;
     cancelTimers();
     if (activeSession) {
+      mappingDriveGate.clearSession(activeSession.mappingSessionId);
       mapGridService.removeLiveSession(activeSession.mappingSessionId);
     }
     activeSession = null;
@@ -189,8 +196,16 @@ export function createMockMappingService({
         );
       }
 
+      if (robotState.activeMissionId !== null || robotState.activeMappingSessionId !== null ||
+          robotState.motionInhibited !== false || robotState.physicalEstopActive !== false ||
+          robotState.rosConnected !== true) {
+        throw appError('MAPPING_START_BLOCKED', 'Robot chưa đủ điều kiện bắt đầu mapping.');
+      }
+      const startTicket = motionGate.enter();
+
       // 4. Staging memory creation
       const mappingSessionId = `sess-${Math.random().toString(36).substring(2, 9)}`;
+      mappingDriveGate.beginSession(mappingSessionId);
       const job = createJobRecord('start_mapping');
       const resp = { mappingSessionId, jobId: job.jobId, status: 'accepted' };
 
@@ -224,6 +239,13 @@ export function createMockMappingService({
         async (capturedEpoch) => {
           if (disposed || capturedEpoch !== operationEpoch) return;
           if (activeSession && activeSession.mappingSessionId === mappingSessionId) {
+            motionGate.assert(startTicket);
+            const beforeStart = sharedRobotState.getSnapshot();
+            if (beforeStart.mode !== 'idle' || beforeStart.activeMappingSessionId !== mappingSessionId ||
+                beforeStart.activeMissionId !== null || beforeStart.motionInhibited !== false ||
+                beforeStart.rosConnected !== true || beforeStart.physicalEstopActive !== false) {
+              throw appError('MAPPING_START_SUPERSEDED', 'Trạng thái robot đã đổi trong lúc khởi động.');
+            }
             activeSession.status = 'mapping';
             // Reset the mock pose source before opening the mapping context.  A
             // telemetry tick after this commit is the first source-confirmed
@@ -236,6 +258,7 @@ export function createMockMappingService({
               pose: null,
               poseSourceUpdateAgeMs: null,
             });
+            mappingDriveGate.activateSession(mappingSessionId);
             job.status = 'completed';
             job.result = { mappingSessionId };
             emitJob(job);
@@ -244,10 +267,12 @@ export function createMockMappingService({
         (cause, capturedEpoch) => {
           if (disposed || capturedEpoch !== operationEpoch) return;
           if (activeSession && activeSession.mappingSessionId === mappingSessionId) {
+            mappingDriveGate.clearSession(mappingSessionId);
             mapGridService.removeLiveSession(mappingSessionId);
             activeSession = null;
             sharedRobotState.update({
-              mode: 'idle',
+              mode: sharedRobotState.getSnapshot().mode === 'mapping'
+                ? 'idle' : sharedRobotState.getSnapshot().mode,
               activeMappingSessionId: null,
               activeMap: null,
               pose: null,
@@ -301,6 +326,10 @@ export function createMockMappingService({
         throw appError('ROBOT_MODE_MISMATCH', 'Robot không ở chế độ mapping');
       }
 
+      // lookupReplay ở đầu hàm đã xử lý replay trước mọi thay đổi gate.
+      const finishTicket = assertMappingFinishSafe(mappingSessionId);
+      mappingDriveGate.beginFinish(mappingSessionId);
+
       // 4. Staging memory creation
       const job = createJobRecord('finish_mapping');
       const resp = { jobId: job.jobId, status: 'accepted' };
@@ -330,6 +359,7 @@ export function createMockMappingService({
 
           // Lấy live grid
           const liveSnapshot = await mapGridService.getMapGrid({ kind: 'mapping', mappingSessionId });
+          motionGate.assert(finishTicket);
           if (disposed || capturedEpoch !== operationEpoch) return;
           if (!activeSession || activeSession.mappingSessionId !== mappingSessionId) return;
 
@@ -383,8 +413,10 @@ export function createMockMappingService({
           });
 
           // Visibility boundary: Commit đồng bộ duy nhất
+          motionGate.assert(finishTicket);
           mapRepository.commitPrepared(preparedRecord);
           mapGridService.removeLiveSession(mappingSessionId);
+          mappingDriveGate.finishSucceeded(mappingSessionId);
           activeSession = null;
           sharedRobotState.update({
             mode: 'idle',
@@ -403,6 +435,7 @@ export function createMockMappingService({
           if (disposed || capturedEpoch !== operationEpoch) return;
           if (activeSession && activeSession.mappingSessionId === mappingSessionId) {
             activeSession.status = 'save_failed';
+            mappingDriveGate.finishFailed(mappingSessionId);
           }
           job.status = 'failed';
           job.error = {

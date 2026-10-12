@@ -1,6 +1,7 @@
 // hooks/useTeleopHold.js
 import { useEffect, useRef, useCallback } from 'react';
 import { createTeleopHoldController } from '../utils/teleopHoldController.js';
+import { useControlStore } from '../state/controlStore.js';
 
 // getLatest, sendVelocity, requestStop, onError phải là STABLE references.
 // Dùng module-level functions hoặc useCallback với deps ổn định.
@@ -13,6 +14,11 @@ export function useTeleopHold({ getLatest, sendVelocity, requestStop, onError })
             getLatest, sendVelocity, requestStop, onError,
         });
         controllerRef.current = hold;
+        // Stop action đánh dấu stopUnconfirmed đồng bộ. Fence publisher ngay
+        // trong notification đó, kể cả React chưa render disabled trên joystick.
+        const unsubscribeControl = useControlStore.subscribe(() => {
+            if (hold.isActive() && !getLatest().allowed) hold.stop('CONTROL_GUARD_CHANGED');
+        });
 
         // Dừng khi window mất focus
         const onBlur = () => hold.stop('BLUR');
@@ -25,6 +31,7 @@ export function useTeleopHold({ getLatest, sendVelocity, requestStop, onError })
         return () => {
             window.removeEventListener('blur', onBlur);
             document.removeEventListener('visibilitychange', onVisibility);
+            unsubscribeControl();
             hold.dispose(); // Gọi stop('UNMOUNT') bên trong
             if (controllerRef.current === hold) controllerRef.current = null;
         };
@@ -34,10 +41,14 @@ export function useTeleopHold({ getLatest, sendVelocity, requestStop, onError })
         (owner, vector) => controllerRef.current?.start(owner, vector) ?? false,
         [],
     );
+    const update = useCallback(
+        (owner, vector) => controllerRef.current?.update(owner, vector) ?? false,
+        [],
+    );
     const stop = useCallback(
         (reason, owner) => controllerRef.current?.stop(reason, owner) ?? false,
         [],
     );
 
-    return { start, stop };
+    return { start, update, stop };
 }

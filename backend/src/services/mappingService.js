@@ -18,10 +18,15 @@ export function createMappingService({
     mapPersistence,
     adapter,
     motionGate,
+    mappingDriveGate,
+    assertMappingFinishSafe,
     sharedRobotState,
     jobService,
     lifecycle,
 }) {
+    if (!mappingDriveGate || typeof assertMappingFinishSafe !== 'function') {
+        throw new Error('MAPPING_DRIVE_DEPENDENCIES_REQUIRED');
+    }
     async function getActiveMappingSession() {
         const res = await pool.query(
             "SELECT id, name, status, started_at FROM mapping_sessions WHERE robot_id = 'robot-01' AND active = true"
@@ -42,115 +47,170 @@ export function createMappingService({
     async function startMapping(dto, principal, assertCurrent) {
         assertCurrent?.();
         let ticket;
-        const accepted = await reserveBusinessOperation({
-            pool,
-            principalScope: principal,
-            requestId: dto.requestId,
-            operation: 'start_mapping',
-            payload: { name: dto.name },
-            create: async client => {
-                // Admission applies only to a new operation. A replay must return
-                // the original job even while its mapping session is active.
-                assertCurrent?.();
-                const state = sharedRobotState.getSnapshot();
-                if (state.mode === 'mapping' || state.activeMappingSessionId) {
-                    throw Object.assign(new Error('MAPPING_ACTIVE_OR_UNKNOWN'), {
-                        code: 'MAPPING_ACTIVE_OR_UNKNOWN', status: 409 });
-                }
-                if (state.mode === 'navigating' || state.activeMissionId) {
-                    throw Object.assign(new Error('MISSION_ACTIVE_OR_UNKNOWN'), {
-                        code: 'MISSION_ACTIVE_OR_UNKNOWN', status: 409 });
-                }
-                if (state.motionInhibited !== false) {
-                    throw Object.assign(new Error('MOTION_INHIBITED_OR_UNKNOWN'), {
-                        code: 'MOTION_INHIBITED_OR_UNKNOWN', status: 409 });
-                }
-                ticket = motionGate.enter();
-                const activeCheck = await client.query(
-                    "SELECT id FROM mapping_sessions WHERE robot_id = 'robot-01' AND active = true FOR UPDATE"
-                );
-                if (activeCheck.rowCount) {
-                    throw Object.assign(new Error('MAPPING_ACTIVE_OR_UNKNOWN'), {
-                        code: 'MAPPING_ACTIVE_OR_UNKNOWN',
-                        status: 409,
-                    });
-                }
-                const mappingSessionId = randomUUID();
-                const jobId = randomUUID();
-                await client.query(
-                    "INSERT INTO mapping_sessions(id, robot_id, name, status, active) VALUES($1, 'robot-01', $2, 'mapping', true)",
-                    [mappingSessionId, dto.name]
-                );
-                await client.query(
-                    "INSERT INTO jobs(id, kind, status, result, error, principal, dispatch_state) VALUES($1, 'start_mapping', 'accepted', NULL, NULL, $2, 'pending')",
-                    [jobId, principal]
-                );
-                return {
-                    status: 200,
-                    body: { mappingSessionId, jobId, status: 'accepted' },
-                    resourceRef: { mappingSessionId, jobId },
-                };
-            },
-        });
+        let reservedId = null;
+        let accepted = null;
+        let adapterAttempted = false;
+        const conflict = code => Object.assign(new Error(code), { code, status: 409 });
 
-        if (accepted.replayed) {
+        function assertReserved() {
             assertCurrent?.();
-            return StartMappingResponseSchema.parse(accepted.body);
+            motionGate.assert(ticket);
+            const state = sharedRobotState.getSnapshot();
+            const gate = mappingDriveGate.getState();
+            if (gate?.mappingSessionId !== reservedId || gate.phase !== 'starting' ||
+                state.activeMappingSessionId !== reservedId || state.activeMissionId !== null ||
+                state.mode !== 'idle' || state.motionInhibited !== false ||
+                state.rosConnected !== true || state.physicalEstopActive !== false) {
+                throw conflict('MAPPING_START_SUPERSEDED');
+            }
         }
 
-        let adapterAttempted = false;
-        try {
-            motionGate.assert(ticket);
+        function assertReadyToActivate() {
+            // Sau await cập nhật job, Stop/fault có thể đã đổi epoch hoặc
+            // trạng thái. Không được mở gate lái chỉ vì DB vừa trả completed.
             assertCurrent?.();
+            motionGate.assert(ticket);
+            const state = sharedRobotState.getSnapshot();
+            const gate = mappingDriveGate.getState();
+            if (gate?.mappingSessionId !== reservedId || gate.phase !== 'starting' ||
+                state.activeMappingSessionId !== reservedId || state.activeMissionId !== null ||
+                state.mode !== 'mapping' || state.motionInhibited !== false ||
+                state.rosConnected !== true || state.physicalEstopActive !== false) {
+                throw conflict('MAPPING_START_SUPERSEDED');
+            }
+        }
+
+        try {
+            accepted = await reserveBusinessOperation({
+                pool, principalScope: principal, requestId: dto.requestId,
+                operation: 'start_mapping', payload: { name: dto.name },
+                create: async client => {
+                    // Replay không đi vào đây. Kiểm trạng thái mới nhất sau ledger await.
+                    assertCurrent?.();
+                    const state = sharedRobotState.getSnapshot();
+                    if (state.mode !== 'idle' || state.activeMappingSessionId !== null ||
+                        state.activeMissionId !== null) throw conflict('MODE_NOT_ALLOWED');
+                    if (state.motionInhibited !== false) throw conflict('MOTION_INHIBITED_OR_UNKNOWN');
+                    if (state.rosConnected !== true) throw conflict('ROS_UNAVAILABLE');
+                    if (state.physicalEstopActive !== false) throw conflict('ESTOP_ACTIVE_OR_UNKNOWN');
+                    ticket = motionGate.enter();
+                    const id = randomUUID();
+                    mappingDriveGate.beginSession(id);
+                    reservedId = id;
+                    // Đồng bộ với beginSession, trước await đầu tiên trong create.
+                    // Mission/activation/acquire đều thấy robot đã được giữ cho mapping.
+                    sharedRobotState.update({ activeMappingSessionId: id });
+                    const active = await client.query(
+                        "SELECT id FROM mapping_sessions WHERE robot_id='robot-01' AND active=true FOR UPDATE",
+                    );
+                    assertReserved();
+                    if (active.rowCount) throw conflict('MAPPING_ACTIVE_OR_UNKNOWN');
+                    const jobId = randomUUID();
+                    await client.query(
+                        "INSERT INTO mapping_sessions(id, robot_id, name, status, active) VALUES($1, 'robot-01', $2, 'mapping', true)",
+                        [id, dto.name],
+                    );
+                    assertReserved();
+                    await client.query(
+                        "INSERT INTO jobs(id, kind, status, result, error, principal, dispatch_state) VALUES($1, 'start_mapping', 'accepted', NULL, NULL, $2, 'pending')",
+                        [jobId, principal],
+                    );
+                    assertReserved();
+                    return { status: 200,
+                        body: { mappingSessionId: id, jobId, status: 'accepted' },
+                        resourceRef: { mappingSessionId: id, jobId } };
+                },
+            });
+            if (accepted.replayed) {
+                assertCurrent?.();
+                return StartMappingResponseSchema.parse(accepted.body);
+            }
+            assertReserved();
             const running = await jobService.updateJob(pool, accepted.body.jobId, {
                 status: 'running', allowedStatuses: ['accepted'],
             });
-            if (!running) throw Object.assign(new Error('MAPPING_START_UNCERTAIN'),
-                { code: 'MAPPING_START_UNCERTAIN', status: 503 });
-            motionGate.assert(ticket);
-            assertCurrent?.();
+            assertReserved();
+            if (!running) throw conflict('MAPPING_START_UNCERTAIN');
             adapterAttempted = true;
-            adapter.startMapping(accepted.body.mappingSessionId);
-            sharedRobotState.update({
-                mode: 'mapping',
-                activeMappingSessionId: accepted.body.mappingSessionId,
-            });
+            adapter.startMapping(reservedId);
+            // Chưa có mẫu nguồn mapping mới thì pose phải null; observer ở mục 6 cấp pose.
+            sharedRobotState.update({ mode: 'mapping', activeMap: null,
+                pose: null, poseSourceUpdateAgeMs: null,
+                localization: { status: 'unknown', reason: 'MAPPING_STARTING' } });
             const completed = await jobService.updateJob(pool, accepted.body.jobId, {
-                status: 'completed',
-                result: { mappingSessionId: accepted.body.mappingSessionId },
+                status: 'completed', result: { mappingSessionId: reservedId },
                 allowedStatuses: ['running'],
             });
-            if (!completed) throw Object.assign(new Error('MAPPING_START_UNCERTAIN'),
-                { code: 'MAPPING_START_UNCERTAIN', status: 503 });
+            if (!completed) throw conflict('MAPPING_START_UNCERTAIN');
+            // Chỉ mở joystick sau job xác nhận. Stop/fault trong lúc await vẫn chặn drive
+            // bằng authority. Activate phase không được tự xóa inhibit hoặc đổi mode.
+            assertReadyToActivate();
+            mappingDriveGate.activateSession(reservedId);
+            return StartMappingResponseSchema.parse(accepted.body);
         } catch (error) {
-            if (adapterAttempted) {
-                try { adapter.finishMapping(accepted.body.mappingSessionId); } catch { /* uncertain */ }
-                sharedRobotState.update({ mode: 'fault', activeMappingSessionId: null,
-                    motionInhibited: true, motionInhibitReason: 'MAPPING_START_UNCERTAIN' });
+            if (reservedId && mappingDriveGate.getState()?.mappingSessionId === reservedId) {
+                if (adapterAttempted) {
+                    try { adapter.finishMapping(reservedId); } catch { /* Giữ fault bên dưới. */ }
+                }
+                // DB/network lỗi có thể có kết quả commit chưa biết. Giữ reservation + fault;
+                // không mở robot cho lease mới khi session thật còn chưa xác định.
+                const state = sharedRobotState.getSnapshot();
+                sharedRobotState.update({ mode: 'fault', motionInhibited: true,
+                    motionInhibitReason: state.motionInhibited === true
+                        ? state.motionInhibitReason : 'MAPPING_START_UNCERTAIN' });
+                if (accepted && !accepted.replayed) {
+                    await jobService.updateJob(pool, accepted.body.jobId, {
+                        status: 'failed', allowedStatuses: ['accepted', 'running'],
+                        error: { code: 'MAPPING_START_UNCERTAIN', message: 'Cần recovery phiên mapping.' },
+                    }).catch(() => {});
+                }
+                // Recovery phải reconcile ledger/job/session và đóng producer trước khi
+                // clearSession(reservedId). Không tự mở lại gate trong catch tổng quát này.
             }
-            await pool.query(
-                'UPDATE mapping_sessions SET active=false,ended_at=now() WHERE id=$1',
-                [accepted.body.mappingSessionId]).catch(() => {});
-            await jobService.updateJob(pool, accepted.body.jobId, {
-                status: 'failed', error: { code: 'MAPPING_START_FAILED',
-                    message: 'Không thể xác nhận mapping đã bắt đầu.' },
-            }).catch(() => {});
             throw error;
         }
+    }
 
-        return StartMappingResponseSchema.parse(accepted.body);
+    async function restoreAfterFailedFinish(mappingSessionId) {
+        // Sau lỗi DB, không đoán transaction đã rollback hay commit thành công.
+        // Chỉ cho retry lưu khi DB chứng minh session vẫn recoverable; vẫn khóa lái.
+        try {
+            const found = await pool.query(
+                'SELECT active,status FROM mapping_sessions WHERE id=$1',
+                [mappingSessionId],
+            );
+            if (found.rowCount === 1 && found.rows[0].active === true &&
+                ['mapping', 'save_failed'].includes(found.rows[0].status)) {
+                mappingDriveGate.finishFailed(mappingSessionId);
+                return;
+            }
+        } catch {
+            // Giữ gate finishing nếu chưa biết trạng thái; operator dùng recovery.
+        }
     }
 
     async function finishMapping(dto, principal, assertCurrent) {
         assertCurrent?.();
-        const ticket = motionGate.enter();
-
-        const accepted = await mapPersistence.acceptFinish({
-            principalScope: principal,
-            requestId: dto.requestId,
-            mappingSessionId: dto.mappingSessionId,
-            name: dto.name,
-        });
+        let ticket;
+        let ownsFinishGate = false;
+        let accepted;
+        try {
+            accepted = await mapPersistence.acceptFinish({
+                principalScope: principal,
+                requestId: dto.requestId,
+                mappingSessionId: dto.mappingSessionId,
+                name: dto.name,
+                beforeAccept() {
+                    assertCurrent?.();
+                    ticket = assertMappingFinishSafe(dto.mappingSessionId);
+                    mappingDriveGate.beginFinish(dto.mappingSessionId);
+                    ownsFinishGate = true;
+                },
+            });
+        } catch (error) {
+            if (ownsFinishGate) await restoreAfterFailedFinish(dto.mappingSessionId);
+            throw error;
+        }
 
         if (accepted.replayed) {
             assertCurrent?.();
@@ -160,58 +220,57 @@ export function createMappingService({
         const jobId = accepted.body.jobId;
         let snapshot;
         try {
+            // Stop xảy ra khi transaction await làm ticket hết hiệu lực.
             motionGate.assert(ticket);
             assertCurrent?.();
             snapshot = adapter.getMappingGrid(dto.mappingSessionId);
         } catch (error) {
-            // Reservation already committed. Leave the session recoverable and
-            // settle its job rather than leaving an accepted job forever.
             await mapPersistence.failAcceptedFinish(jobId,
                 error.code || 'MAPPING_GRID_UNAVAILABLE');
+            await restoreAfterFailedFinish(dto.mappingSessionId);
             throw error;
         }
 
         jobService.broadcastJobUpdated({
-            jobId,
-            type: 'finish_mapping',
-            status: 'accepted',
-            result: null,
-            error: null,
-            createdAt: new Date().toISOString(),
+            jobId, type: 'finish_mapping', status: 'accepted',
+            result: null, error: null, createdAt: new Date().toISOString(),
         });
 
-        // Keep the adapter's snapshot until the assets are durable. If save
-        // fails, a new finish request can read that same live grid and retry.
         void (async () => {
             try {
-                await mapPersistence.runFinish({
-                    jobId,
-                    snapshot,
-                    yaml: FIXTURE_YAML,
-                });
-                try {
-                    adapter.finishMapping(dto.mappingSessionId);
-                } catch {
-                    // Persistence is already completed; do not rewrite that
-                    // terminal job. A leaked producer needs operator review.
-                    sharedRobotState.update({ mode: 'fault',
-                        activeMappingSessionId: null, motionInhibited: true,
-                        motionInhibitReason: 'MAPPING_CLEANUP_UNCERTAIN' });
-                }
-                if (sharedRobotState.getSnapshot().activeMappingSessionId ===
-                    dto.mappingSessionId) {
-                    sharedRobotState.update({ mode: 'idle',
-                        activeMappingSessionId: null });
-                }
-                const finishedJob = await jobService.getJob(jobId);
-                jobService.broadcastJobUpdated(finishedJob);
+                await mapPersistence.runFinish({ jobId, snapshot, yaml: FIXTURE_YAML });
             } catch {
-                // runFinish marks save_failed and leaves the session active.
-                // Do not erase the mapping context or its grid on failure.
+                // Grid sống và session vẫn tồn tại để retry requestId mới.
+                await restoreAfterFailedFinish(dto.mappingSessionId);
                 const failedJob = await jobService.getJob(jobId).catch(() => null);
                 if (failedJob) jobService.broadcastJobUpdated(failedJob);
+                return;
             }
-        })().catch(() => {});
+
+            // Job đã durable completed. Cleanup lỗi không được đổi job thành failed.
+            try {
+                adapter.finishMapping(dto.mappingSessionId);
+                mappingDriveGate.finishSucceeded(dto.mappingSessionId);
+                const state = sharedRobotState.getSnapshot();
+                if (state.activeMappingSessionId === dto.mappingSessionId) {
+                    sharedRobotState.update({
+                        mode: state.mode === 'mapping' ? 'idle' : state.mode,
+                        activeMappingSessionId: null,
+                        pose: null, poseSourceUpdateAgeMs: null,
+                    });
+                }
+            } catch {
+                mappingDriveGate.clearSession(dto.mappingSessionId);
+                sharedRobotState.update({
+                    mode: 'fault', activeMappingSessionId: null,
+                    motionInhibited: true, motionInhibitReason: 'MAPPING_CLEANUP_UNCERTAIN',
+                });
+            }
+            const finishedJob = await jobService.getJob(jobId);
+            jobService.broadcastJobUpdated(finishedJob);
+        })().catch(() => {
+            // Notification lỗi không hồi sinh session hoặc sửa terminal job.
+        });
 
         return FinishMappingResponseSchema.parse(accepted.body);
     }

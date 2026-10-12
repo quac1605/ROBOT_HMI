@@ -6,7 +6,7 @@
 import { createControlLeaseCore } from './controlLeaseCore.js';
 import { controlRobotReasons, CONTROL_POLICY, ZERO, isZero } from './controlPolicy.js';
 import { createControlRequestRegistry } from './controlRequestRegistry.js';
-import { acceptsStopSample, acceptsStationarySample } from './stopObservation.js';
+import { acceptsFreshMotionSample, acceptsStopSample, acceptsStationarySample } from './stopObservation.js';
 import {
     AcquireControlRequestSchema,
     AcquireControlResponseSchema,
@@ -27,6 +27,7 @@ export function createControlAuthority({
     mapActivationService = {},
     motionGate,
     motionSource,
+    mappingDriveGate = null,
     now = () => performance.now(),
     wallNow = () => Date.now(),
     uuid = () => crypto.randomUUID(),
@@ -78,9 +79,17 @@ export function createControlAuthority({
         if (disposed) throw controlError('SERVICE_DISPOSED', 'Control service đã dispose.');
     };
 
-    const reasonsFor = phase => {
+    const reasonsFor = (phase, context) => {
         const { snapshot, transportStale } = telemetry.getControlState();
-        return controlRobotReasons(snapshot, transportStale, phase);
+        const reasons = controlRobotReasons(snapshot, transportStale, phase, context);
+        if (context?.kind === 'mapping') {
+            if (!mappingDriveGate?.canDrive(context.mappingSessionId)) {
+                reasons.push('MAPPING_PHASE_BLOCKED');
+            }
+        } else if (mappingDriveGate?.getState()) {
+            reasons.push('MAPPING_ACTIVE_OR_UNKNOWN');
+        }
+        return reasons;
     };
 
     let requiredCommandRevision = 0;
@@ -113,7 +122,7 @@ export function createControlAuthority({
 
     const core = createControlLeaseCore({
         now, wallNow, uuid, policy,
-        checkAcquire: () => {
+        checkAcquire: context => {
             if (resourceExhausted) return 'CONTROL_RESOURCE_EXHAUSTED';
             if (stopping || stopMutationActive) return 'STOP_IN_PROGRESS';
             if (!acceptsStationarySample({
@@ -121,9 +130,18 @@ export function createControlAuthority({
                 command: motionSource.getCommand(), requiredRevision: requiredCommandRevision,
                 nowMono: now(), maxAgeMs: policy.motionSampleMaxAgeMs,
             })) return 'ROBOT_NOT_STATIONARY';
-            return reasonsFor('acquire')[0] ?? null;
+            return reasonsFor('acquire', context)[0] ?? null;
         },
-        checkDrive: () => resourceExhausted ? 'CONTROL_RESOURCE_EXHAUSTED' : reasonsFor('drive')[0] ?? null,
+        checkDrive: context => {
+            if (resourceExhausted) return 'CONTROL_RESOURCE_EXHAUSTED';
+            const reason = reasonsFor('drive', context)[0];
+            if (reason) return reason;
+            if (context.kind === 'mapping' && !acceptsFreshMotionSample({
+                sample: motionSource.latest(), cursor: motionSource.cursor(),
+                nowMono: now(), maxAgeMs: policy.motionSampleMaxAgeMs,
+            })) return 'MOTION_SOURCE_STALE';
+            return null;
+        },
         setVelocity: velocity => {
             const rev = motionSource.writeCommand(velocity);
             if (isZero(velocity)) {
@@ -131,14 +149,16 @@ export function createControlAuthority({
             }
             sharedRobotState.update({ velocity });
         },
-        claimMode: leaseId => {
+        claimMode: (leaseId, context) => {
             claimedLeaseId = leaseId;
-            sharedRobotState.update({ mode: 'teleop', velocity: ZERO });
+            // Mode mapping thuộc vòng đời SLAM. Lease chỉ sở hữu motion.
+            sharedRobotState.update(context.kind === 'mapping'
+                ? { velocity: ZERO } : { mode: 'teleop', velocity: ZERO });
         },
-        releaseMode: leaseId => {
+        releaseMode: (leaseId, context) => {
             if (claimedLeaseId !== leaseId) return;
             claimedLeaseId = null;
-            if (sharedRobotState.getSnapshot().mode === 'teleop') {
+            if (context.kind === 'manual' && sharedRobotState.getSnapshot().mode === 'teleop') {
                 sharedRobotState.update({ mode: 'idle' });
             }
         },
@@ -352,7 +372,31 @@ export function createControlAuthority({
     }, policy.heartbeatMs);
     heartbeatTimer?.unref?.();
 
+    // API nội bộ, không expose thành endpoint cho browser.
+    // Bên gọi phải beginFinish NGAY sau hàm này, trước mọi await.
+    function assertMappingFinishSafe(mappingSessionId) {
+        assertUsable();
+        if (!mappingDriveGate) throw controlError('MAPPING_PHASE_BLOCKED', 'Thiếu lifecycle gate.');
+        mappingDriveGate.assertFinish(mappingSessionId);
+        if (resourceExhausted) throw controlError('CONTROL_RESOURCE_EXHAUSTED', 'Control đang bị khóa.');
+        if (stopping || stopMutationActive) throw controlError('STOP_IN_PROGRESS', 'Chưa xác nhận dừng.');
+        if (claimedLeaseId !== null) throw controlError('CONTROL_BUSY', 'Cần trả lease trước khi lưu.');
+        const { snapshot, transportStale } = telemetry.getControlState();
+        // Dùng guard acquire để kiểm stationary nhưng mode vẫn là mapping.
+        const reasons = controlRobotReasons(snapshot, transportStale, 'acquire', {
+            kind: 'mapping', mappingSessionId,
+        });
+        if (reasons.length) throw controlError(reasons[0], 'Điều kiện lưu map chưa an toàn.');
+        if (!acceptsStationarySample({
+            sample: motionSource.latest(), cursor: motionSource.cursor(),
+            command: motionSource.getCommand(), requiredRevision: requiredCommandRevision,
+            nowMono: now(), maxAgeMs: policy.motionSampleMaxAgeMs,
+        })) throw controlError('ROBOT_NOT_STATIONARY', 'Cần mẫu đứng yên mới từ nguồn đo.');
+        return motionGate.enter();
+    }
+
     return {
+        assertMappingFinishSafe,
         createSession(customId, { stopOnly = false } = {}) {
             assertUsable();
             const sid = customId || uuid();
@@ -374,7 +418,7 @@ export function createControlAuthority({
                 sessionId, operation: 'acquireControl',
                 requestId: req.requestId, payload: req,
             }, () => {
-                const lease = core.acquire(sessionId);
+                const lease = core.acquire(sessionId, req.context);
                 drainRevocations();
                 const response = AcquireControlResponseSchema.parse(lease);
                 publishToSession(sessionId, 'control.granted', response);

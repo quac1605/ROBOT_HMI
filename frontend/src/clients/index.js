@@ -1,17 +1,20 @@
 import { createMockRobotClient } from './mockRobotClient.js';
+import { createHttpWsRobotClient } from './httpWsRobotClient.js';
 import { defaultRasterRuntime } from '../utils/rasterRuntime.js';
 import { getActiveRasterDebugStates } from '../utils/occupancyRasterController.js';
 
+const factories = { mock: createMockRobotClient, remote: createHttpWsRobotClient };
 const mode = import.meta.env.VITE_ROBOT_CLIENT;
-if (mode !== 'mock') {
-  throw new Error('Chặng này cần VITE_ROBOT_CLIENT=mock trong file .env.local');
+if (!Object.hasOwn(factories, mode)) {
+  throw new Error('VITE_ROBOT_CLIENT phải là mock hoặc remote');
 }
 
 // Khởi tạo Singleton client dùng chung xuyên suốt app
-export const robotClient = createMockRobotClient();
+export const robotClient = factories[mode]();
 
 const enableStage6Controls =
   import.meta.env.DEV &&
+  mode === 'mock' &&
   import.meta.env.VITE_ENABLE_STAGE6_TEST_CONTROLS === 'true';
 
 if (enableStage6Controls && typeof window !== 'undefined') {

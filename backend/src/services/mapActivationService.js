@@ -68,6 +68,12 @@ export function createMapActivationService({
         try {
             motionGate.assert(ticket);
             assertCurrent?.();
+            const dispatchState = sharedRobotState.getSnapshot();
+            if (dispatchState.mode !== 'idle' || dispatchState.activeMappingSessionId !== null ||
+                dispatchState.activeMissionId !== null || dispatchState.motionInhibited !== false ||
+                dispatchState.rosConnected !== true || dispatchState.physicalEstopActive !== false) {
+                throw activationError('ACTIVATION_SUPERSEDED', 409);
+            }
             // A new map cannot inherit the previous map's localization/pose.
             sharedRobotState.update({ mode: 'localizing', activeMap: null,
                 pose: null, poseSourceUpdateAgeMs: null,

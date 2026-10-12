@@ -102,14 +102,17 @@ export function createMapGridService({ pool, mapPersistence, adapter, registry, 
             registry.get(record.connectionId) !== record) return;
         const context = MapContextSchema.parse(rawContext);
         unsubscribeClient(record, activeByConnection.get(record.connectionId)?.id);
-
+        let offSource = null;
+        let ageTimer = null;
+        let authorized = false;
+        let lastSentRevision = null;
         const active = {
-            id: subscriptionId,
-            context,
-            cancelled: false,
+            id: subscriptionId, context, cancelled: false,
             cancel() {
                 if (active.cancelled) return;
                 active.cancelled = true;
+                offSource?.();
+                if (ageTimer) clearInterval(ageTimer);
                 if (activeByConnection.get(record.connectionId) === active) {
                     activeByConnection.delete(record.connectionId);
                 }
@@ -118,7 +121,6 @@ export function createMapGridService({ pool, mapPersistence, adapter, registry, 
         };
         activeByConnection.set(record.connectionId, active);
         record.subscriptions.add(active.cancel);
-
         const isCurrent = () => !active.cancelled && !record.closed &&
             activeByConnection.get(record.connectionId) === active &&
             registry.get(record.connectionId) === record;
@@ -127,29 +129,66 @@ export function createMapGridService({ pool, mapPersistence, adapter, registry, 
             version: 1, type, subscriptionId, streamId, streamEpoch: 1,
             sequence: ++sequence, sentAt: new Date().toISOString(), payload,
         });
-
+        const sendError = error => {
+            if (!isCurrent()) return;
+            const code = typeof error?.code === 'string' && /^[A-Z][A-Z0-9_]{2,80}$/.test(error.code)
+                ? error.code : 'MAP_UNAVAILABLE';
+            send(envelope('map.error', { context, error: { code, message: code } }));
+        };
+        function publishLive() {
+            if (!authorized || !isCurrent()) return;
+            try {
+                const observation = adapter.getMappingObservation(context.mappingSessionId);
+                if (!observation) {
+                    send(envelope('map.status', {
+                        context, state: 'waiting', sourceState: 'stale', lastSourceUpdateAgeMs: null,
+                    }));
+                    return;
+                }
+                const snapshot = parseMapGridSnapshot(observation.snapshot);
+                if (snapshot.context.kind !== 'mapping' ||
+                    snapshot.context.mappingSessionId !== context.mappingSessionId) {
+                    throw mapError('MAP_CONTEXT_MISMATCH');
+                }
+                send(envelope('map.status', {
+                    context, state: 'ready', sourceState: observation.sourceState,
+                    lastSourceUpdateAgeMs: observation.lastSourceUpdateAgeMs,
+                }));
+                if (lastSentRevision !== snapshot.gridRevision) {
+                    if (send(envelope('map.grid', snapshot))) lastSentRevision = snapshot.gridRevision;
+                }
+            } catch (error) {
+                sendError(error);
+                if (error?.code === 'MAPPING_GRID_UNAVAILABLE') active.cancel();
+            }
+        }
         void (async () => {
             try {
-                const snapshot = await getMapGrid(context);
+                if (context.kind === 'saved') {
+                    const snapshot = await getMapGrid(context);
+                    if (!isCurrent()) return;
+                    send(envelope('map.status', {
+                        context, state: 'ready', sourceState: 'saved', lastSourceUpdateAgeMs: null,
+                    }));
+                    send(envelope('map.grid', snapshot));
+                    return;
+                }
+                // Authorize session before attaching producer; check fence after DB await.
+                const result = await pool.query(
+                    'SELECT active FROM mapping_sessions WHERE id=$1', [context.mappingSessionId],
+                );
                 if (!isCurrent()) return;
-                // No source timestamp is known for this mock live grid. A
-                // resend must not pretend that cached cells are fresh.
-                if (!send(envelope('map.status', {
-                    context, state: 'ready',
-                    sourceState: context.kind === 'saved' ? 'saved' : 'stale',
-                    lastSourceUpdateAgeMs: null,
-                }))) return;
-                send(envelope('map.grid', snapshot));
-            } catch (error) {
-                if (!isCurrent()) return;
-                const code = typeof error?.code === 'string' &&
-                    /^[A-Z][A-Z0-9_]{2,80}$/.test(error.code)
-                    ? error.code : 'MAP_UNAVAILABLE';
-                // Do not echo database/asset paths or driver error messages.
-                send(envelope('map.error', {
-                    context, error: { code, message: code },
-                }));
-            }
+                if (!result.rowCount) throw mapError('SESSION_NOT_FOUND', 404);
+                if (result.rows[0].active !== true) throw mapError('MAPPING_NOT_ACTIVE', 409);
+                authorized = true;
+                // Latest snapshot after attaching removes subscribe-vs-first-sample race.
+                offSource = adapter.subscribeMapping(event => {
+                    if (event.mappingSessionId === context.mappingSessionId) publishLive();
+                });
+                ageTimer = setInterval(publishLive, 500);
+                ageTimer.unref?.();
+                publishLive();
+            } catch (error) { sendError(error); active.cancel(); }
         })();
     }
 
@@ -159,5 +198,8 @@ export function createMapGridService({ pool, mapPersistence, adapter, registry, 
         getMapGrid,
         subscribeClient,
         unsubscribeClient,
+        dispose() {
+            for (const active of [...activeByConnection.values()]) active.cancel();
+        },
     };
 }

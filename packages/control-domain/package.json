@@ -13,7 +13,9 @@
     "./controlEvidence": "./src/controlEvidence.js",
     "./controlStreamFence": "./src/controlStreamFence.js",
     "./mockMotionSource": "./src/mockMotionSource.js",
-    "./controlAuthority": "./src/controlAuthority.js"
+    "./controlAuthority": "./src/controlAuthority.js",
+    "./mappingDriveGate": "./src/mappingDriveGate.js",
+    "./mockMappingSource": "./src/mockMappingSource.js"
   },
   "dependencies": {
     "@robot-hmi/contracts": "file:../contracts"

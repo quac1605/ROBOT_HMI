@@ -4,47 +4,8 @@
  * ADAPTER MÔ PHỎNG NGUỒN VẬN TỐC VÀ CẢM BIẾN ROBOT (M7 / M8 / F8.1 - F8.5).
  */
 import { createMockMotionSource } from '@robot-hmi/control-domain/mockMotionSource';
+import { createMockMappingSource } from '@robot-hmi/control-domain/mockMappingSource';
 import { ADAPTER_CAPABILITIES } from './adapterContract.js';
-
-function createRoomGrid(mappingSessionId, step = 0) {
-    const width = 200;
-    const height = 160;
-    const cells = new Array(width * height).fill(-1);
-    for (let r = 10; r < height - 10; r++) {
-        for (let c = 10; c < width - 10; c++) {
-            cells[c + r * width] = 0;
-        }
-    }
-    for (let r = 10; r < height - 10; r++) {
-        cells[10 + r * width] = 100;
-        cells[width - 11 + r * width] = 100;
-    }
-    for (let c = 10; c < width - 10; c++) {
-        cells[c + 10 * width] = 100;
-        cells[c + (height - 11) * width] = 100;
-    }
-    return {
-        source: 'mock',
-        mode: 'snapshot',
-        encoding: 'occupancy-0-100-v1',
-        context: { kind: 'mapping', mappingSessionId },
-        gridRevision: step + 1,
-        grid: {
-            header: { frame_id: 'map', stamp: { sec: 100, nanosec: 0 } },
-            info: {
-                map_load_time: { sec: 100, nanosec: 0 },
-                resolution: 0.05,
-                width,
-                height,
-                origin: {
-                    position: { x: 0, y: 0, z: 0 },
-                    orientation: { x: 0, y: 0, z: 0, w: 1 },
-                },
-            },
-            data: cells,
-        },
-    };
-}
 
 export function createMockRosAdapter({
     now = () => performance.now(),
@@ -65,7 +26,8 @@ export function createMockRosAdapter({
         periodMs,
     });
 
-    const mappingGrids = new Map();
+    const mappingSource = createMockMappingSource({ now });
+    const unsubscribeMappingMotion = source.subscribe(sample => mappingSource.ingest(sample));
     let activeMission = null;
     const disposeSource = source.dispose.bind(source);
 
@@ -81,19 +43,24 @@ export function createMockRosAdapter({
         capabilities: ADAPTER_CAPABILITIES,
         motionSource: source,
         getMappingGrid(mappingSessionId) {
-            if (!mappingGrids.has(mappingSessionId)) {
-                throw Object.assign(new Error('MAPPING_GRID_UNAVAILABLE'), {
-                    code: 'MAPPING_GRID_UNAVAILABLE',
-                    status: 503,
-                });
+            const observation = mappingSource.get(mappingSessionId);
+            if (!observation) {
+                throw Object.assign(new Error('MAP_NOT_READY'), { code: 'MAP_NOT_READY', status: 503 });
             }
-            return structuredClone(mappingGrids.get(mappingSessionId));
+            return observation.snapshot;
         },
         startMapping(mappingSessionId) {
-            mappingGrids.set(mappingSessionId, createRoomGrid(mappingSessionId, 0));
+            mappingSource.start(mappingSessionId, source.cursor());
+            source.sample();
         },
         finishMapping(mappingSessionId) {
-            mappingGrids.delete(mappingSessionId);
+            return mappingSource.stop(mappingSessionId);
+        },
+        getMappingObservation(mappingSessionId) {
+            return mappingSource.get(mappingSessionId);
+        },
+        subscribeMapping(listener) {
+            return mappingSource.subscribe(listener);
         },
         activateMap({ mapId, mapRevision }) {
             return { mapId, mapRevision, status: 'ready' };
@@ -146,7 +113,8 @@ export function createMockRosAdapter({
         },
         dispose() {
             activeMission = null;
-            mappingGrids.clear();
+            unsubscribeMappingMotion();
+            mappingSource.dispose();
             disposeSource();
         },
     });

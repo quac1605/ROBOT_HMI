@@ -214,24 +214,43 @@ export function createControlCoordinator(client, options = {}) {
         }
     }
 
-    // Subscribe
+    // Subscribe to control events before fetching a snapshot: an event may
+    // arrive while the HTTP request is in flight and must win the race.
     try {
         cleanup.push(client.subscribeControl(event => {
             if (!active) return;
-            try {
-                const envelope = ControlEventEnvelopeSchema.parse(event);
-                applyEvent(envelope);
-            } catch { /* bỏ qua event malformed */ }
+            try { applyEvent(ControlEventEnvelopeSchema.parse(event)); }
+            catch { /* Reject malformed server frames without poisoning the cursor. */ }
         }));
     } catch {
-        for (const close of cleanup) close();
         active = false;
-        setStore({ phase: 'error', ready: false });
-        return { dispose: () => { } };
+        for (const close of cleanup) close();
+        setStore({ ...clearedLease, phase: 'error', ready: false });
+        return { dispose() {} };
     }
 
-    // Reconcile ban đầu
-    reconcile();
+    // The initial status callback is authoritative for remote clients. A
+    // legacy test facade without this method still gets one initial query.
+    if (typeof client?.subscribeConnectionStatus === 'function') {
+        cleanup.push(client.subscribeConnectionStatus(status => {
+            if (!active) return;
+            if (status.status !== 'connected') {
+                streamFence.beginQuery(); // Invalidate a GET started before close.
+                setStore({
+                    ...clearedLease,
+                    phase: 'idle',
+                    ready: false,
+                    controlProfile: client?.kind === 'remote' ? 'unknown' : status.controlProfile,
+                });
+            } else if (status.status === 'connected') {
+                setStore({ controlProfile: status.controlProfile });
+                void reconcile();
+            }
+        }));
+    } else {
+        void reconcile();
+    }
+
 
     // Health timer: phát hiện lease hết hạn dựa trên local deadline
     healthTimer = setInterval(() => {

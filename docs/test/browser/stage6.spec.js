@@ -25,6 +25,49 @@ async function startSession(page, name) {
   return active.session;
 }
 
+// Bài 2: tạo chuyển động qua RobotClient/authority thật của mock. Các timer
+// advanceSourceStep chỉ đọc observation; chúng không được tự lái robot.
+async function driveMappingWithFacade(page, mappingSessionId) {
+  await page.evaluate(async (sessionId) => {
+    const { robotClient } = await import('/src/clients/index.js');
+    let freshnessToken = null;
+    const unsubscribe = robotClient.subscribeControl(event => {
+      if (event.type === 'control.heartbeat') freshnessToken = event.payload.freshnessToken;
+    });
+    let lease = null;
+    try {
+      lease = await robotClient.acquireControl({
+        requestId: crypto.randomUUID(),
+        context: { kind: 'mapping', mappingSessionId: sessionId },
+      });
+      for (let sequence = 1; sequence <= 12; sequence += 1) {
+        if (!freshnessToken) throw new Error('MISSING_SOURCE_FRESHNESS_TOKEN');
+        robotClient.sendVelocity({ leaseId: lease.leaseId, sequence,
+          freshnessToken, linearX: 0.3, angularZ: 0 });
+        await new Promise(resolve => setTimeout(resolve, 45));
+      }
+    } finally {
+      try {
+        if (lease) {
+          await robotClient.requestStop({ requestId: crypto.randomUUID() });
+          const deadline = performance.now() + 1500;
+          let confirmed = false;
+          while (performance.now() < deadline) {
+            if ((await robotClient.getControlState()).payload.stop?.status === 'confirmed') {
+              confirmed = true;
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 25));
+          }
+          if (!confirmed) throw new Error('MEASURED_STOP_NOT_CONFIRMED');
+        }
+      } finally {
+        unsubscribe();
+      }
+    }
+  }, mappingSessionId);
+}
+
 async function spaNavigate(page, label, pathname) {
   await page.getByRole('button', { name: 'Mở menu chức năng' }).click();
   await page.getByRole('link', { name: label }).click();
@@ -467,7 +510,12 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     const after = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getMapGrid({
       kind: 'mapping', mappingSessionId: sessionId,
     }), started.mappingSessionId);
-    expect(after.gridRevision).toBeGreaterThan(before.gridRevision);
+    expect(after.gridRevision).toBe(before.gridRevision); // Chuyển trang không tạo chuyển động.
+    await driveMappingWithFacade(page, started.mappingSessionId);
+    const driven = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getMapGrid({
+      kind: 'mapping', mappingSessionId: sessionId,
+    }), started.mappingSessionId);
+    expect(driven.gridRevision).toBeGreaterThan(before.gridRevision);
   });
 
   test('Case 11: Finish background cập nhật catalog và load exact saved revision', async ({ page }) => {
@@ -560,7 +608,11 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     }, started.mappingSessionId);
     await expect(page.getByText(/Nguồn: live/)).toBeVisible();
     const recovered = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
-    expect(recovered.gridRevision).toBeGreaterThan(stale.gridRevision);
+    expect(recovered.gridRevision).toBe(stale.gridRevision); // Recovery nguồn không tự lái.
+    await driveMappingWithFacade(page, started.mappingSessionId);
+    await expect.poll(() => page.evaluate((sessionId) =>
+      window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId).gridRevision,
+    started.mappingSessionId)).toBeGreaterThan(stale.gridRevision);
 
     const savedEvents = await page.evaluate(async () => {
       const { robotClient } = await import('/src/clients/index.js');

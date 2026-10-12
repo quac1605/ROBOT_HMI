@@ -22,12 +22,16 @@ function mapRouterError(err) {
         'MAPPING_ACTIVE_OR_UNKNOWN', 'MISSION_ACTIVE_OR_UNKNOWN',
         'MAPPING_SESSION_NOT_FINISHABLE', 'MOTION_ADMISSION_BLOCKED',
         'MOTION_INHIBITED_OR_UNKNOWN', 'IDEMPOTENCY_CONFLICT',
+        'CONTROL_BUSY', 'STOP_IN_PROGRESS', 'ROBOT_NOT_STATIONARY',
+        'MAPPING_PHASE_BLOCKED', 'MAPPING_CONTEXT_MISMATCH',
+        'MODE_NOT_ALLOWED', 'ROS_UNAVAILABLE', 'ESTOP_ACTIVE_OR_UNKNOWN',
     ]);
     const status503Codes = new Set(['MAP_ASSET_UNAVAILABLE']);
     const status400Codes = new Set(['INVALID_MAP_ID', 'INVALID_MAP_CONTEXT', 'MAP_TOO_LARGE', 'INVALID_MAP_DATA', 'INVALID_OPERATION_PAYLOAD']);
 
     if (status404Codes.has(err.code)) err.status = 404;
     else if (status409Codes.has(err.code)) err.status = 409;
+    else if (err.code === 'CONTROL_RESOURCE_EXHAUSTED') err.status = 429;
     else if (status503Codes.has(err.code)) err.status = 503;
     else if (status400Codes.has(err.code)) err.status = 400;
 

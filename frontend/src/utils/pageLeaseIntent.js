@@ -1,5 +1,6 @@
 export function createPageLeaseIntent({
     client,
+    getAcquirePayload = () => ({}),
     uuid = () => crypto.randomUUID(),
     onPending = () => { },
     onError = () => { },
@@ -42,7 +43,10 @@ export function createPageLeaseIntent({
             pending = true;
             onPending(true);
             try {
-                const lease = await client.acquireControl({ requestId: uuid() });
+                const lease = await client.acquireControl({
+                    ...getAcquirePayload(),
+                    requestId: uuid(),
+                });
                 if (!active || mine !== version || !isLeaseCurrent(lease)) {
                     await releaseExact(lease);
                     return false;

@@ -122,6 +122,7 @@ test('M4 map asset giữ mock memory và chấp nhận mock filesystem đúng co
     assert.deepEqual(MapAssetSchema.parse(original), original);
     const saved = { ...original, storage: 'filesystem' };
     assert.deepEqual(MapAssetSchema.parse(saved), saved);
-    assert.equal(MapAssetSchema.safeParse({ ...saved, source: 'ros' }).success, false);
+    assert.equal(MapAssetSchema.safeParse({ ...saved, source: 'ros' }).success, true);
+    assert.equal(MapAssetSchema.safeParse({ ...saved, source: 'gazebo' }).success, false);
     assert.equal(MapAssetSchema.safeParse({ ...saved, absolutePath: '/private/map.json' }).success, false);
 });
