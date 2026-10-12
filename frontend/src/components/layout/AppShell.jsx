@@ -3,48 +3,38 @@ import {
   Box,
   Button,
   Chip,
-  Divider,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
-import { NavLink, Outlet, useNavigate } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.js';
 import { useRobotStore } from '../../stores/robotStore.js';
 import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
 
+// Các tab chức năng hiển thị thành hàng ngang ngay dưới header
 const navItems = [
-  ['/status', 'Trạng thái'],
-  ['/mapping', 'Xây dựng bản đồ'],
-  ['/navigation', 'Đi đến đích'],
-  ['/teleop', 'Camera & điều khiển'],
+  ['/navigation', 'Đi đến đích & trạng thái'],
+  ['/mapping', 'Tạo bản đồ & điều khiển'],
+  ['/gesture', 'Phát hiện Người & Cử chỉ'],
 ];
 
 export default function AppShell() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // Tab đang chọn theo URL hiện tại; false khi không khớp tab nào (MUI không tô tab nào)
+  const activeTab = navItems.some(([to]) => to === pathname) ? pathname : false;
 
   // Đọc trạng thái từ store và độ tươi telemetry
   const hasSnapshot = useRobotStore((state) => state.snapshot !== null);
   const rosConnected = useRobotStore((state) => state.snapshot?.rosConnected);
   const locStatus = useRobotStore((state) => state.snapshot?.localization?.status);
   const { stale } = useRobotFreshness(2000);
-
-  const toggleDrawer = (open) => (event) => {
-    if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
-      return;
-    }
-    setDrawerOpen(open);
-  };
 
   async function handleLogout() {
     setLogoutBusy(true);
@@ -67,8 +57,6 @@ export default function AppShell() {
         sx={{
           p: { xs: 2, md: 2.5 },
           bgcolor: 'background.paper',
-          borderBottom: 1,
-          borderColor: 'divider',
         }}
       >
         <Stack
@@ -88,13 +76,13 @@ export default function AppShell() {
               <Typography variant="h5" color="primary" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                 Robot HMI
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
                 Viện Khoa học và Công nghệ Việt Nam - Hàn Quốc
               </Typography>
             </Box>
           </Box>
-          {/* Bên phải: Chip mô phỏng + Nút Hamburger Menu (khớp slide PowerPoint) */}
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+          {/* Bên phải: Chip trạng thái robot + người dùng + Đăng xuất */}
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <Chip
               label={
                 !hasSnapshot
@@ -119,84 +107,50 @@ export default function AppShell() {
               variant="outlined"
               size="small"
             />
-            <IconButton
-              aria-label="Mở menu chức năng"
-              onClick={toggleDrawer(true)}
-              edge="end"
-              size="large"
-              color="inherit"
+            {user && (
+              <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
+                <strong>{user.username}</strong>
+              </Typography>
+            )}
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              disabled={logoutBusy}
+              onClick={handleLogout}
             >
-              {/* Icon 3 gạch SVG chuẩn, không cần cài thêm icon package */}
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-              </svg>
-            </IconButton>
+              {logoutBusy ? 'Đang đăng xuất...' : 'Đăng xuất'}
+            </Button>
           </Stack>
         </Stack>
       </Box>
-      {/* MUI Drawer trượt ra từ cạnh phải màn hình */}
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={toggleDrawer(false)}
-        slotProps={{
-          paper: { sx: { width: 280 } },
-        }}
-      >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" color="primary" sx={{ fontWeight: 600 }}>
-            Chức năng
-          </Typography>
-          <IconButton aria-label="Đóng menu" onClick={toggleDrawer(false)} size="small">
-            ✕
-          </IconButton>
-        </Box>
-        <Divider />
-        <List component="nav" aria-label="Menu chức năng chính" sx={{ p: 1 }}>
+      {/* Thanh tab ngang thay cho menu Drawer ở góc phải trước đây */}
+      <Box sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', px: { xs: 1, md: 2.5 } }}>
+        <Tabs
+          component="nav"
+          aria-label="Menu chức năng chính"
+          value={activeTab}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
           {navItems.map(([to, label]) => (
-            <ListItem key={to} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                component={NavLink}
-                to={to}
-                onClick={toggleDrawer(false)} // Tự động đóng drawer khi người dùng chọn trang
-                sx={{
-                  borderRadius: 2,
-                  '&.active': {
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                    '&:hover': { bgcolor: 'primary.dark' },
-                  },
-                }}
-              >
-                <ListItemText primary={label} />
-              </ListItemButton>
-            </ListItem>
+            <Tab
+              key={to}
+              value={to}
+              label={label}
+              component={NavLink}
+              to={to}
+              sx={{ textTransform: 'none', fontWeight: 600, minHeight: 48 }}
+            />
           ))}
-        </List>
-        <Divider />
-        {/* Nút Đăng xuất ở cuối menu */}
-        <Box sx={{ p: 2, mt: 'auto' }}>
-          {user && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Đang đăng nhập: <strong>{user.username}</strong>
-            </Typography>
-          )}
-          {logoutError && (
-            <Alert severity="error" sx={{ mb: 1.5 }}>
-              {logoutError}
-            </Alert>
-          )}
-          <Button
-            variant="outlined"
-            color="error"
-            fullWidth
-            disabled={logoutBusy}
-            onClick={handleLogout}
-          >
-            {logoutBusy ? 'Đang đăng xuất...' : 'Đăng xuất'}
-          </Button>
-        </Box>
-      </Drawer>
+        </Tabs>
+      </Box>
+      {logoutError && (
+        <Alert severity="error" sx={{ borderRadius: 0 }}>
+          {logoutError}
+        </Alert>
+      )}
       {/* Vùng hiển thị nội dung trang con */}
       <Box component="main" sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
         <Outlet />

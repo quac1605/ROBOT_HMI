@@ -161,11 +161,11 @@
 [PASS] toBlob timing count khớp toàn bộ commits
 [PASS] decode timing count khớp toàn bộ commits
 [PASS] endToEnd timing count khớp toàn bộ commits
-[PASS] Validation p95 4.80ms <= 30ms
-[PASS] Raster p95 16.20ms <= 120ms
-[PASS] toBlob p95 14.80ms <= 60ms
-[PASS] Decode p95 1.20ms <= 40ms
-[PASS] End-to-end p95 22.20ms <= 150ms
+[PASS] Validation p95 1.20ms <= 30ms
+[PASS] Raster p95 17.40ms <= 120ms
+[PASS] toBlob p95 14.60ms <= 60ms
+[PASS] Decode p95 2.40ms <= 40ms
+[PASS] End-to-end p95 24.60ms <= 150ms
 [PASS] Arrival schedule-delay p95 <= 40ms
 [PASS] Main-thread responsiveness p95 <= 30ms
 [PASS] rAF delta p95 <= 35ms
@@ -261,11 +261,11 @@
 [PASS] toBlob timing count khớp toàn bộ commits
 [PASS] decode timing count khớp toàn bộ commits
 [PASS] endToEnd timing count khớp toàn bộ commits
-[PASS] Validation p95 7.00ms <= 30ms
-[PASS] Raster p95 9.40ms <= 120ms
-[PASS] toBlob p95 8.10ms <= 60ms
-[PASS] Decode p95 1.00ms <= 40ms
-[PASS] End-to-end p95 16.10ms <= 150ms
+[PASS] Validation p95 0.80ms <= 30ms
+[PASS] Raster p95 9.10ms <= 120ms
+[PASS] toBlob p95 6.70ms <= 60ms
+[PASS] Decode p95 1.80ms <= 40ms
+[PASS] End-to-end p95 13.90ms <= 150ms
 [PASS] Arrival schedule-delay p95 <= 40ms
 [PASS] Main-thread responsiveness p95 <= 30ms
 [PASS] rAF delta p95 <= 35ms
@@ -361,11 +361,11 @@
 [PASS] toBlob timing count khớp toàn bộ commits
 [PASS] decode timing count khớp toàn bộ commits
 [PASS] endToEnd timing count khớp toàn bộ commits
-[PASS] Validation p95 47.80ms <= 100ms
-[PASS] Raster p95 20.00ms <= 300ms
-[PASS] toBlob p95 14.50ms <= 160ms
-[PASS] Decode p95 1.30ms <= 70ms
-[PASS] End-to-end p95 74.20ms <= 400ms
+[PASS] Validation p95 7.30ms <= 100ms
+[PASS] Raster p95 19.70ms <= 300ms
+[PASS] toBlob p95 7.70ms <= 160ms
+[PASS] Decode p95 2.40ms <= 70ms
+[PASS] End-to-end p95 62.90ms <= 400ms
 [PASS] Arrival schedule-delay p95 <= 120ms
 [PASS] Main-thread responsiveness p95 <= 80ms
 [PASS] rAF delta p95 <= 100ms
@@ -461,11 +461,11 @@
 [PASS] toBlob timing count khớp toàn bộ commits
 [PASS] decode timing count khớp toàn bộ commits
 [PASS] endToEnd timing count khớp toàn bộ commits
-[PASS] Validation p95 35.00ms <= 100ms
-[PASS] Raster p95 15.80ms <= 300ms
-[PASS] toBlob p95 13.00ms <= 160ms
-[PASS] Decode p95 1.30ms <= 70ms
-[PASS] End-to-end p95 56.60ms <= 400ms
+[PASS] Validation p95 5.10ms <= 100ms
+[PASS] Raster p95 15.20ms <= 300ms
+[PASS] toBlob p95 11.20ms <= 160ms
+[PASS] Decode p95 2.00ms <= 70ms
+[PASS] End-to-end p95 25.00ms <= 400ms
 [PASS] Arrival schedule-delay p95 <= 120ms
 [PASS] Main-thread responsiveness p95 <= 80ms
 [PASS] rAF delta p95 <= 100ms

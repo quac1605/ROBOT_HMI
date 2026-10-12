@@ -1,13 +1,13 @@
 {
   "config": {
     "argv": [
-      "C:\\Program Files\\nodejs\\node.exe",
-      "C:\\Users\\nnqua\\Desktop\\ROBOT_HMI\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "/usr/bin/node",
+      "/home/hoanglinhnguyen/ROBOT_HMI/frontend/node_modules/@playwright/test/cli.js",
       "test",
       "--project=chromium"
     ],
-    "configFile": "C:\\Users\\nnqua\\Desktop\\ROBOT_HMI\\frontend\\playwright.config.js",
-    "rootDir": "C:/Users/nnqua/Desktop/ROBOT_HMI/docs/test/browser",
+    "configFile": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/playwright.config.js",
+    "rootDir": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser",
     "failOnFlakyTests": false,
     "forbidOnly": true,
     "fullyParallel": false,
@@ -23,7 +23,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/Users/nnqua/Desktop/ROBOT_HMI/frontend/test-results",
+        "outputDir": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -31,7 +31,7 @@
         },
         "id": "chromium",
         "name": "chromium",
-        "testDir": "C:/Users/nnqua/Desktop/ROBOT_HMI/docs/test/browser",
+        "testDir": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -75,7 +75,7 @@
         {
           "title": "Chặng 6 — Chromium acceptance với production modules và oracle xác định",
           "file": "stage6.spec.js",
-          "line": 88,
+          "line": 131,
           "column": 6,
           "specs": [
             {
@@ -94,12 +94,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1472,
+                      "duration": 2401,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:10.915Z",
+                      "startTime": "2026-10-12T03:53:09.777Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -109,7 +109,7 @@
               ],
               "id": "16b301a3cc979d69c643-bb1fa76f7049fc3537d2",
               "file": "stage6.spec.js",
-              "line": 104,
+              "line": 147,
               "column": 7
             },
             {
@@ -128,12 +128,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3047,
+                      "duration": 4099,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:12.911Z",
+                      "startTime": "2026-10-12T03:53:12.430Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -143,7 +143,7 @@
               ],
               "id": "16b301a3cc979d69c643-380f1670464f98dca47d",
               "file": "stage6.spec.js",
-              "line": 150,
+              "line": 193,
               "column": 7
             },
             {
@@ -162,12 +162,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2335,
+                      "duration": 3016,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:15.968Z",
+                      "startTime": "2026-10-12T03:53:16.538Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -177,7 +177,7 @@
               ],
               "id": "16b301a3cc979d69c643-8f0a6a66a8b5f505a3f6",
               "file": "stage6.spec.js",
-              "line": 189,
+              "line": 232,
               "column": 7
             },
             {
@@ -196,12 +196,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1351,
+                      "duration": 1702,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:18.312Z",
+                      "startTime": "2026-10-12T03:53:19.564Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -211,7 +211,7 @@
               ],
               "id": "16b301a3cc979d69c643-0edb752fa1da8c71008e",
               "file": "stage6.spec.js",
-              "line": 248,
+              "line": 291,
               "column": 7
             },
             {
@@ -230,12 +230,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1416,
+                      "duration": 1717,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:19.672Z",
+                      "startTime": "2026-10-12T03:53:21.274Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -245,7 +245,7 @@
               ],
               "id": "16b301a3cc979d69c643-d116b143852f4823cc16",
               "file": "stage6.spec.js",
-              "line": 273,
+              "line": 316,
               "column": 7
             },
             {
@@ -264,12 +264,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1417,
+                      "duration": 1917,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:21.097Z",
+                      "startTime": "2026-10-12T03:53:22.999Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -279,7 +279,7 @@
               ],
               "id": "16b301a3cc979d69c643-6910a2da6b145af19dd0",
               "file": "stage6.spec.js",
-              "line": 290,
+              "line": 333,
               "column": 7
             },
             {
@@ -298,12 +298,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1194,
+                      "duration": 1711,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:22.523Z",
+                      "startTime": "2026-10-12T03:53:24.925Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -313,7 +313,7 @@
               ],
               "id": "16b301a3cc979d69c643-8aead7c4d8c20ba1fec6",
               "file": "stage6.spec.js",
-              "line": 339,
+              "line": 382,
               "column": 7
             },
             {
@@ -332,12 +332,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1495,
+                      "duration": 2057,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:23.724Z",
+                      "startTime": "2026-10-12T03:53:26.646Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -347,7 +347,7 @@
               ],
               "id": "16b301a3cc979d69c643-fc9a899912ab0ddea086",
               "file": "stage6.spec.js",
-              "line": 392,
+              "line": 435,
               "column": 7
             },
             {
@@ -366,12 +366,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1108,
+                      "duration": 1380,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:25.226Z",
+                      "startTime": "2026-10-12T03:53:28.713Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -381,12 +381,12 @@
               ],
               "id": "16b301a3cc979d69c643-cb1f720d270aaf6fe91a",
               "file": "stage6.spec.js",
-              "line": 429,
+              "line": 472,
               "column": 7
             },
             {
               "title": "Case 10: Mapping→Navigation→Mapping giữ session và live grid tiếp tục",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -399,23 +399,50 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3525,
-                      "errors": [],
+                      "status": "timedOut",
+                      "duration": 30346,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                            "column": 49,
+                            "line": 73
+                          },
+                          "message": "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Xây dựng bản đồ' })\u001b[22m\n\n\n  71 | async function spaNavigate(page, label, pathname) {\n  72 |   await page.getByRole('button', { name: 'Mở menu chức năng' }).click();\n> 73 |   await page.getByRole('link', { name: label }).click();\n     |                                                 ^\n  74 |   await expect(page).toHaveURL(new RegExp(`${pathname}$`));\n  75 | }\n  76 |\n    at spaNavigate (/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js:73:49)\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js:508:5"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:26.343Z",
+                      "startTime": "2026-10-12T03:53:30.104Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage6-Chặng-6-—-Chromium--61969-ssion-và-live-grid-tiếp-tục-chromium/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage6-Chặng-6-—-Chromium--61969-ssion-và-live-grid-tiếp-tục-chromium/trace.zip"
+                        }
+                      ]
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "16b301a3cc979d69c643-52683a957860b001f27f",
               "file": "stage6.spec.js",
-              "line": 455,
+              "line": 498,
               "column": 7
             },
             {
@@ -431,15 +458,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3077,
+                      "duration": 4683,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:29.876Z",
+                      "startTime": "2026-10-12T03:54:01.124Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -449,12 +476,12 @@
               ],
               "id": "16b301a3cc979d69c643-d310a2a3206444a35a8f",
               "file": "stage6.spec.js",
-              "line": 473,
+              "line": 521,
               "column": 7
             },
             {
               "title": "Case 12: Save failure không tạo ready; retry giữ raster và chỉ tạo một map",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -465,25 +492,60 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3641,
-                      "errors": [],
+                      "status": "failed",
+                      "duration": 10058,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/đã được lưu thành công/)\nExpected: visible\nTimeout: 6000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/đã được lưu thành công/) with timeout 6000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/đã được lưu thành công/)\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/đã được lưu thành công/)\nExpected: visible\nTimeout: 6000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/đã được lưu thành công/) with timeout 6000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/đã được lưu thành công/)\u001b[22m\n\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js:565:60",
+                        "location": {
+                          "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                          "column": 60,
+                          "line": 565
+                        },
+                        "snippet": "  563 |       .filter((map) => map.name === mapName).length, name)).toBe(0);\n  564 |     await page.getByRole('button', { name: 'Thử lại lưu bản đồ' }).click();\n> 565 |     await expect(page.getByText(/đã được lưu thành công/)).toBeVisible({ timeout: 6_000 });\n      |                                                            ^\n  566 |     expect(await page.evaluate(async (mapName) => (await window.__STAGE6_TEST_CONTROLS__.listMaps())\n  567 |       .filter((map) => map.name === mapName).length, name)).toBe(1);\n  568 |   });"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                            "column": 60,
+                            "line": 565
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/đã được lưu thành công/)\nExpected: visible\nTimeout: 6000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/đã được lưu thành công/) with timeout 6000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/đã được lưu thành công/)\u001b[22m\n\n\n  563 |       .filter((map) => map.name === mapName).length, name)).toBe(0);\n  564 |     await page.getByRole('button', { name: 'Thử lại lưu bản đồ' }).click();\n> 565 |     await expect(page.getByText(/đã được lưu thành công/)).toBeVisible({ timeout: 6_000 });\n      |                                                            ^\n  566 |     expect(await page.evaluate(async (mapName) => (await window.__STAGE6_TEST_CONTROLS__.listMaps())\n  567 |       .filter((map) => map.name === mapName).length, name)).toBe(1);\n  568 |   });\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js:565:60"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:32.962Z",
+                      "startTime": "2026-10-12T03:54:05.882Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage6-Chặng-6-—-Chromium--e1424-ữ-raster-và-chỉ-tạo-một-map-chromium/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage6-Chặng-6-—-Chromium--e1424-ữ-raster-và-chỉ-tạo-một-map-chromium/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                        "column": 60,
+                        "line": 565
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "16b301a3cc979d69c643-0880ac670e56832e9730",
               "file": "stage6.spec.js",
-              "line": 495,
+              "line": 543,
               "column": 7
             },
             {
@@ -499,15 +561,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 2,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 5736,
+                      "duration": 8035,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:36.611Z",
+                      "startTime": "2026-10-12T03:54:16.467Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -517,7 +579,7 @@
               ],
               "id": "16b301a3cc979d69c643-a3ff48f74328c7f23b98",
               "file": "stage6.spec.js",
-              "line": 522,
+              "line": 570,
               "column": 7
             },
             {
@@ -533,15 +595,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 2,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1809,
+                      "duration": 2533,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:42.354Z",
+                      "startTime": "2026-10-12T03:54:24.580Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -551,12 +613,12 @@
               ],
               "id": "16b301a3cc979d69c643-58eee00eb5c553404a9c",
               "file": "stage6.spec.js",
-              "line": 578,
+              "line": 632,
               "column": 7
             },
             {
               "title": "Case 15: Full reload ghi rõ mock in-memory, không tuyên bố backend recovery",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -567,25 +629,60 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 2,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1946,
-                      "errors": [],
+                      "status": "failed",
+                      "duration": 10165,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)\nExpected: visible\nTimeout: 8000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/) with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)\nExpected: visible\nTimeout: 8000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/) with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)\u001b[22m\n\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js:662:95",
+                        "location": {
+                          "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                          "column": 95,
+                          "line": 662
+                        },
+                        "snippet": "  660 |   test('Case 15: Full reload ghi rõ mock in-memory, không tuyên bố backend recovery', async ({ page }) => {\n  661 |     await page.goto('/mapping');\n> 662 |     await expect(page.getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)).toBeVisible();\n      |                                                                                               ^\n  663 |     await page.reload();\n  664 |     await expect(page.getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)).toBeVisible();\n  665 |     await expect(page.getByText(/backend.*recovery/i)).toHaveCount(0);"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                            "column": 95,
+                            "line": 662
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)\nExpected: visible\nTimeout: 8000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/) with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)\u001b[22m\n\n\n  660 |   test('Case 15: Full reload ghi rõ mock in-memory, không tuyên bố backend recovery', async ({ page }) => {\n  661 |     await page.goto('/mapping');\n> 662 |     await expect(page.getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)).toBeVisible();\n      |                                                                                               ^\n  663 |     await page.reload();\n  664 |     await expect(page.getByText(/Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên/)).toBeVisible();\n  665 |     await expect(page.getByText(/backend.*recovery/i)).toHaveCount(0);\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js:662:95"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:44.171Z",
+                      "startTime": "2026-10-12T03:54:27.122Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage6-Chặng-6-—-Chromium--bc5d7-g-tuyên-bố-backend-recovery-chromium/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage6-Chặng-6-—-Chromium--bc5d7-g-tuyên-bố-backend-recovery-chromium/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage6.spec.js",
+                        "column": 95,
+                        "line": 662
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "16b301a3cc979d69c643-adafff27bf78802fb702",
               "file": "stage6.spec.js",
-              "line": 606,
+              "line": 660,
               "column": 7
             }
           ]
@@ -602,7 +699,7 @@
         {
           "title": "Chặng 7 — remediation acceptance",
           "file": "stage7.spec.js",
-          "line": 28,
+          "line": 37,
           "column": 6,
           "specs": [
             {
@@ -618,15 +715,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 3,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3509,
+                      "duration": 4774,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:46.139Z",
+                      "startTime": "2026-10-12T03:54:37.782Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -636,7 +733,7 @@
               ],
               "id": "f2add28a12cfeffd7731-60e0f8a85bf0cb289551",
               "file": "stage7.spec.js",
-              "line": 39,
+              "line": 48,
               "column": 9
             },
             {
@@ -652,15 +749,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 3,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3870,
+                      "duration": 4751,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:49.655Z",
+                      "startTime": "2026-10-12T03:54:42.631Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -670,7 +767,7 @@
               ],
               "id": "f2add28a12cfeffd7731-3df738bf68b5c8bdf769",
               "file": "stage7.spec.js",
-              "line": 54,
+              "line": 63,
               "column": 9
             },
             {
@@ -686,15 +783,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 3,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3633,
+                      "duration": 4370,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:53.536Z",
+                      "startTime": "2026-10-12T03:54:47.392Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -704,7 +801,7 @@
               ],
               "id": "f2add28a12cfeffd7731-16fe23538fdbd680e746",
               "file": "stage7.spec.js",
-              "line": 68,
+              "line": 77,
               "column": 9
             },
             {
@@ -720,15 +817,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 3,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4405,
+                      "duration": 5022,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:29:57.178Z",
+                      "startTime": "2026-10-12T03:54:51.770Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -738,7 +835,7 @@
               ],
               "id": "f2add28a12cfeffd7731-7d27b0e01c66367b14c2",
               "file": "stage7.spec.js",
-              "line": 83,
+              "line": 92,
               "column": 9
             },
             {
@@ -754,15 +851,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 3,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2459,
+                      "duration": 2986,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:01.593Z",
+                      "startTime": "2026-10-12T03:54:56.802Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -772,12 +869,12 @@
               ],
               "id": "f2add28a12cfeffd7731-7181c6e37009a2175473",
               "file": "stage7.spec.js",
-              "line": 98,
+              "line": 107,
               "column": 9
             },
             {
               "title": "C7-06: page navigation không làm mất mission",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -788,25 +885,52 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 3,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3627,
-                      "errors": [],
+                      "status": "timedOut",
+                      "duration": 30322,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage7.spec.js",
+                            "column": 16,
+                            "line": 31
+                          },
+                          "message": "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Xây dựng bản đồ' })\u001b[22m\n\n\n  29 |     await page.getByRole('button', { name: 'Mở menu chức năng' }).click();\n  30 |     const link = page.getByRole('link', { name: label });\n> 31 |     await link.click();\n     |                ^\n  32 |     await expect(page).toHaveURL(new RegExp(path + '$'));\n  33 |     // React đổi URL trước khi animation đóng MUI Drawer hoàn tất. Chờ Drawer\n  34 |     // đóng để backdrop không chặn lần mở menu kế tiếp trong cùng test.\n    at navigate (/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage7.spec.js:31:16)\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage7.spec.js:130:9"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:04.061Z",
+                      "startTime": "2026-10-12T03:54:59.797Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage7-Chặng-7-—-remediati-9dba7-ation-không-làm-mất-mission-chromium/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage7-Chặng-7-—-remediati-9dba7-ation-không-làm-mất-mission-chromium/trace.zip"
+                        }
+                      ]
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "f2add28a12cfeffd7731-c3a4caab7e2c6c6356ef",
               "file": "stage7.spec.js",
-              "line": 117,
+              "line": 126,
               "column": 9
             },
             {
@@ -822,15 +946,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2207,
+                      "duration": 3484,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:07.696Z",
+                      "startTime": "2026-10-12T03:55:30.719Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -840,7 +964,7 @@
               ],
               "id": "f2add28a12cfeffd7731-baac9943d9a29a5b1376",
               "file": "stage7.spec.js",
-              "line": 128,
+              "line": 137,
               "column": 9
             },
             {
@@ -856,15 +980,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2207,
+                      "duration": 2820,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:09.914Z",
+                      "startTime": "2026-10-12T03:55:34.286Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -874,7 +998,7 @@
               ],
               "id": "f2add28a12cfeffd7731-2c1a0b63d3b4756590f9",
               "file": "stage7.spec.js",
-              "line": 138,
+              "line": 147,
               "column": 9
             },
             {
@@ -890,15 +1014,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2546,
+                      "duration": 2832,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:12.132Z",
+                      "startTime": "2026-10-12T03:55:37.115Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -908,7 +1032,7 @@
               ],
               "id": "f2add28a12cfeffd7731-8383fccf4bbe445bf895",
               "file": "stage7.spec.js",
-              "line": 160,
+              "line": 169,
               "column": 9
             },
             {
@@ -924,15 +1048,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4507,
+                      "duration": 4979,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:14.684Z",
+                      "startTime": "2026-10-12T03:55:39.954Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -942,7 +1066,7 @@
               ],
               "id": "f2add28a12cfeffd7731-01dbbb30b2b33d48146c",
               "file": "stage7.spec.js",
-              "line": 180,
+              "line": 189,
               "column": 9
             },
             {
@@ -958,15 +1082,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2741,
+                      "duration": 3122,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:19.200Z",
+                      "startTime": "2026-10-12T03:55:44.941Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -976,7 +1100,7 @@
               ],
               "id": "f2add28a12cfeffd7731-34835cd210dc8cc69224",
               "file": "stage7.spec.js",
-              "line": 200,
+              "line": 209,
               "column": 9
             },
             {
@@ -992,15 +1116,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2303,
+                      "duration": 2724,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-18T01:30:21.950Z",
+                      "startTime": "2026-10-12T03:55:48.071Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1010,21 +1134,923 @@
               ],
               "id": "f2add28a12cfeffd7731-5d360582d0aa532883b2",
               "file": "stage7.spec.js",
-              "line": 229,
+              "line": 243,
               "column": 9
             }
           ]
+        }
+      ]
+    },
+    {
+      "title": "stage8Assets.spec.js",
+      "file": "stage8Assets.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "F8-A01: docs MP4 bytes, ranges and existing public assets are served correctly",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 37,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:55:50.808Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6224711860bde93c5627-b4ea31acdca29f270964",
+          "file": "stage8Assets.spec.js",
+          "line": 6,
+          "column": 5
+        },
+        {
+          "title": "F8-A02: MappingPage decodes front/rear at 640x360 and video loops",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3262,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:55:50.853Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6224711860bde93c5627-24cf2926968966d51767",
+          "file": "stage8Assets.spec.js",
+          "line": 33,
+          "column": 5
+        },
+        {
+          "title": "F8-A03: front and rear rendered frames have the expected horizontal flip",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 814,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:55:54.124Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6224711860bde93c5627-7b23863e95c9b14040d5",
+          "file": "stage8Assets.spec.js",
+          "line": 63,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "stage8Control.spec.js",
+      "file": "stage8Control.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "C8-01: login -> front clip decode -> switch rear decode; cameraId/nhãn đúng",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2157,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:55:54.954Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-59029ae69dea8ff8f9ab",
+          "file": "stage8Control.spec.js",
+          "line": 83,
+          "column": 5
+        },
+        {
+          "title": "C8-02: giữ và thả ngoài nút không có nonzero command trở lại",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4006,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:55:57.120Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-084227eb0900df1e74f3",
+          "file": "stage8Control.spec.js",
+          "line": 93,
+          "column": 5
+        },
+        {
+          "title": "C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera sau không đảo vector",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4946,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:01.134Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-118a3b2d44a5563c6c38",
+          "file": "stage8Control.spec.js",
+          "line": 114,
+          "column": 5
+        },
+        {
+          "title": "MJ-B01: lái mapping qua joystick rồi Stop đo được trước khi Finish lưu map",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5095,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:06.087Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-d3b7b87959b32e4b6e80",
+          "file": "stage8Control.spec.js",
+          "line": 189,
+          "column": 5
+        },
+        {
+          "title": "C8-04: pointercancel + lostcapture stop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3989,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:11.189Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-2560dcac3a77c9c73e3d",
+          "file": "stage8Control.spec.js",
+          "line": 235,
+          "column": 5
+        },
+        {
+          "title": "C8-05: hai pointer trên joystick: chỉ một publisher duy nhất",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3756,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:15.184Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-0686c9908314449a6299",
+          "file": "stage8Control.spec.js",
+          "line": 265,
+          "column": 5
+        },
+        {
+          "title": "C8-06: phím Space ngoài input gọi manual stop; trong input không stop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3214,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:18.946Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-7113059f04d534c87455",
+          "file": "stage8Control.spec.js",
+          "line": 301,
+          "column": 5
+        },
+        {
+          "title": "C8-07: window blur ngừng hold",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3485,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:22.167Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-41ec60127859c6c5a04f",
+          "file": "stage8Control.spec.js",
+          "line": 331,
+          "column": 5
+        },
+        {
+          "title": "C8-08: đổi route khi holding: cleanup, quay lại không tự cấp quyền",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3519,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:25.658Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-fae532d602d51a6eded1",
+          "file": "stage8Control.spec.js",
+          "line": 348,
+          "column": 5
+        },
+        {
+          "title": "C8-09: switch camera khi đang giữ: stop ngay, freshness reset",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3169,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:29.183Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-8a9c6d5ffcc89ea6f77e",
+          "file": "stage8Control.spec.js",
+          "line": 380,
+          "column": 5
+        },
+        {
+          "title": "C8-10: camera health hiển thị đúng theo trạng thái",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 12108,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('camera-health')\nExpected substring: \u001b[32m\"\u001b[7mĐang c\u001b[27mhờ frame\u001b[7m mới\u001b[27m\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mC\u001b[27mhờ frame\"\u001b[39m\nTimeout: 8000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('camera-health') with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('camera-health')\u001b[22m\n\u001b[2m    20 × locator resolved to <div data-testid=\"camera-health\" class=\"MuiChip-root MuiChip-filled MuiChip-sizeSmall MuiChip-colorWarning css-kkqij8-MuiChip-root\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"Chờ frame\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('camera-health')\nExpected substring: \u001b[32m\"\u001b[7mĐang c\u001b[27mhờ frame\u001b[7m mới\u001b[27m\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mC\u001b[27mhờ frame\"\u001b[39m\nTimeout: 8000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('camera-health') with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('camera-health')\u001b[22m\n\u001b[2m    20 × locator resolved to <div data-testid=\"camera-health\" class=\"MuiChip-root MuiChip-filled MuiChip-sizeSmall MuiChip-colorWarning css-kkqij8-MuiChip-root\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"Chờ frame\"\u001b[22m\n\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js:408:24",
+                    "location": {
+                      "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js",
+                      "column": 24,
+                      "line": 408
+                    },
+                    "snippet": "  406 |   await page.evaluate(() => document.querySelector('video')?.pause());\n  407 |   await page.waitForTimeout(2000);\n> 408 |   await expect(health).toContainText('Đang chờ frame mới');\n      |                        ^\n  409 |\n  410 |   // Khởi động lại video\n  411 |   await page.evaluate(() => document.querySelector('video')?.play());"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js",
+                        "column": 24,
+                        "line": 408
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('camera-health')\nExpected substring: \u001b[32m\"\u001b[7mĐang c\u001b[27mhờ frame\u001b[7m mới\u001b[27m\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mC\u001b[27mhờ frame\"\u001b[39m\nTimeout: 8000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('camera-health') with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('camera-health')\u001b[22m\n\u001b[2m    20 × locator resolved to <div data-testid=\"camera-health\" class=\"MuiChip-root MuiChip-filled MuiChip-sizeSmall MuiChip-colorWarning css-kkqij8-MuiChip-root\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"Chờ frame\"\u001b[22m\n\n\n  406 |   await page.evaluate(() => document.querySelector('video')?.pause());\n  407 |   await page.waitForTimeout(2000);\n> 408 |   await expect(health).toContainText('Đang chờ frame mới');\n      |                        ^\n  409 |\n  410 |   // Khởi động lại video\n  411 |   await page.evaluate(() => document.querySelector('video')?.play());\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js:408:24"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:32.359Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage8Control-C8-10-camera-fc841-ển-thị-đúng-theo-trạng-thái-chromium/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage8Control-C8-10-camera-fc841-ển-thị-đúng-theo-trạng-thái-chromium/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js",
+                    "column": 24,
+                    "line": 408
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-d064dc02f19740861618",
+          "file": "stage8Control.spec.js",
+          "line": 400,
+          "column": 5
+        },
+        {
+          "title": "C8-11: heartbeat/control transport mất: ngừng publisher",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4421,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:44.951Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-e5a127692a32e1df0f2f",
+          "file": "stage8Control.spec.js",
+          "line": 415,
+          "column": 5
+        },
+        {
+          "title": "C8-12: service revoke khóa joystick và loop không tiếp tục",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3428,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:49.445Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-751c82fcb25dc4c38554",
+          "file": "stage8Control.spec.js",
+          "line": 442,
+          "column": 5
+        },
+        {
+          "title": "C8-13: manual stop lúc navigation đang thực thi: mission canceling -> terminal hợp lệ",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2580,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:52.884Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-f30620b16a0713401066",
+          "file": "stage8Control.spec.js",
+          "line": 457,
+          "column": 5
+        },
+        {
+          "title": "C8-14: E-stop/inhibit không acquire; đủ reasons đúng",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3205,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:55.471Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-f9bfcac4f5aa1a61a50c",
+          "file": "stage8Control.spec.js",
+          "line": 487,
+          "column": 5
+        },
+        {
+          "title": "C8-15: logout lúc holding: dọn dẹp phiên an toàn",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3692,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:56:58.684Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-ad63e535b6052041b1b9",
+          "file": "stage8Control.spec.js",
+          "line": 501,
+          "column": 5
+        },
+        {
+          "title": "C8-16: manual stop retry và observation confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2668,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:57:02.385Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-709aa0583f9f4fd13575",
+          "file": "stage8Control.spec.js",
+          "line": 521,
+          "column": 5
+        },
+        {
+          "title": "U8-07: descriptor mặc định có nhãn và profile mock; video decode hợp lệ",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 10132,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('camera-select-front')\nExpected: \u001b[32m\"Cam\u001b[7mera\u001b[27m trước\"\u001b[39m\nReceived: \u001b[31m\"Cam trước\"\u001b[39m\nTimeout:  8000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('camera-select-front') with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('camera-select-front')\u001b[22m\n\u001b[2m    20 × locator resolved to <button tabindex=\"0\" type=\"button\" data-testid=\"camera-select-front\" class=\"MuiButtonBase-root MuiButtonGroup-grouped MuiButton-root MuiButton-contained MuiButton-sizeSmall MuiButton-colorPrimary MuiButtonGroup-grouped MuiButtonGroup-firstButton css-136q6vf-MuiButtonBase-root-MuiButton-root\">Cam trước</button>\u001b[22m\n\u001b[2m       - unexpected value \"Cam trước\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('camera-select-front')\nExpected: \u001b[32m\"Cam\u001b[7mera\u001b[27m trước\"\u001b[39m\nReceived: \u001b[31m\"Cam trước\"\u001b[39m\nTimeout:  8000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('camera-select-front') with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('camera-select-front')\u001b[22m\n\u001b[2m    20 × locator resolved to <button tabindex=\"0\" type=\"button\" data-testid=\"camera-select-front\" class=\"MuiButtonBase-root MuiButtonGroup-grouped MuiButton-root MuiButton-contained MuiButton-sizeSmall MuiButton-colorPrimary MuiButtonGroup-grouped MuiButtonGroup-firstButton css-136q6vf-MuiButtonBase-root-MuiButton-root\">Cam trước</button>\u001b[22m\n\u001b[2m       - unexpected value \"Cam trước\"\u001b[22m\n\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js:557:57",
+                    "location": {
+                      "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js",
+                      "column": 57,
+                      "line": 557
+                    },
+                    "snippet": "  555 | test('U8-07: descriptor mặc định có nhãn và profile mock; video decode hợp lệ', async ({ page }) => {\n  556 |   await openMapping(page, { startSession: false });\n> 557 |   await expect(page.getByTestId('camera-select-front')).toHaveText('Camera trước');\n      |                                                         ^\n  558 |   await expect(page.getByTestId('camera-select-rear')).toHaveText('Camera sau');\n  559 |\n  560 |   await expect(page.getByText('Mô phỏng', { exact: true })).toBeVisible();"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js",
+                        "column": 57,
+                        "line": 557
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('camera-select-front')\nExpected: \u001b[32m\"Cam\u001b[7mera\u001b[27m trước\"\u001b[39m\nReceived: \u001b[31m\"Cam trước\"\u001b[39m\nTimeout:  8000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" getByTestId('camera-select-front') with timeout 8000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('camera-select-front')\u001b[22m\n\u001b[2m    20 × locator resolved to <button tabindex=\"0\" type=\"button\" data-testid=\"camera-select-front\" class=\"MuiButtonBase-root MuiButtonGroup-grouped MuiButton-root MuiButton-contained MuiButton-sizeSmall MuiButton-colorPrimary MuiButtonGroup-grouped MuiButtonGroup-firstButton css-136q6vf-MuiButtonBase-root-MuiButton-root\">Cam trước</button>\u001b[22m\n\u001b[2m       - unexpected value \"Cam trước\"\u001b[22m\n\n\n  555 | test('U8-07: descriptor mặc định có nhãn và profile mock; video decode hợp lệ', async ({ page }) => {\n  556 |   await openMapping(page, { startSession: false });\n> 557 |   await expect(page.getByTestId('camera-select-front')).toHaveText('Camera trước');\n      |                                                         ^\n  558 |   await expect(page.getByTestId('camera-select-rear')).toHaveText('Camera sau');\n  559 |\n  560 |   await expect(page.getByText('Mô phỏng', { exact: true })).toBeVisible();\n    at /home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js:557:57"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:57:05.060Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage8Control-U8-07-descri-d2714-le-mock-video-decode-hợp-lệ-chromium/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/hoanglinhnguyen/ROBOT_HMI/frontend/test-results/stage8Control-U8-07-descri-d2714-le-mock-video-decode-hợp-lệ-chromium/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/hoanglinhnguyen/ROBOT_HMI/docs/test/browser/stage8Control.spec.js",
+                    "column": 57,
+                    "line": 557
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-a9cfdb3eef38556587e6",
+          "file": "stage8Control.spec.js",
+          "line": 555,
+          "column": 5
+        },
+        {
+          "title": "C8-H-route: late acquire after route never enables a remounted page",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4527,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:57:15.706Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-91c7f0d8946a1b6341ae",
+          "file": "stage8Control.spec.js",
+          "line": 569,
+          "column": 7
+        },
+        {
+          "title": "C8-H-logout: late acquire after logout never enables a remounted page",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3437,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:57:20.314Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-cb7c4bfaa2c00cdcc094",
+          "file": "stage8Control.spec.js",
+          "line": 569,
+          "column": 7
+        },
+        {
+          "title": "U8-08: thu hồi quyền/unknown E-stop không mở lái dù camera fresh",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2826,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-12T03:57:23.758Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ef7ecd1cd75a8db0ce13-00392a719349a1eb988b",
+          "file": "stage8Control.spec.js",
+          "line": 605,
+          "column": 5
         }
       ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-18T01:29:10.356Z",
-    "duration": 74461.293,
-    "expected": 27,
+    "startTime": "2026-10-12T03:53:09.237Z",
+    "duration": 257398.979,
+    "expected": 45,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 6,
     "flaky": 0
   }
 }

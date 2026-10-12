@@ -1,0 +1,23 @@
+{
+  "name": "@robot-hmi/control-domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./controlPolicy": "./src/controlPolicy.js",
+    "./controlLeaseCore": "./src/controlLeaseCore.js",
+    "./stopObservation": "./src/stopObservation.js",
+    "./motionAdmissionGate": "./src/motionAdmissionGate.js",
+    "./controlRequestRegistry": "./src/controlRequestRegistry.js",
+    "./stableStringify": "./src/stableStringify.js",
+    "./controlEvidence": "./src/controlEvidence.js",
+    "./controlStreamFence": "./src/controlStreamFence.js",
+    "./mockMotionSource": "./src/mockMotionSource.js",
+    "./controlAuthority": "./src/controlAuthority.js",
+    "./mappingDriveGate": "./src/mappingDriveGate.js",
+    "./mockMappingSource": "./src/mockMappingSource.js"
+  },
+  "dependencies": {
+    "@robot-hmi/contracts": "file:../contracts"
+  }
+}

@@ -4,6 +4,7 @@ import Map2D from '../map/Map2D.jsx';
 import NavigationLegend from './NavigationLegend.jsx';
 import WaypointEditor from './WaypointEditor.jsx';
 import MissionPanel from './MissionPanel.jsx';
+import RobotStatusCard from '../status/RobotStatusCard.jsx';
 import { useMapGrid } from '../../hooks/useMapGrid.js';
 import { useOccupancyRaster } from '../../hooks/useOccupancyRaster.js';
 import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
@@ -69,6 +70,8 @@ export default function NavigationWorkspace({ currentMap }) {
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={2}>
+                        {/* Trạng thái robot (gộp từ StatusPage cũ) nằm đầu cột bên phải */}
+                        <RobotStatusCard />
                         <MissionPanel selectedMap={currentMap} />
                         <WaypointEditor currentMap={currentMap} />
                     </Stack>

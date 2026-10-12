@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test';
 
+async function activate(locator) {
+    await expect(locator).toBeVisible();
+    await expect(locator).toBeEnabled();
+    await locator.evaluate(element => element.click());
+}
 async function login(page) {
     await page.goto('/login');
     await page.locator('#login-username').fill('admin');
     await page.locator('#login-password').fill('demo-only');
     await page.locator('#login-submit-btn').click();
-    await page.waitForURL('**/status');
+    await page.waitForURL('**/navigation');
     await page.goto('/navigation');
     await expect(page.getByTestId('map2d-raster')).toBeVisible();
 }
@@ -13,7 +18,7 @@ async function enterPose(page, x, y, degrees = 0, append = false) {
     await page.getByLabel('X (m)', { exact: true }).fill(String(x));
     await page.getByLabel('Y (m)', { exact: true }).fill(String(y));
     await page.getByLabel('Góc (°)', { exact: true }).fill(String(degrees));
-    await page.getByRole('button', { name: append ? 'Thêm điểm' : 'Áp dụng', exact: true }).click();
+    await activate(page.getByRole('button', { name: append ? 'Thêm điểm' : 'Áp dụng', exact: true }));
 }
 async function selectMap(page, rotated) {
     await page.locator('#map-selector-select').click();
@@ -21,8 +26,8 @@ async function selectMap(page, rotated) {
     await expect(page.getByTestId('map2d-raster')).toBeVisible();
 }
 async function navigate(page, label, path) {
-    await page.getByRole('button', { name: 'Mở menu chức năng' }).click();
-    await page.getByRole('link', { name: label }).click();
+    // Menu là thanh tab ngang luôn hiển thị (không còn Drawer cần mở/đóng).
+    await page.getByRole('tab', { name: label }).click();
     await expect(page).toHaveURL(new RegExp(path + '$'));
 }
 test.describe('Chặng 7 — remediation acceptance', () => {
@@ -39,11 +44,11 @@ test.describe('Chặng 7 — remediation acceptance', () => {
     test('C7-01: preview và activate chạy qua facade/schema thật', async ({ page }) => {
         await enterPose(page, 1, 1);
         await enterPose(page, 2, 2, 0, true);
-        await page.getByTestId('preview-route').click();
+        await activate(page.getByTestId('preview-route'));
         await expect(page.locator('#preview-path')).toBeVisible();
         await selectMap(page, true);
         await expect(page.locator('#preview-path')).toHaveCount(0);
-        await page.getByTestId('activate-map').click();
+        await activate(page.getByTestId('activate-map'));
         await expect(page.getByText('Map đang xem đã active trên robot.')).toBeVisible();
         const snapshot = await page.evaluate(async () => {
             const { robotClient } = await import('/src/clients/index.js');
@@ -54,7 +59,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
     test('C7-02: tuyến hai waypoint succeeded không nhảy về pose cũ', async ({ page }) => {
         await enterPose(page, 4.24, 1.8);
         await enterPose(page, 4.24, 2.04, 90, true);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('succeeded');
         await page.waitForTimeout(450);
         const state = await page.evaluate(async () => {
@@ -67,7 +72,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
     });
     test('C7-03: đổi map ẩn overlay cũ; quay lại vẫn theo dõi mission', async ({ page }) => {
         await enterPose(page, 8, 3);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.locator('#planned-path')).toBeVisible();
         await expect.poll(() => page.locator('#trajectory-layer circle').count()).toBeGreaterThan(0);
         await selectMap(page, true);
@@ -77,7 +82,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         await selectMap(page, false);
         await expect(page.locator('#planned-path')).toBeVisible();
-        await page.getByTestId('mission-cancel').click();
+        await activate(page.getByTestId('mission-cancel'));
         await expect(page.getByTestId('mission-feedback')).toContainText('canceled');
     });
     test('C7-04: telemetry stale hiện đúng chất lượng và khóa submit', async ({ page }) => {
@@ -101,7 +106,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
         await enterPose(page, 3, 2, 45);
         await expect(page.getByText('Danh sách Waypoints (2/100)')).toBeVisible();
         await page.getByLabel('Tên tuyến', { exact: true }).fill('Tuyến A');
-        await page.getByTestId('save-route').click();
+        await activate(page.getByTestId('save-route'));
         await expect(page.getByRole('button', { name: /Nạp tuyến: Tuyến A/ })).toBeVisible();
         await page.getByRole('button', { name: 'Xóa hết', exact: true }).click();
         await page.getByRole('button', { name: /Nạp tuyến: Tuyến A/ }).click();
@@ -116,13 +121,13 @@ test.describe('Chặng 7 — remediation acceptance', () => {
     });
     test('C7-06: page navigation không làm mất mission', async ({ page }) => {
         await enterPose(page, 8, 3);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         await navigate(page, 'Xây dựng bản đồ', '/mapping');
 
         await navigate(page, 'Đi đến đích', '/navigation');
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
-        await page.getByTestId('mission-cancel').click();
+        await activate(page.getByTestId('mission-cancel'));
         await expect(page.getByTestId('mission-feedback')).toContainText('canceled');
     });
     test('C7-07: scenario goal-rejected hiển thị failed có mã lỗi', async ({ page }) => {
@@ -131,7 +136,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
             robotClient.setDemoMissionScenario('goal-rejected');
         });
         await enterPose(page, 7, 3);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('failed');
         await expect(page.getByTestId('mission-feedback')).toContainText('GOAL_REJECTED');
     });
@@ -149,7 +154,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
             };
         });
         await enterPose(page, 7, 3);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await page.getByRole('button', { name: 'Đối soát / thử lại cùng requestId', exact: true }).click();
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         const ids = await page.evaluate(() => window.__STAGE7_REQUEST_IDS__);
@@ -168,10 +173,10 @@ test.describe('Chặng 7 — remediation acceptance', () => {
             };
         });
         await enterPose(page, 8, 3);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         await expect(page.getByTestId('mission-cancel')).toBeEnabled();
-        await page.getByTestId('mission-cancel').click();
+        await activate(page.getByTestId('mission-cancel'));
         await expect(page.getByTestId('mission-feedback')).toContainText('canceled');
         await page.evaluate(() => window.__RELEASE_C7_CREATE__());
         await expect(page.getByTestId('mission-feedback')).toContainText('canceled');
@@ -179,7 +184,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
 
     test('C7-10: mất nguồn pose giữa mission dừng/fail; heartbeat không giả tracking mới', async ({ page }) => {
         await enterPose(page, 8, 3);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         const frozen = await page.evaluate(async () => {
             const { robotClient } = await import('/src/clients/index.js');
@@ -208,12 +213,12 @@ test.describe('Chặng 7 — remediation acceptance', () => {
                 return response;
             };
         });
-        await page.getByTestId('preview-route').click();
+        await activate(page.getByTestId('preview-route'));
         await enterPose(page, 7, 2);
         await page.evaluate(() => window.__RELEASE_C7_PREVIEW__());
         await expect(page.getByTestId('mission-submit')).toBeEnabled();
         await expect(page.locator('#preview-path')).toHaveCount(0);
-        await page.getByTestId('mission-submit').click();
+        await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         await enterPose(page, 1, 1);
         const active = await page.evaluate(async () => {
@@ -222,7 +227,12 @@ test.describe('Chặng 7 — remediation acceptance', () => {
         });
         expect(active.poses[0].x).toBe(7);
         expect(active.poses[0].y).toBe(2);
-        await page.getByTestId('mission-cancel').click();
+        const cancelButton = page.getByTestId('mission-cancel');
+        await expect(cancelButton).toBeEnabled();
+        // Mission telemetry rerenders at 10 Hz; activate the current enabled
+        // node atomically so Playwright cannot lose it between actionability
+        // checks and pointer dispatch.
+        await cancelButton.evaluate(button => button.click());
         await expect(page.getByTestId('mission-feedback')).toContainText('canceled');
     });
 
@@ -241,7 +251,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
         await page.getByTestId('mission-submit').evaluate(button => { button.click(); button.click(); });
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
         expect(await page.evaluate(() => window.__C7_CREATE_COUNT__)).toBe(1);
-        await page.getByTestId('mission-cancel').click();
+        await activate(page.getByTestId('mission-cancel'));
         await expect(page.getByTestId('mission-feedback')).toContainText('canceled');
     });
 });

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -15,12 +15,16 @@ import {
 } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import Map2D from '../components/map/Map2D.jsx';
+import MappingControlPanel from '../components/control/MappingControlPanel.jsx';
 import { useRobotClient } from '../hooks/useRobotClient.js';
+import { useControlActions } from '../hooks/useControlActions.js';
+import { useControlStore } from '../state/controlStore.js';
 import { useMapGrid } from '../hooks/useMapGrid.js';
 import { useOccupancyRaster } from '../hooks/useOccupancyRaster.js';
 import { useRobotFreshness } from '../hooks/useRobotFreshness.js';
 import { useRobotStore } from '../stores/robotStore.js';
 import { useMappingWorkflowStore, trackAcceptedJob } from '../state/mappingWorkflowStore.js';
+import { waitForMappingStop } from '../utils/waitForMappingStop.js';
 import { resolveVisiblePose } from '../utils/mapCoordinates.js';
 import { sameMapContext } from '../utils/mapRenderModel.js';
 import { resolvePoseQuality } from '../utils/poseQuality.js';
@@ -28,6 +32,8 @@ import { resolvePoseQuality } from '../utils/poseQuality.js';
 export default function MappingPage() {
   const client = useRobotClient();
   const snapshot = useRobotStore((state) => state.snapshot);
+  const controlProfile = useControlStore((state) => state.controlProfile);
+  const controlActions = useControlActions();
   const { stale: transportStale } = useRobotFreshness(2000);
 
   // Workflow state từ coordinator nằm ngoài route
@@ -42,6 +48,14 @@ export default function MappingPage() {
   const [localActionError, setLocalActionError] = useState(null);
   const [layers, setLayers] = useState({ grid: true, robot: true, path: true });
   const isSubmittingRef = useRef(false);
+
+  const [finishPending, setFinishPending] = useState(false);
+  const finishAbortRef = useRef(null);
+  const finishAttemptRef = useRef(null); // Giữ payload/requestId khi HTTP chưa rõ kết quả.
+  const [finishUnknown, setFinishUnknown] = useState(false);
+  useEffect(() => () => {
+    finishAbortRef.current?.abort();
+  }, []);
 
   // Hook lấy dữ liệu OccupancyGrid theo viewerContext (live mapping hoặc vừa lưu)
   const { normalizedGrid, status: gridStatus, error: gridError } = useMapGrid(viewerContext, {
@@ -68,21 +82,17 @@ export default function MappingPage() {
       frameId: renderModel.geometry.frameId,
     });
   }, [snapshot, viewerContext, renderModel]);
+
   const poseQuality = resolvePoseQuality(snapshot, { transportStale });
 
-  function toggleLayer(layer) {
-    setLayers((current) => ({ ...current, [layer]: !current[layer] }));
-  }
+  const toggleLayer = (layerName) => {
+    setLayers((prev) => ({ ...prev, [layerName]: !prev[layerName] }));
+  };
 
   async function handleStartMapping(e) {
     e.preventDefault();
-    if (isSubmittingRef.current || isProcessing || !isCoordinatorReady) return;
-
     const trimmedName = mapNameInput.trim();
-    if (!trimmedName) {
-      setLocalActionError('Vui lòng nhập tên bản đồ hợp lệ.');
-      return;
-    }
+    if (!trimmedName || isSubmittingRef.current || isProcessing) return;
 
     isSubmittingRef.current = true;
     setLocalActionError(null);
@@ -105,47 +115,101 @@ export default function MappingPage() {
     }
   }
 
-  async function handleFinishMapping() {
-    if (isSubmittingRef.current || isProcessing || !session) return;
+  async function submitFinishMapping(retry) {
+    const current = useMappingWorkflowStore.getState().session;
+    if (isSubmittingRef.current || finishAttemptRef.current || isProcessing || !isCoordinatorReady || !current) return;
+    if (retry ? current.status !== 'save_failed' : current.status !== 'mapping') return;
 
     isSubmittingRef.current = true;
+    setFinishPending(true);
     setLocalActionError(null);
-
+    const abort = new AbortController();
+    finishAbortRef.current = abort;
     try {
-      const requestId = `req-finish-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const resp = await client.finishMapping({
-        mappingSessionId: session.mappingSessionId,
-        name: session.name,
-        requestId,
+      // Stop action ghi stopUnconfirmed đồng bộ: hook dừng publisher ngay.
+      // Backend revoke lease và zero. Nếu đang có stop inFlight thì dùng cùng promise.
+      const acceptedStop = await controlActions.requestStop();
+      await waitForMappingStop({
+        requestId: acceptedStop.requestId,
+        mappingSessionId: current.mappingSessionId,
+        controlStore: useControlStore,
+        mappingStore: useMappingWorkflowStore,
+        signal: abort.signal,
       });
-      await trackAcceptedJob(resp, 'finish_mapping', requestId, client, useMappingWorkflowStore);
-    } catch (err) {
-      setLocalActionError(err.message || 'Lỗi khi yêu cầu kết thúc phiên mapping');
+      if (abort.signal.aborted) return;
+      const latest = useMappingWorkflowStore.getState().session;
+      if (latest?.mappingSessionId !== current.mappingSessionId ||
+          !['mapping', 'save_failed'].includes(latest.status)) {
+        throw new Error('Phiên mapping đã đổi trước khi lưu.');
+      }
+      // Backend kiểm tra lại no lease + fresh stationary + gate trước khi accept.
+      // UI chỉ track một AcceptedJob thật từ server, không tự tạo accepted giả.
+      const attempt = {
+        mappingSessionId: latest.mappingSessionId,
+        name: latest.name,
+        requestId: crypto.randomUUID(),
+      };
+      // Ghi trước network call: timeout không được làm mất ID nghiệp vụ này.
+      finishAttemptRef.current = attempt;
+      const response = await client.finishMapping(attempt);
+      if (!abort.signal.aborted) {
+        await trackAcceptedJob(response, 'finish_mapping', attempt.requestId, client, useMappingWorkflowStore);
+        finishAttemptRef.current = null;
+        setFinishUnknown(false);
+      }
+    } catch (error) {
+      if (!abort.signal.aborted) {
+        setFinishUnknown(Boolean(finishAttemptRef.current));
+        setLocalActionError(error.message || 'Chưa thể dừng và lưu bản đồ.');
+      }
     } finally {
-      isSubmittingRef.current = false;
+      if (finishAbortRef.current === abort) {
+        finishAbortRef.current = null;
+        isSubmittingRef.current = false;
+        if (!abort.signal.aborted) setFinishPending(false);
+      }
     }
   }
 
-  async function handleRetryFinishMapping() {
-    if (isSubmittingRef.current || isProcessing || !session) return;
-
+  async function retryUncertainFinish() {
+    const attempt = finishAttemptRef.current;
+    if (!attempt || isSubmittingRef.current || !isCoordinatorReady) return;
     isSubmittingRef.current = true;
-    setLocalActionError(null);
-
+    setFinishPending(true);
+    const abort = new AbortController();
+    finishAbortRef.current = abort;
     try {
-      // Retry tạo requestId mới độc lập theo đúng quy tắc idempotency
-      const retryRequestId = `req-retry-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const resp = await client.finishMapping({
-        mappingSessionId: session.mappingSessionId,
-        name: session.name,
-        requestId: retryRequestId,
-      });
-      await trackAcceptedJob(resp, 'finish_mapping', retryRequestId, client, useMappingWorkflowStore);
-    } catch (err) {
-      setLocalActionError(err.message || 'Lỗi khi thử lại lưu bản đồ');
+      // Người dùng bấm retry cùng payload. Không tự retry; không tạo requestId mới.
+      // Replay vẫn hợp lệ khi backend đã kết thúc session, nên không đòi session
+      // còn mapping trước call này. Ledger sẽ trả đúng job cũ.
+      const response = await client.finishMapping(attempt);
+      if (!abort.signal.aborted) {
+        await trackAcceptedJob(response, 'finish_mapping', attempt.requestId, client, useMappingWorkflowStore);
+        finishAttemptRef.current = null;
+        setFinishUnknown(false);
+        setLocalActionError(null);
+      }
+    } catch (error) {
+      if (!abort.signal.aborted) {
+        setFinishUnknown(true);
+        setLocalActionError(error.message || 'Chưa lấy lại được kết quả lưu.');
+      }
     } finally {
-      isSubmittingRef.current = false;
+      if (finishAbortRef.current === abort) {
+        finishAbortRef.current = null;
+        isSubmittingRef.current = false;
+        if (!abort.signal.aborted) setFinishPending(false);
+      }
     }
+  }
+
+  function handleFinishMapping() {
+    return submitFinishMapping(false);
+  }
+
+  function handleRetryFinishMapping() {
+    // Chỉ dùng cho SAVE_FAILED đã có kết quả xác định, tạo requestId mới.
+    return submitFinishMapping(true);
   }
 
   const isMappingActive = Boolean(session && session.status === 'mapping');
@@ -160,9 +224,11 @@ export default function MappingPage() {
       subtitle="Khởi tạo phiên quét SLAM 2D Occupancy Grid thời gian thực và lưu vào danh mục"
     >
       <Stack spacing={3}>
-        {/* Banner cảnh báo giới hạn Chặng 6 */}
+        {/* Banner hướng dẫn mapping */}
         <Alert severity="info" variant="outlined">
-          <strong>Lưu ý:</strong> Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên. Chuyển đổi giữa các trang trong ứng dụng vẫn bảo toàn phiên làm việc.
+          Bắt đầu phiên mapping, chọn camera quan sát rồi nhận quyền lái. Giữ joystick để
+          di chuyển robot; SLAM xây dựng bản đồ từ dữ liệu cảm biến. Hoàn tất sẽ dừng robot,
+          chờ xác nhận đứng yên và gửi yêu cầu lưu.
         </Alert>
 
         {localActionError && <Alert severity="error">{localActionError}</Alert>}
@@ -185,7 +251,12 @@ export default function MappingPage() {
                 {isSavedView && <Chip label="Bản đồ đã lưu" color="primary" size="small" />}
                 {!session && !isSavedView && <Chip label="Chưa có phiên" color="default" size="small" />}
 
-                <Chip label="Mô phỏng" variant="outlined" size="small" />
+                <Chip
+                  label={controlProfile === 'mock' ? 'Mô phỏng' :
+                    controlProfile === 'hardware' ? 'ROS / phần cứng' : 'Chưa xác định nguồn'}
+                  variant="outlined"
+                  size="small"
+                />
                 {trackedOperation && (
                   <Chip
                     data-testid="mapping-job-status"
@@ -214,49 +285,64 @@ export default function MappingPage() {
           </CardContent>
         </Card>
 
-        {/* Cửa sổ Bản đồ 2D */}
-        <Card variant="outlined" sx={{ overflow: 'hidden' }}>
-          <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-            {renderModel ? (
-              <Map2D
-                model={renderModel}
-                pose={visiblePose}
-                poseQuality={poseQuality}
-                showGrid={layers.grid}
-                showRobot={layers.robot}
-                showPath={layers.path}
-              />
-            ) : (
-              <Box
-                sx={{
-                  height: 440,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1.5,
-                  bgcolor: '#eceff1',
-                  borderRadius: 2,
-                }}
-              >
-                {isStarting || isFinishing ? (
-                  <CircularProgress size={36} />
-                ) : null}
-                <Typography variant="body2" color="text.secondary">
-                  {isStarting
-                    ? 'Đang khởi động cảm biến SLAM và chuẩn bị bản đồ...'
-                    : isFinishing
-                      ? 'Đang tổng hợp dữ liệu và ghi nhận bản đồ vào kho lưu trữ...'
-                      : session
-                        ? 'Đang chờ khung dữ liệu Occupancy Grid đầu tiên...'
-                        : isSavedView
-                          ? `Đang nạp bản đồ đã lưu (${viewerContext.mapId} rev ${viewerContext.mapRevision})...`
-                          : 'Chưa có phiên hoạt động. Hãy bắt đầu phiên tạo bản đồ mới.'}
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+        {/* Cửa sổ Bản đồ 2D & Điều khiển Mapping */}
+        <Box sx={{
+          display: 'grid',
+          // Cột phải chứa camera + joystick; nới rộng để khung camera (16:9) to hơn
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 340px', lg: 'minmax(0, 1fr) 420px', xl: 'minmax(0, 1fr) 480px' },
+          alignItems: 'start', gap: 2,
+        }}>
+          <Card variant="outlined" sx={{
+            overflow: 'hidden', minWidth: 0,
+            display: 'flex', flexDirection: 'column',
+            minHeight: { xs: 450, md: 'calc(100vh - 270px)' },
+          }}>
+            <CardContent sx={{
+              p: 1, '&:last-child': { pb: 1 },
+              flex: 1, display: 'flex', flexDirection: 'column',
+            }}>
+              {renderModel ? (
+                <Map2D
+                  model={renderModel}
+                  pose={visiblePose}
+                  poseQuality={poseQuality}
+                  showGrid={layers.grid}
+                  showRobot={layers.robot}
+                  showPath={layers.path}
+                  tool="pan"
+                  viewportMaxHeight="calc(100vh - 300px)"
+                />
+              ) : (
+                <Box sx={{
+                  flex: 1,
+                  minHeight: { xs: 380, md: 'calc(100vh - 300px)' },
+                  display: 'grid', placeItems: 'center', p: 2, gap: 2,
+                  bgcolor: '#eceff1', borderRadius: 1,
+                }}>
+                  {(isStarting || isFinishing) && <CircularProgress size={36} />}
+                  <Typography variant="body2" color="text.secondary">
+                    {isStarting
+                      ? 'Đang khởi động SLAM…'
+                      : isFinishing
+                        ? 'Đang lưu bản đồ…'
+                        : session
+                          ? 'Đang chờ OccupancyGrid của phiên mapping…'
+                          : isSavedView
+                            ? 'Đang nạp bản đồ đã lưu…'
+                            : 'Bắt đầu phiên mapping để xây dựng bản đồ.'}
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+          <Box sx={{ width: { xs: '100%', md: 340, lg: 420, xl: 480 }, flexShrink: 0 }}>
+            <MappingControlPanel
+              key={session?.mappingSessionId ?? 'no-mapping-session'}
+              mappingSessionId={session?.mappingSessionId ?? null}
+              enabled={isMappingActive && !finishPending && !finishUnknown && !isProcessing}
+            />
+          </Box>
+        </Box>
 
         <Card variant="outlined">
           <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -325,16 +411,26 @@ export default function MappingPage() {
               </Box>
             )}
 
+            {finishUnknown && (
+              <Alert severity="warning" sx={{ mb: 2 }} action={
+                <Button disabled={finishPending || !isCoordinatorReady} onClick={retryUncertainFinish}>
+                  Lấy lại kết quả cùng yêu cầu
+                </Button>
+              }>
+                Chưa xác định kết quả lưu. Giữ joystick khóa và lấy lại kết quả trước khi tạo yêu cầu mới.
+              </Alert>
+            )}
+
             {isMappingActive && (
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <Button
                   variant="contained"
                   color="success"
-                  disabled={isProcessing}
+                  disabled={isProcessing || finishPending || finishUnknown}
                   onClick={handleFinishMapping}
                   data-testid="mapping-finish-button"
                 >
-                  {isProcessing ? 'Đang xử lý...' : 'Hoàn tất & Lưu bản đồ'}
+                  {finishPending ? 'Đang dừng và chờ xác nhận…' : isProcessing ? 'Đang xử lý…' : 'Hoàn tất & Lưu bản đồ'}
                 </Button>
                 <Typography variant="body2" color="text.secondary">
                   Di chuyển robot để mở rộng vùng quét. Nhấn lưu khi đã quét đủ diện tích.
@@ -347,39 +443,15 @@ export default function MappingPage() {
                 <Button
                   variant="contained"
                   color="warning"
-                  disabled={isProcessing}
+                  disabled={isProcessing || finishPending || finishUnknown}
                   onClick={handleRetryFinishMapping}
                   data-testid="mapping-retry-button"
                 >
-                  {isProcessing ? 'Đang xử lý...' : 'Thử lại lưu bản đồ'}
+                  {finishPending ? 'Đang kiểm tra điều kiện dừng…' : isProcessing ? 'Đang xử lý…' : 'Thử lại lưu bản đồ'}
                 </Button>
                 <Typography variant="body2" color="error">
                   Lưu thất bại ở lần thử trước. Dữ liệu quét vẫn được bảo toàn nguyên vẹn.
                 </Typography>
-              </Stack>
-            )}
-
-            {isFinishing && (
-              <Typography variant="body2" color="text.secondary">
-                Đang tiến hành lưu bản đồ, vui lòng không tắt trình duyệt...
-              </Typography>
-            )}
-
-            {isSavedView && (
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <Alert severity="success" sx={{ py: 0.5, flex: 1 }}>
-                  Bản đồ <strong>{viewerContext.mapId}</strong> (rev {viewerContext.mapRevision}) đã được lưu thành công!
-                </Alert>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {
-                    useMappingWorkflowStore.getState().setViewerContext(null);
-                    setMapNameInput('');
-                  }}
-                >
-                  Tạo bản đồ khác
-                </Button>
               </Stack>
             )}
           </CardContent>

@@ -1,12 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router';
 import AppShell from './components/layout/AppShell.jsx';
 import RobotOperationCoordinator from './components/RobotOperationCoordinator.jsx';
+import ControlOperationCoordinator from './components/ControlOperationCoordinator.jsx';
 import RequireAuth from './auth/RequireAuth.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import StatusPage from './pages/StatusPage.jsx';
 import MappingPage from './pages/MappingPage.jsx';
 import NavigationPage from './pages/NavigationPage.jsx';
-import TeleopPage from './pages/TeleopPage.jsx';
+import GestureDetectionPage from './pages/GestureDetectionPage.jsx';
 
 export default function App() {
   return (
@@ -19,20 +19,24 @@ export default function App() {
         <Route
           element={
             <RobotOperationCoordinator>
-              <AppShell />
+              <ControlOperationCoordinator>
+                <AppShell />
+              </ControlOperationCoordinator>
             </RobotOperationCoordinator>
           }
         >
-          <Route index element={<Navigate to="/status" replace />} />
-          <Route path="/status" element={<StatusPage />} />
+          <Route index element={<Navigate to="/navigation" replace />} />
+          {/* StatusPage đã gộp vào NavigationPage (cửa sổ trạng thái nổi); giữ /status để link cũ không gãy */}
+          <Route path="/status" element={<Navigate to="/navigation" replace />} />
           <Route path="/mapping" element={<MappingPage />} />
           <Route path="/navigation" element={<NavigationPage />} />
-          <Route path="/teleop" element={<TeleopPage />} />
+          <Route path="/gesture" element={<GestureDetectionPage />} />
+          <Route path="/teleop" element={<Navigate to="/mapping" replace />} />
         </Route>
       </Route>
 
-      {/* Bất kỳ route lạ nào cũng chuyển về /status */}
-      <Route path="*" element={<Navigate to="/status" replace />} />
+      {/* Bất kỳ route lạ nào cũng chuyển về /navigation */}
+      <Route path="*" element={<Navigate to="/navigation" replace />} />
     </Routes>
   );
 }

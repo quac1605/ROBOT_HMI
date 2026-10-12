@@ -4,6 +4,7 @@ const DEMO_STALE_MS = 2000;
 
 export function createMockMapGrid({
   mapRepository,
+  mappingSource = null,
   now = () => performance.now(),
   staleAfterMs = DEMO_STALE_MS,
 } = {}) {
@@ -26,7 +27,7 @@ export function createMockMapGrid({
 
     return {
       sourceState:
-        lastSourceUpdateAgeMs != null && lastSourceUpdateAgeMs > staleAfterMs
+        lastSourceUpdateAgeMs === null || lastSourceUpdateAgeMs >= staleAfterMs
           ? 'stale'
           : 'live',
       lastSourceUpdateAgeMs,
@@ -74,76 +75,15 @@ export function createMockMapGrid({
   }
 
   function produceExplorationStep(session) {
-    session.step += 1;
-    const { grid } = session;
-    const { width, height } = grid.grid.info;
-    const data = [...grid.grid.data];
-    let changed = false;
-
-    // Quỹ đạo robot di chuyển tâm phòng (100, 80)
-    const angle = (session.step * Math.PI) / 8;
-    const robotCol = Math.round(100 + 40 * Math.cos(angle));
-    const robotRow = Math.round(80 + 30 * Math.sin(angle));
-    const radius = 25; // 25 ô (1.25m)
-
-    // Khám phá free (0) quanh robot
-    const minRow = Math.max(10, robotRow - radius);
-    const maxRow = Math.min(height - 11, robotRow + radius);
-    const minCol = Math.max(10, robotCol - radius);
-    const maxCol = Math.min(width - 11, robotCol + radius);
-
-    for (let r = minRow; r <= maxRow; r += 1) {
-      for (let c = minCol; c <= maxCol; c += 1) {
-        const d = Math.hypot(c - robotCol, r - robotRow);
-        if (d <= radius) {
-          const idx = c + r * width;
-          if (data[idx] === -1) {
-            data[idx] = 0; // Unknown -> Free
-            changed = true;
-          }
-        }
-      }
-    }
-
-    // Tường bao quanh phòng (khi quét chạm mép)
-    for (let r = 10; r < height - 10; r += 1) {
-      for (let c = 10; c < width - 10; c += 1) {
-        if (c === 10 || c === width - 11 || r === 10 || r === height - 11) {
-          const idx = c + r * width;
-          // Nếu ô lân cận đã free thì lộ tường
-          const nearFree =
-            (data[idx + 1] === 0) ||
-            (data[idx - 1] === 0) ||
-            (data[idx + width] === 0) ||
-            (data[idx - width] === 0);
-          if (nearFree && data[idx] !== 100) {
-            data[idx] = 100;
-            changed = true;
-          }
-        }
-      }
-    }
-
-    // Obstacle correction tại step 6
-    if (session.step === 6) {
-      // Đặt 1 cụm vật cản di chuyển ở giữa phòng
-      for (let r = 75; r < 85; r += 1) {
-        for (let c = 95; c < 105; c += 1) {
-          const idx = c + r * width;
-          if (data[idx] !== 100) {
-            data[idx] = 100;
-            changed = true;
-          }
-        }
-      }
-    }
-
-    if (changed) {
-      grid.grid.data = data;
-      grid.gridRevision += 1;
-    }
-
-    session.lastSourceUpdateAt = now();
+    // Timer chỉ đọc sample có sẵn; không sinh vị trí hay làm mới tuổi source.
+    if (!mappingSource) return false;
+    let observation;
+    try { observation = mappingSource.get(session.mappingSessionId); }
+    catch { return false; }
+    if (!observation) return false;
+    const changed = observation.snapshot.gridRevision !== session.grid.gridRevision;
+    session.grid = observation.snapshot;
+    session.lastSourceUpdateAt = observation.observedMono;
     session.status = 'ready';
     return changed;
   }
@@ -205,6 +145,7 @@ export function createMockMapGrid({
 
       if (session.scenario === 'wrong_frame') {
         produceExplorationStep(session);
+        if (session.status !== 'ready') return;
         // Phát bản sao với frame_id = 'odom', không làm hỏng grid gốc
         const badSnapshot = structuredClone(session.grid);
         badSnapshot.grid.header.frame_id = 'odom';
@@ -220,20 +161,23 @@ export function createMockMapGrid({
 
       // Live exploration thông thường
       produceExplorationStep(session);
+      const { sourceState, lastSourceUpdateAgeMs } = getSourceStatus(session);
 
       subscribersList.forEach((sub) => {
         if (!sub.active) return;
         sub.deliver(() =>
           envelope('map.status', sub.subscriptionId, {
             context: { kind: 'mapping', mappingSessionId },
-            state: 'ready',
-            sourceState: 'live',
-            lastSourceUpdateAgeMs: 0,
+            state: session.status,
+            sourceState,
+            lastSourceUpdateAgeMs,
           })
         );
-        sub.deliver(() =>
-          envelope('map.grid', sub.subscriptionId, session.grid)
-        );
+        if (session.status === 'ready') {
+          sub.deliver(() =>
+            envelope('map.grid', sub.subscriptionId, session.grid)
+          );
+        }
       });
     }, 500);
 
@@ -411,8 +355,9 @@ export function createMockMapGrid({
         session.grid.grid.info.origin.position = { x: -5.5, y: -4.5, z: 0 };
         session.grid.grid.data = new Array(width * height).fill(0);
         session.grid.gridRevision += 1;
-        session.lastSourceUpdateAt = now();
-        session.scenario = 'live';
+        // Geometry fixture không phải sample mới của sensor.
+        session.status = 'ready';
+        session.scenario = 'pause'; // Giữ fixture đến khi test chủ động resume live.
       } else if (scenario === 'change_resolution') {
         const width = 100;
         const height = 80;
@@ -421,8 +366,9 @@ export function createMockMapGrid({
         session.grid.grid.info.height = height;
         session.grid.grid.data = new Array(width * height).fill(0);
         session.grid.gridRevision += 1;
-        session.lastSourceUpdateAt = now();
-        session.scenario = 'live';
+        // Không refresh freshness khi test thay resolution.
+        session.status = 'ready';
+        session.scenario = 'pause'; // Giữ fixture đến khi test chủ động resume live.
       }
     },
 
@@ -432,9 +378,7 @@ export function createMockMapGrid({
 
     advanceSourceStep(sessionId) {
       const session = liveSessions.get(sessionId);
-      if (session) {
-        produceExplorationStep(session);
-      }
+      if (session && session.scenario === 'live') produceExplorationStep(session);
     },
 
     emitSessionNow(sessionId) {
@@ -477,7 +421,8 @@ export function createMockMapGrid({
       }
       session.grid = structuredClone(snapshot);
       session.status = 'ready';
-      session.lastSourceUpdateAt = now();
+      session.scenario = 'pause';
+      // Ảnh grid inject không chứng minh nguồn motion/pose còn tươi.
       return structuredClone(session.grid);
     },
 
@@ -499,6 +444,7 @@ export function createMockMapGrid({
     removeLiveSession(sessionId) {
       const session = liveSessions.get(sessionId);
       if (session) {
+        mappingSource?.stop(sessionId);
         session.active = false;
         if (session.producerTimer) clearInterval(session.producerTimer);
         for (const sub of session.subscribers.values()) {
@@ -519,6 +465,7 @@ export function createMockMapGrid({
       serviceTimers.clear();
 
       for (const session of liveSessions.values()) {
+        mappingSource?.stop(session.mappingSessionId);
         session.active = false;
         if (session.producerTimer) clearInterval(session.producerTimer);
         for (const sub of session.subscribers.values()) {

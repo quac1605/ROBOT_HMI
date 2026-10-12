@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, CircularProgress, MenuItem, Select, Stack, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, Grid, MenuItem, Select, Stack, Typography } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import NavigationWorkspace from '../components/navigation/NavigationWorkspace.jsx';
+import RobotStatusCard from '../components/status/RobotStatusCard.jsx';
 import { useRobotClient } from '../hooks/useRobotClient.js';
 import { useNavigationWorkflowStore } from '../state/navigationWorkflowStore.js';
 import { useMappingWorkflowStore } from '../state/mappingWorkflowStore.js';
@@ -51,9 +52,15 @@ export default function NavigationPage() {
           </Select>
         </Stack>
         {error && <Alert severity="error">{error}</Alert>}
-        {loading ? <CircularProgress /> : selectedMap
+        {/* Có bản đồ: ô trạng thái nằm trong NavigationWorkspace; chưa có: hiển thị riêng để vẫn theo dõi được robot */}
+        {selectedMap && !loading
           ? <Box><NavigationWorkspace currentMap={selectedMap} /></Box>
-          : <Typography>Không có bản đồ sẵn sàng.</Typography>}
+          : <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                {loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}><RobotStatusCard /></Grid>
+            </Grid>}
       </Stack>
     </PageFrame>
   );

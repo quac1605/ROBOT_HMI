@@ -13,6 +13,18 @@ import {
   ListMapsResponseSchema, GetMapResponseSchema, GetActiveMappingSessionResponseSchema,
   StartMappingResponseSchema, FinishMappingResponseSchema, JobSchema
 } from '../schemas/mapping.js';
+import {
+  AcquireControlRequestSchema, AcquireControlResponseSchema,
+  ReleaseControlRequestSchema, ReleaseControlResponseSchema,
+  RequestStopRequestSchema, RequestStopResponseSchema,
+  TeleopVelocityMessageSchema, ControlEventEnvelopeSchema,
+  GetControlStateResponseSchema,
+} from '../schemas/control.js';
+import {
+  CameraQuerySchema, ListCamerasResponseSchema,
+  GetCameraStreamResponseSchema,
+} from '../schemas/camera.js';
+import { createMockMotionSource } from './mockMotionSource.js';
 import { MapGridSnapshotSchema, preflightMapGrid } from '../schemas/mapGrid.js';
 import { NavigationJobEventSchema } from '../schemas/job.js';
 import {
@@ -21,7 +33,13 @@ import {
   GetActiveMissionResponseSchema, CancelMissionResponseSchema, MissionEventEnvelopeSchema,
   NavigationPathEnvelopeSchema, NavigationPathQuerySchema, preflightNavigationPath
 } from '../schemas/mission.js';
+import { ConnectionStatusSchema } from '@robot-hmi/contracts/transport';
 import { navigationError } from '../utils/navigationPolicy.js';
+import { createMotionAdmissionGate } from '../utils/motionAdmissionGate.js';
+import { createMappingDriveGate } from '@robot-hmi/control-domain/mappingDriveGate';
+import { createMockMappingSource } from '@robot-hmi/control-domain/mockMappingSource';
+import { createMockCameraService } from './mockCamera.js';
+import { createMockControlService } from './mockControl.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function initialState() {
@@ -56,23 +74,76 @@ export function createMockRobotClient() {
   let disposed = false;
   let lifecycleEpoch = 0;
   let loginSequence = 0;
+  let controlSessionId = null; // Session nội bộ của client hiện tại
   const subscriptions = new Set();
+  const connectionListeners = new Set();
   const sharedRobotState = createSharedRobotState(initialState());
   const idempotency = createIdempotencyRegistry();
   const jobService = createMockJobService();
   const mapRepository = createMockMapRepository();
-  const mapGridService = createMockMapGrid({ mapRepository });
-  const telemetry = createMockTelemetry({ sharedRobotState });
-  // Không chuyển job Chặng 6 sang service mới trong bản sửa này.
+
+  function notifyConnectionStatus() {
+    const payload = ConnectionStatusSchema.parse({
+      status: user && !disposed ? 'connected' : 'disconnected',
+      connectionEpoch: lifecycleEpoch,
+      controlProfile: 'mock',
+    });
+    for (const listener of connectionListeners) {
+      try { listener(payload); } catch { /* ignore */ }
+    }
+  }
+
+  // 1. Motion Gate và Mapping Drive Gate dùng CHUNG cho toàn bộ hệ thống
+  const motionGate = createMotionAdmissionGate();
+  const mappingDriveGate = createMappingDriveGate();
+  const mappingSource = createMockMappingSource();
+  const mapGridService = createMockMapGrid({ mapRepository, mappingSource });
+
+  // 2. Motion Source mô phỏng cảm biến vận tốc độc lập
+  let telemetryInstance = null;
+  const motionSource = createMockMotionSource({
+    sourceHealthy: () => {
+      if (!telemetryInstance) return false;
+      const state = telemetryInstance.getControlState();
+      return !state.transportStale && (state.snapshot.connected === true || state.snapshot.rosConnected === true);
+    },
+  });
+
+  // 3. Telemetry nhận motionSource và mappingSource
+  const telemetry = createMockTelemetry({ sharedRobotState, motionSource, mappingSource });
+  telemetryInstance = telemetry;
+  motionSource.sample();
+
+  let controlService = null;
+
+  // 4. Các dịch vụ bản đồ, định vị và nhiệm vụ nhận motionGate
   const mappingService = createMockMappingService({
     sharedRobotState, mapGridService, mapRepository,
-    onMappingStarted: () => telemetry.beginMappingSession(),
+    onMappingStarted: ({ mappingSessionId }) => telemetry.beginMappingSession(mappingSessionId),
+    mappingDriveGate,
+    assertMappingFinishSafe: id => controlService.assertMappingFinishSafe(id),
+    motionGate,
   });
   const mapActivationService = createMockMapActivationService({
-    sharedRobotState, telemetry, jobService, mapRepository, idempotency,
+    sharedRobotState, telemetry, jobService, mapRepository, idempotency, motionGate,
   });
   const routeService = createMockRouteService({ jobService, mapRepository, idempotency });
-  const missionService = createMockMissionService({ sharedRobotState, telemetry, mapRepository, idempotency });
+  const missionService = createMockMissionService({
+    sharedRobotState, telemetry, mapRepository, idempotency, motionGate, motionSource,
+  });
+
+  const cameraService = createMockCameraService();
+
+  // 5. Control Service nhận cả motionGate, motionSource và mappingDriveGate
+  controlService = createMockControlService({
+    sharedRobotState, telemetry, missionService, mapActivationService, motionGate, motionSource,
+    mappingDriveGate,
+  });
+
+  // 6. Cấp session cho user đã lưu sẵn (nếu có) sau khi controlService đã tồn tại
+  if (user) {
+    controlSessionId = controlService.createSession();
+  }
 
   function requireUsable() {
     if (disposed) throw navigationError('CLIENT_DISPOSED', 'RobotClient đã dispose.');
@@ -82,12 +153,29 @@ export function createMockRobotClient() {
     if (!user) throw navigationError('UNAUTHENTICATED', 'Yêu cầu đăng nhập.');
     return user.id;
   }
+  function requireControlSession() {
+    requireAuthenticated();
+    if (!controlSessionId) {
+      throw navigationError('UNAUTHENTICATED', 'Chưa có phiên điều khiển.');
+    }
+    return controlSessionId;
+  }
   async function validatedCall(schema, work) {
     const principalId = requireAuthenticated();
     const epoch = lifecycleEpoch;
     const raw = await work(principalId);
     requireAuthenticated();
     if (epoch !== lifecycleEpoch) throw navigationError('OPERATION_SUPERSEDED', 'Phản hồi thuộc phiên cũ.');
+    return schema.parse(raw);
+  }
+  async function controlCall(schema, work) {
+    const sid = requireControlSession();
+    const epoch = lifecycleEpoch;
+    const raw = await work(sid);
+    requireControlSession();
+    if (epoch !== lifecycleEpoch || sid !== controlSessionId) {
+      throw navigationError('OPERATION_SUPERSEDED', 'Phản hồi thuộc phiên cũ.');
+    }
     return schema.parse(raw);
   }
   function register(factory) {
@@ -109,7 +197,10 @@ export function createMockRobotClient() {
   }
   function resetUserWorkflow() {
     closeAllSubscriptions();
-    // Producer/timer phải dừng trước khi xóa resource hoặc reset state.
+    if (controlSessionId) {
+      controlService.revokeSession(controlSessionId);
+      controlSessionId = null;
+    }
     missionService.clear();
     mapActivationService.clear();
     routeService.clear();
@@ -118,14 +209,13 @@ export function createMockRobotClient() {
     jobService.clear();
     telemetry.reset();
     sharedRobotState.reset(initialState());
+    notifyConnectionStatus();
   }
 
   return {
     kind: 'mock',
     async login({ username, password }) {
       requireUsable();
-      // A login attempt is not a session replacement. In particular a failed
-      // re-login must not revoke subscriptions while the robot is navigating.
       const attempt = ++loginSequence;
       const epoch = lifecycleEpoch;
       await delay(300);
@@ -137,6 +227,10 @@ export function createMockRobotClient() {
       if (!user) lifecycleEpoch += 1;
       user = { id: 'demo-admin', username: 'admin' };
       persistUser(user);
+      if (!controlSessionId) {
+        controlSessionId = controlService.createSession();
+      }
+      notifyConnectionStatus();
       return { user: { ...user } };
     },
     async getSession() { requireUsable(); return { user: user ? { ...user } : null }; },
@@ -213,26 +307,91 @@ export function createMockRobotClient() {
         listener(NavigationPathEnvelopeSchema.parse(raw));
       }));
     },
+    subscribeConnectionStatus(listener) {
+      requireUsable();
+      connectionListeners.add(listener);
+      try {
+        listener(ConnectionStatusSchema.parse({
+          status: user && !disposed ? 'connected' : 'disconnected',
+          connectionEpoch: lifecycleEpoch,
+          controlProfile: 'mock',
+        }));
+      } catch { /* ignore */ }
+      return () => {
+        connectionListeners.delete(listener);
+      };
+    },
     dispose() {
       if (disposed) return;
       loginSequence += 1;
       lifecycleEpoch += 1;
       disposed = true;
+      notifyConnectionStatus();
+      connectionListeners.clear();
       closeAllSubscriptions();
+      if (controlSessionId) {
+        controlService.revokeSession(controlSessionId);
+        controlSessionId = null;
+      }
       missionService.dispose();
       mapActivationService.dispose();
       routeService.dispose();
       mappingService.dispose();
       mapGridService.dispose();
+      mappingSource.dispose();
       jobService.dispose();
-      idempotency.clear();
+      controlService.dispose();
+      motionSource.dispose();
       telemetry.dispose();
+      idempotency.clear();
       sharedRobotState.reset(initialState());
       user = null;
       persistUser(null);
     },
+    // Camera API
+    listCameras() {
+      return validatedCall(ListCamerasResponseSchema, () => cameraService.listCameras());
+    },
+    getCameraStream(raw) {
+      return validatedCall(GetCameraStreamResponseSchema,
+        () => cameraService.getCameraStream(CameraQuerySchema.parse(raw)));
+    },
+
+    // Control API
+    acquireControl(raw) {
+      return controlCall(AcquireControlResponseSchema,
+        sid => controlService.acquireControl(AcquireControlRequestSchema.parse(raw), sid));
+    },
+    releaseControl(raw) {
+      return controlCall(ReleaseControlResponseSchema,
+        sid => controlService.releaseControl(ReleaseControlRequestSchema.parse(raw), sid));
+    },
+    requestStop(raw) {
+      return controlCall(RequestStopResponseSchema,
+        sid => controlService.requestStop(RequestStopRequestSchema.parse(raw), sid));
+    },
+    sendVelocity(raw) {
+      const sid = requireControlSession();
+      controlService.sendVelocity(TeleopVelocityMessageSchema.parse(raw), sid);
+    },
+    subscribeControl(listener) {
+      const sid = requireControlSession();
+      return register(active => controlService.subscribeControl(sid, raw => {
+        if (active()) listener(ControlEventEnvelopeSchema.parse(raw));
+      }));
+    },
+    getControlState() {
+      return controlCall(GetControlStateResponseSchema,
+        sid => controlService.getControlState(sid));
+    },
+
+    controlProfile: 'mock',
+
     _mapGridService: mapGridService, _mappingService: mappingService, _telemetry: telemetry,
     _mapRepository: mapRepository, _sharedRobotState: sharedRobotState, _jobService: jobService,
     _missionService: missionService, _routeService: routeService, _mapActivationService: mapActivationService,
+    _motionSource: motionSource, _controlService: controlService, _motionGate: motionGate,
+    _mappingSource: mappingSource, _mappingDriveGate: mappingDriveGate,
+    _subscriptions: subscriptions,
   };
 }

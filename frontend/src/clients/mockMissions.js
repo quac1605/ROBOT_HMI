@@ -7,7 +7,10 @@ import { checkMissionPreconditions, checkMissionRuntime, checkSavedMap, checkRou
 import { createLifecycleTimers } from '../utils/lifecycleTimers.js';
 import { navigationError, errorDto, ZERO_VELOCITY } from '../utils/navigationPolicy.js';
 
-export function createMockMissionService({ sharedRobotState, telemetry, mapRepository, idempotency }) {
+export function createMockMissionService({ sharedRobotState, telemetry, mapRepository, idempotency, motionGate, motionSource }) {
+    if (!motionGate || typeof motionGate.enter !== 'function' || typeof motionGate.assert !== 'function') {
+        throw new TypeError('Shared motionGate is required');
+    }
     const missions = new Map();
     const paths = new Map();
     const listeners = new Set();
@@ -18,6 +21,12 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
     let streamEpoch = crypto.randomUUID();
     let sequence = 0;
     let scenario = 'normal';
+
+    function writeZeroVelocity() {
+        // Inspect desired command, not a cached measurement preceding motion.
+        motionSource?.ensureStopped();
+        sharedRobotState.update({ velocity: ZERO_VELOCITY });
+    }
 
     function missionEvent(mission) {
         return MissionEventEnvelopeSchema.parse({
@@ -49,10 +58,10 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
         const state = sharedRobotState.getSnapshot();
         if (state.activeMissionId !== missionId) return;
         const stillOwner = state.mode === 'navigating';
+        if (stillOwner || state.mode === 'fault') writeZeroVelocity();
         sharedRobotState.update({
             activeMissionId: null,
-            ...(stillOwner ? { mode: 'idle', velocity: ZERO_VELOCITY }
-                : state.mode === 'fault' ? { velocity: ZERO_VELOCITY } : {}),
+            ...(stillOwner ? { mode: 'idle' } : {}),
         });
     }
     function terminal(mission, status, error = null) {
@@ -72,8 +81,10 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
     }
 
     return {
+        // SAU:
         createMission(raw, principalId = 'demo-admin') {
             const request = MissionRequestSchema.parse(raw);
+            const admissionTicket = motionGate.enter(); // Xin vé TRƯỚC idempotency.run/await
             const epoch = timers.capture();
             return idempotency.run({
                 principalId, operation: 'createMission',
@@ -81,6 +92,7 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
             }, async () => {
                 const map = await mapRepository.getMap(request.mapId, request.mapRevision);
                 timers.assert(epoch);
+                motionGate.assert(admissionTicket); // Kiểm tra vé SAU await map
                 const control = telemetry.getControlState();
                 for (const check of [
                     checkSavedMap(map), checkRouteBounds(request.poses, map),
@@ -105,6 +117,7 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
                     missionId, mapId: request.mapId, mapRevision: request.mapRevision, frameId: 'map',
                     kind: 'planned', poses: [control.snapshot.pose, ...request.poses].map(({ x, y, yaw }) => ({ x, y, yaw })),
                 });
+                motionGate.assert(admissionTicket); // Kiểm tra vé ngay trước khi claim state
                 // Claim trước khi phát event: listener không thể tạo mission thứ hai qua re-entry.
                 sharedRobotState.update({ activeMissionId: missionId, mode: 'navigating', velocity: ZERO_VELOCITY });
                 publish(mission);
@@ -200,7 +213,7 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
                 if (current.status === 'canceling') return { missionId: current.missionId, status: 'canceling' };
                 timers.clear();
                 const epoch = timers.capture();
-                sharedRobotState.update({ velocity: ZERO_VELOCITY });
+                writeZeroVelocity();
                 publish(transitionMission(current, 'canceling'));
                 timers.schedule(epoch, () => {
                     const latest = missions.get(current.missionId);
@@ -238,6 +251,39 @@ export function createMockMissionService({ sharedRobotState, telemetry, mapRepos
                 throw navigationError('INVALID_SCENARIO', 'Mission scenario không hợp lệ.');
             }
             scenario = next;
+        },
+        stopForControl() {
+            // Bước 1: Hủy tất cả timers pending (fence createMission đang await getMap)
+            timers.clear();
+            const epoch = timers.capture();
+            // Bước 2: Kiểm tra mission hiện tại
+            const current = activeMissionId ? missions.get(activeMissionId) : null;
+            if (!current || isMissionTerminal(current.status)) {
+                const state = sharedRobotState.getSnapshot();
+                if (state.activeMissionId || state.mode === 'navigating') {
+                    writeZeroVelocity();
+                    const preserveMode = state.mode === 'fault' ? 'fault'
+                        : state.mode === 'navigating' ? 'idle' : state.mode;
+                    sharedRobotState.update({
+                        activeMissionId: null,
+                        mode: preserveMode,
+                    });
+                }
+                return null;
+            }
+            // Bước 3: Zero velocity ngay lập tức cho cả shared state và motionSource
+            writeZeroVelocity();
+            // Bước 4: Chuyển mission sang 'canceling' (nếu chưa)
+            if (current.status !== 'canceling') {
+                publish(transitionMission(current, 'canceling'));
+            }
+            // Bước 5: Schedule terminal sau 100ms
+            // (Nếu đã canceling, timer cũ vừa bị clear nên phải schedule lại)
+            timers.schedule(epoch, () => {
+                const latest = missions.get(current.missionId);
+                if (latest?.status === 'canceling') terminal(latest, 'canceled');
+            }, 100);
+            return current.missionId;
         },
         clear() {
             timers.clear();

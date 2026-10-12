@@ -5,6 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
 import { chromium } from '../../../frontend/node_modules/@playwright/test/index.mjs';
+import { browserLaunchOptions } from './browser_launch_options.mjs';
 
 const outputIndex = process.argv.indexOf('--output');
 const outputPath = outputIndex >= 0 && process.argv[outputIndex + 1]
@@ -466,8 +467,8 @@ async function main() {
   try {
     await waitForHttp(benchmarkUrl);
     browser = await chromium.launch({
+      ...browserLaunchOptions(),
       headless: true,
-      channel: 'chrome',
       args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'],
     });
     const version = browser.version();

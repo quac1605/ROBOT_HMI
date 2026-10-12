@@ -25,9 +25,51 @@ async function startSession(page, name) {
   return active.session;
 }
 
+// Bài 2: tạo chuyển động qua RobotClient/authority thật của mock. Các timer
+// advanceSourceStep chỉ đọc observation; chúng không được tự lái robot.
+async function driveMappingWithFacade(page, mappingSessionId) {
+  await page.evaluate(async (sessionId) => {
+    const { robotClient } = await import('/src/clients/index.js');
+    let freshnessToken = null;
+    const unsubscribe = robotClient.subscribeControl(event => {
+      if (event.type === 'control.heartbeat') freshnessToken = event.payload.freshnessToken;
+    });
+    let lease = null;
+    try {
+      lease = await robotClient.acquireControl({
+        requestId: crypto.randomUUID(),
+        context: { kind: 'mapping', mappingSessionId: sessionId },
+      });
+      for (let sequence = 1; sequence <= 12; sequence += 1) {
+        if (!freshnessToken) throw new Error('MISSING_SOURCE_FRESHNESS_TOKEN');
+        robotClient.sendVelocity({ leaseId: lease.leaseId, sequence,
+          freshnessToken, linearX: 0.3, angularZ: 0 });
+        await new Promise(resolve => setTimeout(resolve, 45));
+      }
+    } finally {
+      try {
+        if (lease) {
+          await robotClient.requestStop({ requestId: crypto.randomUUID() });
+          const deadline = performance.now() + 1500;
+          let confirmed = false;
+          while (performance.now() < deadline) {
+            if ((await robotClient.getControlState()).payload.stop?.status === 'confirmed') {
+              confirmed = true;
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 25));
+          }
+          if (!confirmed) throw new Error('MEASURED_STOP_NOT_CONFIRMED');
+        }
+      } finally {
+        unsubscribe();
+      }
+    }
+  }, mappingSessionId);
+}
+
 async function spaNavigate(page, label, pathname) {
-  await page.getByRole('button', { name: 'Mở menu chức năng' }).click();
-  await page.getByRole('link', { name: label }).click();
+  await page.getByRole('tab', { name: label }).click();
   await expect(page).toHaveURL(new RegExp(`${pathname}$`));
 }
 
@@ -467,7 +509,12 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     const after = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getMapGrid({
       kind: 'mapping', mappingSessionId: sessionId,
     }), started.mappingSessionId);
-    expect(after.gridRevision).toBeGreaterThan(before.gridRevision);
+    expect(after.gridRevision).toBe(before.gridRevision); // Chuyển trang không tạo chuyển động.
+    await driveMappingWithFacade(page, started.mappingSessionId);
+    const driven = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getMapGrid({
+      kind: 'mapping', mappingSessionId: sessionId,
+    }), started.mappingSessionId);
+    expect(driven.gridRevision).toBeGreaterThan(before.gridRevision);
   });
 
   test('Case 11: Finish background cập nhật catalog và load exact saved revision', async ({ page }) => {
@@ -522,28 +569,30 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
   test('Case 13: Saved silence hợp lệ; live stale/offline/recovery không làm mới grid giả', async ({ page }) => {
     const started = await startSession(page, 'Freshness Browser');
     await expect(page.locator(RASTER)).toBeVisible();
-    const before = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     await page.evaluate((sessionId) => {
       const controls = window.__STAGE6_TEST_CONTROLS__;
       controls.setMapScenario(sessionId, 'pause');
       controls.emitSessionNow(sessionId);
     }, started.mappingSessionId);
+    const before = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     await page.waitForTimeout(2_250);
     await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.emitSessionNow(sessionId), started.mappingSessionId);
     await expect(page.getByText(/Nguồn: stale/)).toBeVisible();
     const stale = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     expect(stale.gridRevision).toBe(before.gridRevision);
     expect(stale.grid.header.stamp).toEqual(before.grid.header.stamp);
-    await page.evaluate((sessionId) => {
+    const liveWithoutSourceUpdate = await page.evaluate((sessionId) => {
       const controls = window.__STAGE6_TEST_CONTROLS__;
       controls.setMapScenario(sessionId, 'live');
       controls.emitSessionNow(sessionId);
+      const snapshot = controls.getLiveSessionSnapshot(sessionId);
+      // Giữ producer đứng yên để test quan sát event stale vừa phát mà không
+      // chạy đua với tick live hợp lệ kế tiếp (chu kỳ 500 ms).
+      controls.setMapScenario(sessionId, 'pause');
+      return snapshot;
     }, started.mappingSessionId);
     await expect(page.getByText(/Nguồn: stale/)).toBeVisible();
-    expect((await page.evaluate(
-      (sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId),
-      started.mappingSessionId
-    )).gridRevision).toBe(stale.gridRevision);
+    expect(liveWithoutSourceUpdate.gridRevision).toBe(stale.gridRevision);
     await page.evaluate((sessionId) => {
       const controls = window.__STAGE6_TEST_CONTROLS__;
       controls.setMapScenario(sessionId, 'offline');
@@ -558,7 +607,11 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     }, started.mappingSessionId);
     await expect(page.getByText(/Nguồn: live/)).toBeVisible();
     const recovered = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
-    expect(recovered.gridRevision).toBeGreaterThan(stale.gridRevision);
+    expect(recovered.gridRevision).toBe(stale.gridRevision); // Recovery nguồn không tự lái.
+    await driveMappingWithFacade(page, started.mappingSessionId);
+    await expect.poll(() => page.evaluate((sessionId) =>
+      window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId).gridRevision,
+    started.mappingSessionId)).toBeGreaterThan(stale.gridRevision);
 
     const savedEvents = await page.evaluate(async () => {
       const { robotClient } = await import('/src/clients/index.js');

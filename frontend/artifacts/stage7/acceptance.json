@@ -1,14 +1,14 @@
 {
   "stage": 7,
   "scope": "MockRobotClient only; not real-robot safety certification",
-  "generatedAt": "2026-09-18T01:30:57.478Z",
+  "generatedAt": "2026-10-01T02:33:55.968Z",
   "passed": true,
   "node": {
-    "tests": 141,
-    "passed": 141
+    "tests": 204,
+    "passed": 204
   },
   "browser": {
-    "total": 27,
+    "total": 50,
     "stage7": 12
   },
   "checks": [
@@ -229,6 +229,98 @@
       "passed": true
     },
     {
+      "name": "Thực thi, không retry/skip/xfail: F8-A01: docs MP4 bytes, ranges and existing public assets are served correctly",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: F8-A02: TeleopPage decodes front/rear at 640x360 and video loops",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: F8-A03: front and rear rendered frames have the expected horizontal flip",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-01: login -> front clip decode -> switch rear decode; cameraId/nhãn đúng",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-02: giữ và thả ngoài nút không có nonzero command trở lại",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera sau không đảo vector",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-04: pointercancel + lostcapture stop",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-05: hai pointer/hai nút: chỉ một publisher duy nhất",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-06: phím Space ngoài input gọi manual stop; trong input không stop",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-07: window blur ngừng hold",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-08: đổi route khi holding: cleanup, quay lại không tự cấp quyền",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-09: switch camera khi đang giữ: stop ngay, freshness reset",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-10: camera health hiển thị đúng theo trạng thái",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-11: heartbeat/control transport mất: ngừng publisher",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-12: service revoke khóa D-Pad và loop không tiếp tục",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-13: manual stop lúc navigation đang thực thi: mission canceling -> terminal hợp lệ",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-14: E-stop/inhibit không acquire; đủ reasons đúng",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-15: logout lúc holding: dọn dẹp phiên an toàn",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-16: manual stop retry và observation confirmation",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: U8-07: descriptor mặc định có nhãn và profile mock; video decode hợp lệ",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-H-route: late acquire after route never enables a remounted page",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: C8-H-logout: late acquire after logout never enables a remounted page",
+      "passed": true
+    },
+    {
+      "name": "Thực thi, không retry/skip/xfail: U8-08: thu hồi quyền/unknown E-stop không mở lái dù camera fresh",
+      "passed": true
+    },
+    {
       "name": "Không có browser global error",
       "passed": true
     },
@@ -242,91 +334,116 @@
     }
   ],
   "sourceHashes": {
+    "../docs/test/browser/stage6.spec.js": "819d3d1047aeac86bbb28a88f8d8db04eebd1d5f958a8f014d6389ab45bf90e4",
+    "../docs/test/browser/stage7.spec.js": "23b1d08dd8516ef7f11131549940f77b17847ce27a45bd43530cac03a7faa9c5",
+    "../docs/test/browser/stage8Assets.spec.js": "40370699c05e00d8dc2a792249c3c0c394230ed94bb0ffa755fb36b2c253a4c9",
+    "../docs/test/browser/stage8Control.spec.js": "f10f723aff4d84858d9faa208e33b7e11a8f9ddb9353be0ccad3b026bd23571f",
     "../docs/test/scripts/check_stage6_evidence.mjs": "f5bdfb57723539a3f4414a092e379ba791e83321685a862ccb2517a9c7937022",
     "../docs/test/scripts/check_stage7_evidence.mjs": "3af6ebdf6f2b775a15d39b1a4299cd4b73fd147da7706fa2e8305cbe1f489221",
     "../docs/test/scripts/run_browser_tests.mjs": "e55f20291d1a28bc824c70fced13b6fb99075117f0ed848b4b681439c78d6355",
-    "../docs/test/browser/stage6.spec.js": "de28b71f96e29ac5e710d07023c6fc93fa6fab70f3e7f209489c6507c8d36e57",
-    "../docs/test/browser/stage7.spec.js": "9c74b7b5c3d04a7f48ae45488a38302f7508b6457fb62970eb6fe8f94f29b163",
     "../docs/test/stage7/independent.test.mjs": "ad8b92f703a223bafe3c6d33dfe970e07cf68f0676837c16dca9e9f3e90e40e5",
-    "../docs/test/stage7/services.test.mjs": "82a476881d84baa5f41cbba19326492dba9c16cfaa6adbcf59545ef4e55ec712",
-    "../docs/test/stage7/workflow.test.mjs": "cec8284f395efd14f32a9c0fb377b818732cc0b8eff12322fb8f888b3d9d60de",
-    "artifacts/stage6/benchmark-results.json": "d39cb4f339c9d0bc77a04d84ea3a4b15baa5400d54d436bdafde99a76348e93d",
-    "artifacts/stage6/browser-results.json": "5801383da2b81e116c919a244d6c7789de21dd30d34cb710aa8c1dee85b83580",
+    "../docs/test/stage7/services.test.mjs": "4dc21ee6eeb1f3db0190c3aa0b9a62d783a04677386463bcf03e4d7bde5bc93e",
+    "../docs/test/stage7/workflow.test.mjs": "3171bff385f6e7f35928da77151df790fa7036029dd93e59cbdab301117df467",
+    "artifacts/stage6/benchmark-results.json": "8f2a2b62e7c353a9a969990b3cbf2b13e1d118cd3465f8efd68d6a1c349c2c19",
+    "artifacts/stage6/browser-results.json": "07b5e65add4b08c097045c0534eae0517a4c74f85c9d828befb7e9440d12906a",
     "index.html": "4375f7e48442a2f3777a5d6a9cf5f1ebb1c8fa156cd6a2583995dcac9b241fab",
-    "package-lock.json": "1540fa7571ad4e030a40882d07a7a6cdb874b988d79a3f21750fb9411618057a",
-    "package.json": "eb542723c879d4655a5e1278b12f529b729fc6a1e8a9a8cf968dbc765fb6d54e",
-    "playwright.config.js": "2a7fd3d9b16c4251130bcc96d7d0a6e78959a9459cc017fddfbb69f51d89d727",
+    "package-lock.json": "e0e60cd412dc2de9a26e619dadbd5b2f07181dc71c2623c6e8e9bb40d0b64ca4",
+    "package.json": "28930962e2b1f35075691bdad887787bc3a399d89cd354a8c0df13440b5dcf6b",
+    "playwright.config.js": "bd0a25dea2851aa016d2da51a17d90cd5581056b312c0b9100da52bd2423f539",
     "src/App.css": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
-    "src/App.jsx": "020d610732e5f5d8590fd468adbabcbd0e502864aa73e2760d11fa9962394361",
+    "src/App.jsx": "0cea112c51628ab31e612233798ff71dae8a5eec029c83c66366de13b4faa62b",
     "src/assets/hero.png": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c",
     "src/assets/react.svg": "35ef61ed53b323ae94a16a8ec659b3d0af3880698791133f23b084085ab1c2e5",
     "src/assets/vite.svg": "5be21acd42eb7b896e517f4e0f0f11eb5c5d9e54fbbcebe9453f033008fcca6f",
-    "src/auth/AuthContext.js": "ae407d1a20d2fd92fb14fc09028e58f5ec0fa87da73a0e1855729878adeb14d1",
-    "src/auth/AuthProvider.jsx": "d2fca591a33317e9d863047ce0d63c64818ff4ed89c4b33f2cf9cadf94250d80",
-    "src/auth/RequireAuth.jsx": "059f86320db3471547b635e0b53de1e765e7e55c02bfbc4f306ec7f4c5631daa",
-    "src/clients/demoMap.js": "bd8476e37e5af55ce1d66388409e707286ca8db63bb52cb0c04d666878224f6f",
-    "src/clients/demoOccupancyGrid.js": "5dd3423def09679980c599e381af1cd0e882f40ef9ce960ab2750b5936bc8743",
+    "src/auth/AuthContext.js": "0d5cc51566dc0dcf203133e03d2c697b5e35ec303a91ba96a71d61a64a012582",
+    "src/auth/AuthProvider.jsx": "00b0d86920e1441a6cff06d4a0fb44b3f7d9c813339231a3563360d988aa2407",
+    "src/auth/RequireAuth.jsx": "81135a553b95bd3152447a955644a9cbb85b84c34c315f8abd4d8e089131aeca",
+    "src/clients/cameraStreamClient.js": "bf09c2196307b1941424b0c412d03121fad541dbadab698f17dfaa11773ec439",
+    "src/clients/demoMap.js": "89ce52cbacc08f87861685f7851916abb28a2b3119c53d2cc690024588e2ea75",
+    "src/clients/demoOccupancyGrid.js": "62f66f9569653b1512e1a7cf4b8b1b8c5ee7f0a59cb9ceeecd12374aa64e10fa",
     "src/clients/index.js": "7d1416ea92e1c3855b8bf2675279191ced4c10dae79a3ce678275e5252903d5b",
-    "src/clients/mockJobs.js": "444abdc2524ca4603364701786fc69ca083f303c3ea1dd5fc63a8146bc1b20e7",
-    "src/clients/mockMapActivation.js": "e718d1cc563b5897d730bae8846e41fe23742be7a07aacf4af66bea0ff723df0",
+    "src/clients/mockCamera.js": "7f98f172bceb140aef1711cf407769d348ad4353f0367b9d170ac68b43b6b567",
+    "src/clients/mockControl.js": "8b7c803f319d973daf5f0857bfd4fe7c302fd00cd54c3d1bd99b3fd0028e0722",
+    "src/clients/mockJobs.js": "1fb528c250eb48f1a80425f191672f835c12541e452778dafdcf3f14638bed55",
+    "src/clients/mockMapActivation.js": "36c8ac7ae70f6a6b244c9a2a704478b9c7c20acbb6248c62e6822772f9f39f5d",
     "src/clients/mockMapGrid.js": "903b5773958459c1aebfd1f28c5092ae49ac0316e35d5451d5c8c4ce88a40cd9",
     "src/clients/mockMapRepository.js": "7d5fcf8f005c7c2cac22515289a66496d476ee0971770969f08e37f52c65beec",
     "src/clients/mockMapping.js": "8f4776ebf438b34d47647cf8eb9c749f52b69f4533f45688f57482d7e3ed61f3",
-    "src/clients/mockMissions.js": "0b5590cd7ea520d2f392b46a0671b5804b57f410f3c815c027c3a7fd537440a6",
-    "src/clients/mockRobotClient.js": "586905a3ce0009013909d146c85fe6cd4c5ca7826ce9cbe63744c3da2b602f8a",
-    "src/clients/mockRoutes.js": "62a39def4c7a0a7b2dfae2a1f488c5d5141a21a0bc3ec4b15c4d3b652576f3f3",
-    "src/clients/mockTelemetry.js": "a589d01cc781a4ad51e273c7d6b69b1d69bc03d7063254808d7bb1e12baf76fd",
-    "src/clients/sharedRobotState.js": "f169ee1def7a1946e9887d5180301633ce5c41e9830c75724735591ac09e847a",
+    "src/clients/mockMissions.js": "a6444ad3344f76482b3f953fa63c12910bd1333244600c3dd98bdb91ec16f1d5",
+    "src/clients/mockMotionSource.js": "ff326777171928bbc7e230058e2ee1800dda0909d6ef9ab4b90681ef45155190",
+    "src/clients/mockRobotClient.js": "8689e7127e5abf0f4e89a6a3aaac9e866151dba71e2c5ee656a104385cd62aec",
+    "src/clients/mockRoutes.js": "adea158d395cf05bef2a6ec84147c2b2fb2ac68439b8a71a77c5a576ca94f3a2",
+    "src/clients/mockTelemetry.js": "89d0e6474f93e247de20e9a85776a522046a6b1ccd778d0b60cd63d930c5ccc6",
+    "src/clients/sharedRobotState.js": "125d873cae678727367ddd88ddb1997bcd805a85f48eda881d91ab1f84c6931a",
+    "src/components/CameraPanel.jsx": "875b9d1e0e2f4155d62dea7b2f2f217d34a6ac661818be2c71fdaa291e3468dc",
+    "src/components/ControlOperationCoordinator.jsx": "f8d522a1fc932caa34df65cc092bac55467cec2abf56f2a74a2ec92bbcc85952",
     "src/components/MappingOperationCoordinator.jsx": "486064f7d64a5509df7c0356eea0f41fa1c38f06dbca20108c06dd3e41ccf2c6",
-    "src/components/RobotOperationCoordinator.jsx": "6f0d502bcba206afe67ba14532edfd50defd56259387c039026f62f64f623dc6",
-    "src/components/layout/AppShell.jsx": "85e3ee9e5c14addbb8bc3b0d8c26a06383d61f161853dfcca3d4be30b67b7b7e",
-    "src/components/layout/PageFrame.jsx": "64e9a3700ac6e3d682b2c8245b19bdd0350fff3335cb7af611dbba0be9a4a8ee",
+    "src/components/RobotOperationCoordinator.jsx": "5776da860c0c97fb3425fb13aa783dde5b432cd10e0c6c83612ca0c7ccf65598",
+    "src/components/layout/AppShell.jsx": "ee67cc69932a9606d9c3150462b32ae394dfc979978129744c91508c64f796e0",
+    "src/components/layout/PageFrame.jsx": "71f5bf99169d8c0e0f5a5da56c0b0f7cb4833a70c73d10bb1d71b7d3f7faa7b5",
     "src/components/map/Map2D.jsx": "a78884fc523034bb9d0f47466b89bf467bf4c205b86b3e4211b8853019643555",
-    "src/components/navigation/MissionPanel.jsx": "2b4bd46fc4177a7ed6ea14c94551d42c4bf5bfb4a9e3009dd62f015b7c8670d1",
-    "src/components/navigation/NavigationLegend.jsx": "874e371117cbdb09fedced7ae599dbe5774089ae54eca9e3795c683960fcb841",
-    "src/components/navigation/NavigationWorkspace.jsx": "e91c8695b07c54310e7fc1d7b37445dce6cce17f08c338b5da80aaed8f7f653d",
-    "src/components/navigation/RouteLibrary.jsx": "8bb83c193e8ba640e5e482664572d17e06170e88773c8cfbd3af15797b0d01a0",
-    "src/components/navigation/WaypointEditor.jsx": "93481b87112dcc543b161b0af7e3459311d0d3a525c570f14941ea42292b139d",
-    "src/components/status/Metric.jsx": "c6c77771e569875108b6a5c508417a4b799a8d0fb2d40acc297b922cf31e73bc",
-    "src/components/status/TelemetryBridge.jsx": "5d0960a660237f3b8d409c49b595762e277457eefc4d7ab7bb6e3a08b939b848",
+    "src/components/navigation/MissionPanel.jsx": "991910d504d8939136afb758b77c04b9952f4501c37fb67d1d847c3682a7fc20",
+    "src/components/navigation/NavigationLegend.jsx": "2e5e5b57d5c5f16a8a6b6ea9512338fea948a69b13361af23442dcf12e95d35d",
+    "src/components/navigation/NavigationWorkspace.jsx": "d3361fdd782842fc35cd74399a49edd343f7abe2d1b2fecb583b6b96b149facc",
+    "src/components/navigation/RouteLibrary.jsx": "5397ec5e90b60cfc58673735c00ad857504fa4f947998f5990c3686d3ab246c1",
+    "src/components/navigation/WaypointEditor.jsx": "c827a4f6ed84aabcc49751223342f26c776e51db762b17edf60104439d818754",
+    "src/components/status/Metric.jsx": "7654fce2d021e2c93d57012d990419f7a0c292a615696645906b661ec13ddaac",
+    "src/components/status/TelemetryBridge.jsx": "a1910eeac898ea331768485c307a098d90d7928d289c6f4ac68c323a798eddc2",
+    "src/hooks/useControlActions.js": "db819e637c00ef2ea177b62f9e33d3c09de52c4c270bc19d846fda3085abbfc3",
     "src/hooks/useMapGrid.js": "7ff85dce81a965fea883525976b1ba7e12f1a15620fa712fa388c1d305593e35",
     "src/hooks/useOccupancyRaster.js": "36f4cd64fb5f53823b57f82257b263ff2babf0855e9b3c9db60f6f8108b16100",
-    "src/hooks/useRobotClient.js": "231c89a0acf5a7dd2ae9c4be0741dc5590c610c15b92f999e5ec8a7709d4a60f",
-    "src/hooks/useRobotFreshness.js": "706bb5e84e71b6cf867f7f22ab50890d7238eac248ad1b21b0237334737b76c2",
+    "src/hooks/useRobotClient.js": "9f309898d43cc57c3180a6c0ce6eaae37a12ad96ef4f20fd8385180cec66b51a",
+    "src/hooks/useRobotFreshness.js": "39c487e71f3f97ab4a610d0a97ead378c18f4252dd8544d41379a9822c39ee58",
+    "src/hooks/useTeleopHold.js": "3a3a01b510d758058344a14d6076fba3a31358b27fae594687782b3d449fa3a1",
     "src/index.css": "4cf7b58c3c1e42654266732bf113eaee3a88ce86d3a9ea76c10aac31776ca038",
     "src/main.jsx": "d27d379641a471f7b7b2157037670a833793f9e5edcbe9fe684d4b55c11ee21b",
-    "src/pages/LoginPage.jsx": "1f09c73a81fdb9433c0b0f660266e74a909468222313e0337c65c1fabcec72ce",
+    "src/pages/LoginPage.jsx": "c9a701bcdd0bea3fd22998f6c75c6b056d5fbe92536cdd79853439bc22ca43d6",
     "src/pages/MappingPage.jsx": "9769dbb06a536046ffddba1d7abff17cfeabf185d910b4ffb6db4d2d9b6b23cd",
     "src/pages/NavigationPage.jsx": "6a668c31d21d40bed5453275aa60e899b6613b18643d20a8f00bbb1492548c28",
-    "src/pages/StatusPage.jsx": "3b4b4ba60a2438d73dd0a74e56cb8e316fad13c244782fa43be1802d7c724e35",
-    "src/pages/TeleopPage.jsx": "57a5a7986e259f3557c4caa75a2391698ddce63e4d65e9f0d30a47e44d71b2da",
-    "src/schemas/job.js": "830f6afa123d28e73536cee1677e10c70b28d0791a55f9b112932f70326a224d",
-    "src/schemas/mapGrid.js": "7f13932f112bc5c88f170d469cf6fb1ab85853f5a19eb92ed093482feff4421f",
-    "src/schemas/mapping.js": "b25d1aa5c394e14ed9f47b6f989a4445a99856992ee6c052ef7bb78540a735f6",
-    "src/schemas/mission.js": "8c3b11262e887ea918f94ab3b0f4436bf035df83d1a6e6232b202c1c85a02fe6",
-    "src/schemas/robotState.js": "34f48887ba3bc66bc284caf57b17174d00fc3380a81032a6ffe751cfc8d8f293",
+    "src/pages/StatusPage.jsx": "da7003ffd68d4ec7e886978b5d63c42500a8a090f2447046939315043388c11a",
+    "src/pages/TeleopPage.jsx": "72b6402a800b1cb524a065d75a06cb5004c7dc98897fa43cc03154ff964015c0",
+    "src/schemas/camera.js": "99bfbd6b89612c343c60e81bf0c8866b852f52e1f03549a7197526a6817cd7e1",
+    "src/schemas/control.js": "2a541fb2b141f51bf24324f1a884d92adfe4428f7388172cb5424dd86dc437cd",
+    "src/schemas/job.js": "27a1991f3999a2fbc76816b7240922a757d0c87790f0d0001ebe7a873bef323c",
+    "src/schemas/mapGrid.js": "5b8d5457a06cd2fd5234d6063fd0311b82e952ac9f9f5574ad50b754692ed375",
+    "src/schemas/mapping.js": "6b14c767c678372e54573e16235b5ae6e1335e91c48c17e7293adbfc8682b1a8",
+    "src/schemas/mission.js": "8066ec2176b0b6f06bade67cac5c443e9cf6db18381805f9131dfb4833804dc8",
+    "src/schemas/robotState.js": "6af436990a2a505f965563bdc8d86481ef5eb6f83e6feecddbf88871ce71aa6d",
+    "src/state/controlStore.js": "ea3f1b9ee1be508704e4d4aa5dee9e73305a467e44e3e61473b5d59cdfce7a97",
     "src/state/mappingWorkflowStore.js": "f89b5fae34c76e52c92254baad606990253c7f9e72f100db010e47ce519d6e4e",
-    "src/state/missionStore.js": "eab245442f9da1acc629785fe4fedbc896b1833a8a9b25d089bb68c55f620bd9",
-    "src/state/navigationWorkflowStore.js": "3a569572f92ab7d24f702f23da38522eb352293685edd0ea70c3feed3d56d611",
-    "src/stores/robotStore.js": "279d4a82301dc39971a1e6cdf8c338d4d27102be7237622a81a041c1d8a774ca",
-    "src/utils/idempotencyRegistry.js": "5bf49aa77b9b3146d9f2e4fa6790b26e3cec22f3e9505fdef0f49f1eb9ca1486",
-    "src/utils/lifecycleTimers.js": "4a1400df5e2153daeb41fbcf0828dd8231edeeb979372324c3347fa97329752d",
+    "src/state/missionStore.js": "dd3fcfc46fd4e0c84c78fdfb5d37d3bd352d404a71f9d69032240a0c3a12d14b",
+    "src/state/navigationWorkflowStore.js": "50669454e1a2fdff05bafa3aa916cdc590dad581c77480139520e351de2a197a",
+    "src/stores/robotStore.js": "4c8fbae0ca193ebbe46307ebb89dfcbaef611000e3b84dd05a20aeca5e572d89",
+    "src/utils/controlCoordinator.js": "28d1c323bf06921d7e42b5881b8351486cf2dc3c1b5d10576b2515244609ef36",
+    "src/utils/controlEvidence.js": "3c7bf3a08a72cc0308fd674719c888ec922b967687da8fdcb51a8e3e0914e64f",
+    "src/utils/controlLeaseCore.js": "55a58fbc46097ab7984bcf80f8d96b4bf03caf0851caaa1efbeb703ec06fde26",
+    "src/utils/controlPolicy.js": "00fd57d821ab27459d0c2abe71b8d084a1d0e176ce09a307ce5aed9592d6fbc1",
+    "src/utils/controlRequestRegistry.js": "be26995e1515538983a14abae936257373d211ba9018c4b43bacdb4469871b55",
+    "src/utils/controlStopAction.js": "7a0ee1ff1cbc4b8dd7e693bc43773c79f08d0880c9c9dcfb0c0b5ddb4049e8bc",
+    "src/utils/controlStreamFence.js": "d68c57ce589e610d7131580fd2d86f286b53b3d9f38ca72de91c825fea079c6a",
+    "src/utils/idempotencyRegistry.js": "9fa027bc68710a2f2a6fdc93f9062fa4c332a4276db14702c3a3ddc3d0628955",
+    "src/utils/lifecycleTimers.js": "bcfc49dfd1acf3592edaa0f34a069e15ae5a402b3e2b949f5858718a32f52217",
     "src/utils/mapCoordinates.js": "ef9f8afcc533199c28385a393e409c8a14fc92e1858961e7c002ea690feb68fd",
-    "src/utils/mapGridEventGate.js": "478056ddbee7621c133fcb73ae36447b95e4ab98124c959913519edc79ebda22",
+    "src/utils/mapGridEventGate.js": "82642ec1e6cc962408d9683db9af3519cf909ed1fbb734ac1aa33e3bc7b3a304",
     "src/utils/mapRenderModel.js": "6b1159e8fa61989b1b852b0183eb59fbd3041773aad593e2a7f4fab41d6477d6",
-    "src/utils/missionState.js": "32257bc5d6952ff80433e0b6cf05025ec29ddaaf192d47dc4fa8aa7d14910e64",
-    "src/utils/navigationCommands.js": "08aaedd5f08204f98297cdd4ce5a732607d21bee9ed607a31c85e905f31a88c5",
-    "src/utils/navigationCoordinator.js": "2f6ca00a7dd4d7dea0168d75ea9aa9b2cd84589bf3fb6d6a2ad57f9bbe726323",
-    "src/utils/navigationEventGate.js": "d1169f4c0f6f7222b3c82f7abd9d00edc2b65156669cfda00538ee3585557ff6",
-    "src/utils/navigationGuards.js": "3d0ae7452acba5505339aefdb592301e299e48e83bdf4161116fa86d91a64789",
-    "src/utils/navigationPolicy.js": "4040b26f174c29ecc25f28c1b244d5b98ae0134db5b04010a68c510d21c54df1",
-    "src/utils/normalizeOccupancyGrid.js": "45823515de65aad37e09f695ee7b122419c09ae6341fa3a84469c4d76ca8ab1d",
+    "src/utils/missionState.js": "934a0d7df047cb3ecc41e3dd15975f3b7e605fbe2ac33b24335b7edf4a10a8fd",
+    "src/utils/motionAdmissionGate.js": "b1ae7284ae625739664c8a7ec8a1b21668d313dc822b0d8dde3b206141ac0e44",
+    "src/utils/navigationCommands.js": "b176e258e90db17f7c8618e467be5f1dadaebe34779ccdbf8e7ee6e9497c3a4a",
+    "src/utils/navigationCoordinator.js": "024557c01259ccbe036b5cd005fca3d6da681f9bdba8ef1bd2f70638503a31ed",
+    "src/utils/navigationEventGate.js": "0aa74fc7d82000335e6f51c3ab7b8086c8b179236f86f2eeff59132ddbb69fe8",
+    "src/utils/navigationGuards.js": "d19d41f6cc36468981a3ef5b16396f7307ec0d6d668e35ef8590be1f1fab4c6c",
+    "src/utils/navigationPolicy.js": "d11a038e95be08bdebe37ba88e91a2d84a112df66611dbb47e502415d0194f78",
+    "src/utils/normalizeOccupancyGrid.js": "6d8605a7ec5e4ae8af43f9e070b38202d64bb1c079d0e4fff88e5b4b094f2bc4",
     "src/utils/occupancyRasterController.js": "566354270ad24d76c6f07a6c295e514a3bd24b9bf217fa6e9fe17fa09fe65ed8",
-    "src/utils/occupancyToRgba.js": "781b7869cfb25c0becc66de69c36ce5d85954fc54fd38bc81813a101a3c6482d",
+    "src/utils/occupancyToRgba.js": "e40b60448f34c68e9aa87c0fe173d8155d325f5280f891da6bbc686626de26bd",
+    "src/utils/pageLeaseIntent.js": "cce08798cae1ce4ce8a5cd85fb37c76d51f1e55434e3f4b7e0c8d69c3729125c",
     "src/utils/poseQuality.js": "6312bc2fa29abaceab6edb89ce68e51e5e2585d365ab6b8a9515cca9e3d9d297",
     "src/utils/rasterRuntime.js": "978d0f359dedb53c6d25c952bdd3df7551cc8d583d1a619251477eac8da87766",
-    "src/utils/sketchToWaypoints.js": "3d138840a1dad6cd7617132d07d09ea731923c9a2e8a50f6bdb0741c2fd2d85a",
-    "src/utils/stableStringify.js": "a906cbe2e1717a495260f0cea4b31933e3a87807f33df90dfe78f2448869ae93",
+    "src/utils/sketchToWaypoints.js": "8997568486558995d9d8129c79881305cc0508e9b659dd283b3569eb1736f578",
+    "src/utils/stableStringify.js": "1e0291f8d9e0746148a3cf1c7a9a116b3b947e3f1edd60541311dce73b8e9a65",
+    "src/utils/stopObservation.js": "3db10f5c78f2652c2c0d480b13cb6950ff876c1ffb8fb6ad8dc30f6d32e1e10b",
+    "src/utils/teleopHoldController.js": "9debffa603d1bdd46e18a81015c1f186376b3e2499c89b6e0ec4e6681f4166c3",
+    "src/utils/teleopKeyboard.js": "f452bb90eec0fb30986da7f0c0d225b9d538cb0267228efde96cd88b09fb93d0",
     "test/integrationProbe.test.js": "057768308063f26f6625c1b4f37493051c2a6c320e82c449c986329c6b2d4b3f",
     "test/mapCoordinates.test.js": "6a08cfb5bc843583e97f5c1685899062cc1c59e73ae8d9f42f5453696f906f9b",
     "test/mapGridEventGate.test.js": "6f00f808c5a7832da457519a91b0239f8cef211a3f96521f65fbb8dccca3e7b6",
@@ -342,10 +459,12 @@
     "test/occupancyRasterController.test.js": "08393179cdcbdea4ec0a229351a02e65dc2364e3a7a389d34fb477dc8ffbcc40",
     "test/occupancyToRgba.test.js": "dfaca0bd34c4a00819a6424d3b3d2a47f96bffb3c47d5ad4b88d0df1d5a9f4b5",
     "test/poseQuality.test.js": "6ec8cee7a8b6274f2c60bbd1cea86e5104f3fad773ad8afcccc73756032cced0",
+    "test/sharedPackages.test.js": "ef4f3ed199d27324fb03f4449001fe9a779cd59a6332034b19bc1d66899427d6",
     "test/sharedRobotState.test.js": "2bc9c8937e00439dd4d4e9368ddca022a84ec8aeafbb65404b705b7bac5dc457",
     "test/stage7Independent.test.js": "0d9aa4d81874cc211353f4db9172a1b93a07730dc036c74463251308fc8fd360",
     "test/stage7Services.test.js": "0de0f0c5237895aa0da3128eca2f1b9370b537584fd4f0a6586eb88a695697a9",
     "test/stage7Workflow.test.js": "fdf5bac41be84ee32a85b4ab4e78964d37b5b6a45ded8c7f2319e95d5d433276",
-    "vite.config.js": "e1eefd0ed1639c88d1213884ef760516884db9e168190e223fee6b063ad3e088"
+    "test/stage8.test.js": "953062042dbf1eff3afe534bc98450908da6de99c51c2c5355da83c2c7ab6205",
+    "vite.config.js": "70ed09523624d9b4c8aac1e9ae03894fad5763b33bd17de7f1e33d5359471f4b"
   }
 }

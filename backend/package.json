@@ -1,0 +1,27 @@
+{
+  "name": "@robot-hmi/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --test test/config.test.mjs test/health.test.mjs test/logger.test.mjs test/outboundQueue.test.mjs test/sessionLifecycle.test.mjs test/sessionRevalidator.test.mjs test/rosGridToSnapshot.test.mjs",
+    "test:integration": "node --env-file=.env.test scripts/prepare-test-schema.mjs && node --env-file=.env.test --test --test-concurrency=1 test/*.mjs"
+  },
+  "dependencies": {
+    "@robot-hmi/contracts": "file:../packages/contracts",
+    "@robot-hmi/control-domain": "file:../packages/control-domain",
+    "argon2": "^0.45.1",
+    "connect-pg-simple": "^10.0.0",
+    "cookie-signature": "1.2.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "pg": "^8.23.1",
+    "pino": "^10.3.1",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  }
+}

@@ -2,8 +2,6 @@ import { normalizeOccupancyGrid } from './normalizeOccupancyGrid.js';
 import {
   ShallowMapGridEventEnvelopeSchema,
   MapGridEventEnvelopeSchema,
-  MapGridSnapshotSchema,
-  preflightMapGrid,
 } from '../schemas/mapGrid.js';
 
 function arraysEqual(a, b) {
@@ -73,28 +71,26 @@ export function createMapGridEventGate({ onSnapshot, onStatus, onError, onValidS
       if (hasReceivedGridEvent) return false;
 
       try {
-        preflightMapGrid(payload);
-        const checked = MapGridSnapshotSchema.parse(payload);
+        const normalized = normalizeOccupancyGrid(payload);
 
         // Kiểm tra khớp context
         if (activeContext) {
-          if (checked.context.kind !== activeContext.kind) return false;
+          if (normalized.context.kind !== activeContext.kind) return false;
           if (
-            checked.context.kind === 'saved' &&
-            (checked.context.mapId !== activeContext.mapId ||
-              checked.context.mapRevision !== activeContext.mapRevision)
+            normalized.context.kind === 'saved' &&
+            (normalized.context.mapId !== activeContext.mapId ||
+              normalized.context.mapRevision !== activeContext.mapRevision)
           ) {
             return false;
           }
           if (
-            checked.context.kind === 'mapping' &&
-            checked.context.mappingSessionId !== activeContext.mappingSessionId
+            normalized.context.kind === 'mapping' &&
+            normalized.context.mappingSessionId !== activeContext.mappingSessionId
           ) {
             return false;
           }
         }
 
-        const normalized = normalizeOccupancyGrid(checked);
         if (expectedGeometry && !geometriesEqual(normalized.geometry, expectedGeometry)) {
           const err = new Error('Dữ liệu lưới không khớp metadata hình học của bản đồ');
           err.code = 'MAP_METADATA_GRID_MISMATCH';
@@ -155,9 +151,7 @@ export function createMapGridEventGate({ onSnapshot, onStatus, onError, onValidS
       let normalizedGrid = null;
       if (event.type === 'map.grid') {
         try {
-          preflightMapGrid(event.payload);
-          const checkedSnapshot = MapGridSnapshotSchema.parse(event.payload);
-          normalizedGrid = normalizeOccupancyGrid(checkedSnapshot);
+          normalizedGrid = normalizeOccupancyGrid(event.payload);
 
           if (expectedGeometry && !geometriesEqual(normalizedGrid.geometry, expectedGeometry)) {
             const err = new Error('Dữ liệu lưới không khớp metadata hình học của bản đồ');
@@ -189,7 +183,9 @@ export function createMapGridEventGate({ onSnapshot, onStatus, onError, onValidS
       }
 
       // 5. Exact context check
-      const eventCtx = event.payload?.context;
+      const eventCtx = event.type === 'map.grid'
+        ? normalizedGrid?.context
+        : event.payload?.context;
       if (!eventCtx) {
         onError?.({ code: 'INVALID_ENVELOPE', message: 'Payload thiếu trường context' });
         return false;

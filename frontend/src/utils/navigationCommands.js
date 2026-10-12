@@ -4,8 +4,9 @@ import { errorDto } from './navigationPolicy.js';
 import { isMissionTerminal } from './missionState.js';
 
 function uncertain(error) {
-    return error?.name !== 'ZodError' && (!error?.code ||
-        ['NETWORK_ERROR', 'TIMEOUT', 'HTTP_TIMEOUT', 'CONNECTION_LOST'].includes(error.code));
+    return error?.name !== 'ZodError' && (error?.outcomeUnknown === true || !error?.code ||
+        ['NETWORK_ERROR', 'REQUEST_TIMEOUT', 'TIMEOUT', 'HTTP_TIMEOUT', 'CONNECTION_LOST']
+            .includes(error.code));
 }
 
 // Payload được tạo/lưu trước khi await. Retry luôn dùng lại chính payload đó.

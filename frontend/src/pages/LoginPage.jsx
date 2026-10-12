@@ -11,8 +11,9 @@ import {
 } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext.js';
+import { robotClient } from '../clients/index.js';
 
-const allowedDestinations = new Set(['/status', '/mapping', '/navigation', '/teleop']);
+const allowedDestinations = new Set(['/mapping', '/navigation']);
 
 export default function LoginPage() {
     const [username, setUsername] = useState('');
@@ -42,8 +43,9 @@ export default function LoginPage() {
         try {
             await signIn({ username: username.trim(), password });
             // Nếu trước đó người dùng định vào trang nào thì sau khi login đẩy về đúng trang đó
-            const target = location.state?.from;
-            navigate(allowedDestinations.has(target) ? target : '/status', { replace: true });
+            const requested = location.state?.from;
+            const target = requested === '/teleop' ? '/mapping' : requested === '/status' ? '/navigation' : requested;
+            navigate(allowedDestinations.has(target) ? target : '/navigation', { replace: true });
         } catch (cause) {
             setError(cause.message);
         } finally {
@@ -85,9 +87,9 @@ export default function LoginPage() {
                                 </Typography>
                             </Box>
 
-                            <Alert severity="info">
+                            {robotClient.kind === 'mock' && <Alert severity="info">
                                 Tài khoản demo: <strong>admin</strong> / Mật khẩu: <strong>demo-only</strong>
-                            </Alert>
+                            </Alert>}
 
                             {error && <Alert severity="error">{error}</Alert>}
 

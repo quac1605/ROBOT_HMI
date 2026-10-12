@@ -36,6 +36,8 @@ build/
 .env.*.local
 **/.env.local
 **/.env.*.local
+.env.*
+!backend/.env.example
 
 # ==========================================
 # Logs

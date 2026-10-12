@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   preflightMapGrid,
+  parseMapGridSnapshot,
   parseRawMapMessage,
   MapGridSnapshotSchema,
   MapGridEventEnvelopeSchema,
@@ -100,6 +101,27 @@ test('MapGridSnapshotSchema từ chối frame_id rỗng hoặc chỉ có khoản
     raw.grid.header.frame_id = frameId;
     assert.equal(MapGridSnapshotSchema.safeParse(raw).success, false);
   }
+});
+
+test('parseMapGridSnapshot giữ strict metadata và cell validation trên hot path', () => {
+  const valid = createValidRawSnapshot(2, 2, [-1, 0, 50, 100]);
+  valid.context.mapId = '  test-map  ';
+  const parsed = parseMapGridSnapshot(valid);
+  assert.equal(parsed.context.mapId, 'test-map');
+  assert.deepEqual(parsed.grid.data, [-1, 0, 50, 100]);
+
+  const invalidMetadata = createValidRawSnapshot(2, 2, [-1, 0, 50, 100]);
+  invalidMetadata.grid.header.frame_id = '   ';
+  assert.throws(
+    () => parseMapGridSnapshot(invalidMetadata),
+    (err) => err.code === 'INVALID_MAP_DATA'
+  );
+
+  const invalidCell = createValidRawSnapshot(2, 2, [-1, 0, 50, 101]);
+  assert.throws(
+    () => parseMapGridSnapshot(invalidCell),
+    (err) => err.code === 'INVALID_MAP_DATA'
+  );
 });
 
 test('MapGridEventEnvelopeSchema phân loại đúng cả 3 loại event', () => {
