@@ -1,0 +1,21 @@
+intel_camera_node:
+  ros__parameters:
+    # Serial numbers cua 2 camera Intel RealSense (D435/D435i/D455)
+    front_camera_serial: "140122075302"
+    front_frame_id: "camera_front_link"
+    front_color_topic: "/image_front"
+
+    rear_camera_serial: "146322072685"
+    rear_frame_id: "camera_rear_link"
+    rear_color_topic: "/image_rear"
+
+    # Cau hinh ti le 16:9 khop chuan aspectRatio: '16/9' tren Frontend (Mapping & Navigation)
+    image_width: 640
+    image_height: 360
+    fps: 30
+
+    # Su dung ROS 2 clock (node time) de dong bo dong ho voi he thong robot
+    use_sensor_time: false
+
+    # QoS Reliability: "sensor_data" (Best Effort) hoac "reliable" (Reliable)
+    qos_reliability: "sensor_data"
