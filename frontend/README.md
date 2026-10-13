@@ -1,5 +1,42 @@
 # React + Vite
 
+## Chạy mock trên nhánh combine
+
+Nhánh `combine` giữ ba trang trên menu ngang:
+
+- `/mapping`: tạo bản đồ, camera trước/sau và joystick từ TeleopPage.
+- `/navigation`: điều hướng và ô trạng thái robot từ StatusPage.
+- `/gesture`: camera trước và giao diện trạng thái nhận diện. Phần nhận diện thực tế chưa nối backend/model.
+
+Các đường dẫn cũ `/teleop` và `/status` lần lượt chuyển tới `/mapping` và `/navigation`.
+Đăng nhập mock bằng `admin` / `demo-only`.
+
+Từ thư mục gốc repository, cài dependencies của các package dùng chung và frontend:
+
+```powershell
+npm.cmd ci --prefix packages/contracts
+npm.cmd ci --prefix packages/control-domain
+npm.cmd ci --prefix frontend --include=dev
+cd frontend
+$env:VITE_ROBOT_CLIENT = 'mock'
+npm.cmd run dev
+```
+
+Trên Ubuntu dùng `npm` thay `npm.cmd`; sau khi cài dependencies, chạy từ `frontend`:
+
+```bash
+VITE_ROBOT_CLIENT=mock npm run dev
+```
+
+Camera cần hai video trong `docs/public/demo/`; xem cách tạo ở phần tiếp theo.
+Joystick chỉ được mở sau khi bắt đầu phiên mapping và nhận quyền điều khiển.
+
+### Kiểm chứng tích hợp trên Windows (12/10/2026)
+
+- Build mock và lint đạt; 237/237 Node tests đạt với `--test-concurrency=1`.
+- Bốn browser tests trong `docs/test/browser/combine.spec.js` đạt: ba tab tích hợp, camera, đăng nhập và redirect các đường dẫn cũ.
+- Hai browser tests điều khiển kế thừa `C8-03` và `C8-04` vẫn timeout khi chờ lệnh chuyển động trong lần kiểm tra lại. Bộ browser tests chưa đạt toàn bộ; logic cấp quyền lái và watchdog được giữ nguyên.
+
 ## Camera demo assets (Chặng 8)
 
 Hai video mẫu được lưu tại **`../docs/public/demo/`**, không ở `frontend/public/demo/`.
@@ -16,6 +53,10 @@ Trên Windows có thể dùng `npm.cmd` thay `npm`. Các file trong `docs/public
 Plugin `tooling/demoAssetsPlugin.mjs` giữ URL `/demo/front.mp4` và `/demo/rear.mp4`, hỗ trợ byte ranges khi dev và đóng gói vào `dist/demo/` khi build. Không đổi `publicDir` sang toàn bộ `docs`; các logo/icon hiện hữu vẫn hoạt động.
 
 Các lệnh kiểm tra:
+
+Node tests có kiểm tra module dùng chung với backend; cài `npm ci --prefix backend`
+từ repository root trước lần chạy đầu. Khi kiểm tra mock, đặt `VITE_ROBOT_CLIENT=mock`
+như hướng dẫn ở trên.
 
 ```bash
 npm run lint -- --max-warnings=0

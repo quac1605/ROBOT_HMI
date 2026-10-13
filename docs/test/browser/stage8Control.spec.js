@@ -415,7 +415,7 @@ test('C8-10: camera health hiển thị đúng theo trạng thái', async ({ pag
   // Dừng video stream để health không còn được coi là fresh.
   await page.evaluate(() => document.querySelector('video')?.pause());
   await page.waitForTimeout(2000);
-  await expect(health).toContainText('Đang chờ frame mới');
+  await expect(health).toHaveText('Chờ frame');
 
   // Khởi động lại video
   await page.evaluate(() => document.querySelector('video')?.play());
@@ -563,8 +563,8 @@ test('C8-16: manual stop retry và observation confirmation', async ({ page }) =
 
 test('U8-07: descriptor mặc định có nhãn và profile mock; video decode hợp lệ', async ({ page }) => {
   await openMapping(page, { startSession: false });
-  await expect(page.getByTestId('camera-select-front')).toHaveText('Camera trước');
-  await expect(page.getByTestId('camera-select-rear')).toHaveText('Camera sau');
+  await expect(page.getByTestId('camera-select-front')).toHaveText('Cam trước');
+  await expect(page.getByTestId('camera-select-rear')).toHaveText('Cam sau');
 
   await expect(page.getByText('Mô phỏng', { exact: true })).toBeVisible();
   expect(await page.evaluate(async () => (await import('/src/state/controlStore.js'))

@@ -504,7 +504,7 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     await spaNavigate(page, 'Đi đến đích', '/navigation');
     await expect(page.locator(RASTER)).toBeVisible();
     await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.advanceSourceStep(sessionId), started.mappingSessionId);
-    await spaNavigate(page, 'Xây dựng bản đồ', '/mapping');
+    await spaNavigate(page, 'Tạo bản đồ & điều khiển', '/mapping');
     await expect(page.getByText(/Phiên:/)).toContainText(started.mappingSessionId);
     const after = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getMapGrid({
       kind: 'mapping', mappingSessionId: sessionId,
@@ -561,7 +561,7 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     expect(await page.evaluate(async (mapName) => (await window.__STAGE6_TEST_CONTROLS__.listMaps())
       .filter((map) => map.name === mapName).length, name)).toBe(0);
     await page.getByRole('button', { name: 'Thử lại lưu bản đồ' }).click();
-    await expect(page.getByText(/đã được lưu thành công/)).toBeVisible({ timeout: 6_000 });
+    await expect(page.getByText('Bản đồ đã lưu', { exact: true })).toBeVisible({ timeout: 6_000 });
     expect(await page.evaluate(async (mapName) => (await window.__STAGE6_TEST_CONTROLS__.listMaps())
       .filter((map) => map.name === mapName).length, name)).toBe(1);
   });

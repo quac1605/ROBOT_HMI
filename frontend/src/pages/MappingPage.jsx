@@ -229,6 +229,11 @@ export default function MappingPage() {
           Bắt đầu phiên mapping, chọn camera quan sát rồi nhận quyền lái. Giữ joystick để
           di chuyển robot; SLAM xây dựng bản đồ từ dữ liệu cảm biến. Hoàn tất sẽ dừng robot,
           chờ xác nhận đứng yên và gửi yêu cầu lưu.
+          {controlProfile === 'mock' && (
+            <Typography component="span" variant="body2" sx={{ display: 'block', mt: 1 }}>
+              Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên và bản đồ vừa tạo.
+            </Typography>
+          )}
         </Alert>
 
         {localActionError && <Alert severity="error">{localActionError}</Alert>}
