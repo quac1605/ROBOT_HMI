@@ -38,6 +38,9 @@ export default function GestureDetectionPage() {
   return (
     <PageFrame title="Phát hiện Người & Cử chỉ">
       <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+        <Alert severity="info" sx={{ mb: 2 }} data-testid="gesture-demo-notice">
+          Đây là giao diện xem camera. Chưa kết nối bộ nhận diện cử chỉ và trang này không gửi lệnh điều khiển robot.
+        </Alert>
         <Paper
           variant="outlined"
           sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25, 91, 120, 0.08)' }}

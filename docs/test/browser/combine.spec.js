@@ -33,6 +33,7 @@ test('combine: all three tabs retain their integrated features in mock mode', as
   await expect(page.getByTestId('camera-video-front')).toBeVisible();
   await expect(page.getByTestId('gesture-camera-health')).toHaveText('Live');
   await expect(page.getByTestId('gesture-current')).toHaveText('Chưa nhận diện');
+  await expect(page.getByTestId('gesture-demo-notice')).toContainText('không gửi lệnh điều khiển robot');
 
   await page.getByRole('tab', { name: 'Đi đến đích & trạng thái', exact: true }).click();
   await expect(page).toHaveURL(/\/navigation$/);

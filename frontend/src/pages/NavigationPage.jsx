@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Box, CircularProgress, Grid, MenuItem, Select, Stack, Typography } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import NavigationWorkspace from '../components/navigation/NavigationWorkspace.jsx';
+import NavigationCameraPanel from '../components/navigation/NavigationCameraPanel.jsx';
 import RobotStatusCard from '../components/status/RobotStatusCard.jsx';
 import { useRobotClient } from '../hooks/useRobotClient.js';
 import { useNavigationWorkflowStore } from '../state/navigationWorkflowStore.js';
@@ -59,7 +60,12 @@ export default function NavigationPage() {
               <Grid size={{ xs: 12, md: 8 }}>
                 {loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}><RobotStatusCard /></Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Stack spacing={2}>
+                  <NavigationCameraPanel />
+                  <RobotStatusCard />
+                </Stack>
+              </Grid>
             </Grid>}
       </Stack>
     </PageFrame>

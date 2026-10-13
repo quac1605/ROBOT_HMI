@@ -104,10 +104,13 @@ try {
     for (const [route, heading] of [
         ['/mapping', 'Xây dựng Bản đồ SLAM (Mapping)'],
         ['/navigation', 'Điều hướng'],
+        ['/gesture', 'Phát hiện Người & Cử chỉ'],
     ]) {
         await page.goto(origin + route);
         await expect(page.getByRole('heading', { name: heading })).toBeVisible();
     }
+    await expect(page.getByTestId('gesture-demo-notice')).toContainText('không gửi lệnh điều khiển robot');
+    await expect(page.getByTestId('gesture-current')).toHaveText('Chưa nhận diện');
     await page.goto(origin + '/teleop');
     await page.waitForURL('**/mapping');
     await expect(page.getByTestId('mapping-joystick')).toHaveAttribute('aria-disabled', 'true');
@@ -119,7 +122,7 @@ try {
     assert.deepEqual(pageErrors, []);
     await page.getByRole('button', { name: 'Đăng xuất' }).click();
     await page.waitForURL('**/login');
-    console.log('REMOTE_BROWSER_SMOKE_PASS: 3 trang, redirect /teleop, HTTP/WS thật, logout, joystick khóa');
+    console.log('REMOTE_BROWSER_SMOKE_PASS: navigation/mapping/gesture, redirect /teleop, HTTP/WS thật, logout, joystick khóa');
 } finally {
     await browser?.close();
     if (vite && vite.exitCode === null) {
