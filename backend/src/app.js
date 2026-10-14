@@ -56,6 +56,18 @@ export function createApp({
 
     app.use('/api', express.json({ limit: '64kb' }));
 
+    if (!healthOnly && config.CAMERA_MEDIA_MODE === 'ros') {
+        app.post('/api/internal/camera-media-auth', (req, res) => {
+            const remote = req.socket.remoteAddress;
+            if (remote !== '127.0.0.1' && remote !== '::1' &&
+                remote !== '::ffff:127.0.0.1') {
+                res.sendStatus(403);
+                return;
+            }
+            res.sendStatus(robotRuntime.cameraService.authorizeMediaRequest(req.body) ? 204 : 401);
+        });
+    }
+
     // Health check routes
     app.get('/api/health/live', (_req, res) => {
         res.status(200).json({ status: 'ok', live: true });
@@ -98,7 +110,12 @@ export function createApp({
             name: 'connect.sid',
             cookie: {
                 httpOnly: true,
-                secure: config.NODE_ENV === 'production',
+                // LAN preview terminates HTTPS at the loopback Vite proxy.
+                // Only trust its forwarded scheme when loopback proxy trust
+                // was explicitly enabled; local HTTP tests retain old behavior.
+                secure: config.NODE_ENV === 'production' ||
+                    (config.TRUST_LOOPBACK_PROXY === 'true' &&
+                        new URL(config.APP_ORIGIN).protocol === 'https:'),
                 sameSite: 'lax',
                 maxAge: 8 * 60 * 60 * 1000,
                 path: '/',

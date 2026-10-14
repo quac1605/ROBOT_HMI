@@ -50,8 +50,11 @@ export function openCameraStream({
 
     const play = () => {
         if (!alive) return;
-        try { Promise.resolve(video.play()).catch(fail); }
-        catch (e) { fail(e); }
+        const reportPlayError = error => {
+            fail(new Error(`CAMERA_VIDEO_PLAY: ${error.message}`, { cause: error }));
+        };
+        try { Promise.resolve(video.play()).catch(reportPlayError); }
+        catch (e) { reportPlayError(e); }
     };
 
     video.addEventListener('error', mediaError);

@@ -411,6 +411,36 @@ test('login rate limit trả 429 trước Argon2; cookie secure sau loopback pro
   }
 });
 
+test('LAN preview HTTPS phát Secure session cookie trong development qua loopback proxy', async () => {
+  await assertTestTarget(process.env);
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const users = await createUsersRepository(pool);
+  const lifecycle = createSessionLifecycle();
+  const passport = createPassportInstance({ users, dummyHash: users.dummyHash });
+  const app = createApp({
+    config: { NODE_ENV: 'development', APP_ORIGIN: 'https://10.1.10.32:5173',
+      SESSION_SECRET: SECRET, TRUST_LOOPBACK_PROXY: 'true' },
+    logger: createLogger({ nodeEnv: 'test' }), readinessState: { isReady: () => false },
+    pool, passport, lifecycle,
+  });
+  const { server, url } = await listen(app);
+  let sessionCookie;
+  try {
+    const response = await fetch(`${url}/api/auth/csrf`,
+      { headers: { 'X-Forwarded-Proto': 'https' } });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('set-cookie') || '', /; Secure/i);
+    assert.match(response.headers.get('set-cookie') || '', /; HttpOnly/i);
+    sessionCookie = cookie(response);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    await app.locals.sessionStore.close();
+    if (sessionCookie) await pool.query('DELETE FROM session WHERE sid=$1',
+      [sidFromCookie(sessionCookie)]);
+    await pool.end();
+  }
+});
+
 test('HTTP anonymous CSRF hết hạn đúng ranh giới và bootstrap token mới', async () => {
   await assertTestTarget(process.env);
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });

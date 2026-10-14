@@ -30,7 +30,8 @@ export function createCameraRouter({
     router.get('/cameras/:cameraId/stream', lifecycle.requireAuth, async (req, res, next) => {
         try {
             lifecycle.assertRequestSessionCurrent(req);
-            const result = cameraService.getCameraStream(req.params.cameraId);
+            const result = cameraService.getCameraStream(
+                req.params.cameraId, req.sessionID, req.session.absoluteExpiresAt);
             res.status(200).json(GetCameraStreamResponseSchema.parse(result));
         } catch (err) {
             next(err);

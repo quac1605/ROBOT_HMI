@@ -1,7 +1,8 @@
 // components/CameraPanel.jsx
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { openCameraStream } from '../clients/cameraStreamClient.js';
+import { createWhepReader } from '../clients/whepReader.js';
 
 // Props:
 // - client: robotClient (có getCameraStream)
@@ -11,11 +12,13 @@ import { openCameraStream } from '../clients/cameraStreamClient.js';
 // - onFailure: ({ cameraId, generation, message }) => void
 export default function CameraPanel({ client, cameraId, generation, onFrame, onFailure }) {
     const videoRef = useRef(null);
+    const [sourceKind, setSourceKind] = useState(null);
 
     useEffect(() => {
         const video = videoRef.current;
         let alive = true;
         let closeStream = null;
+        setSourceKind(null);
 
         async function open() {
             try {
@@ -28,11 +31,12 @@ export default function CameraPanel({ client, cameraId, generation, onFrame, onF
                     if (alive) onFailure({ cameraId, generation, message: 'Camera descriptor ID không khớp.' });
                     return;
                 }
+                setSourceKind(descriptor.kind);
 
                 closeStream = openCameraStream({
                     video,
                     descriptor,
-                    // createWebRtcReader: null → không hỗ trợ WebRTC ở Chặng 8
+                    createWebRtcReader: createWhepReader,
                     onFrame: lastFrameAt => {
                         if (alive) onFrame({ cameraId, generation, lastFrameAt });
                     },
@@ -73,7 +77,10 @@ export default function CameraPanel({ client, cameraId, generation, onFrame, onF
                     bgcolor: 'rgba(0,0,0,0.6)', color: '#fff', px: 1, borderRadius: 1,
                 }}
             >
-                {cameraId === 'front' ? 'Trước' : 'Sau'} — Video mẫu (mô phỏng)
+                {cameraId === 'front' ? 'Trước' : 'Sau'} — {
+                    sourceKind === 'webrtc' ? 'Camera ROS trực tiếp' :
+                        sourceKind === 'file' ? 'Video mẫu (mô phỏng)' : 'Đang kết nối'
+                }
             </Typography>
         </Box>
     );

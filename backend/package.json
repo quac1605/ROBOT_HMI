@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:unit": "node --test test/config.test.mjs test/health.test.mjs test/logger.test.mjs test/outboundQueue.test.mjs test/sessionLifecycle.test.mjs test/sessionRevalidator.test.mjs test/rosGridToSnapshot.test.mjs",
+    "test:unit": "node --test test/config.test.mjs test/health.test.mjs test/logger.test.mjs test/outboundQueue.test.mjs test/sessionLifecycle.test.mjs test/sessionRevalidator.test.mjs test/rosGridToSnapshot.test.mjs test/cameraService.test.mjs",
     "test:integration": "node --env-file=.env.test scripts/prepare-test-schema.mjs && node --env-file=.env.test --test --test-concurrency=1 test/*.mjs"
   },
   "dependencies": {

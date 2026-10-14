@@ -21,6 +21,9 @@ const ConfigShape = z.object({
     // Session secret tối thiểu 64 hex characters (32 bytes entropy)
     SESSION_SECRET: z.string().regex(/^[a-fA-F0-9]{64,128}$/),
     ROBOT_ADAPTER: z.literal('mock').default('mock'),
+    // Camera may be real while all motion and mapping still use MockRosAdapter.
+    CAMERA_MEDIA_MODE: z.enum(['demo', 'ros']).default('demo'),
+    CAMERA_WHEP_BASE_URL: z.string().url().optional(),
     DATA_DIR: z.string().min(1),
     TRUST_LOOPBACK_PROXY: z.enum(['true', 'false']).default('false'),
 });
@@ -66,6 +69,13 @@ export function loadConfig(env = process.env) {
     // Môi trường production bắt buộc dùng HTTPS cho APP_ORIGIN
     if (parsed.NODE_ENV === 'production' && origin.protocol !== 'https:') {
         throw new Error('PRODUCTION_REQUIRES_HTTPS: Môi trường production bắt buộc APP_ORIGIN dùng giao thức https://');
+    }
+
+    if (parsed.CAMERA_MEDIA_MODE === 'ros') {
+        const media = parsed.CAMERA_WHEP_BASE_URL && new URL(parsed.CAMERA_WHEP_BASE_URL);
+        if (!media || media.protocol !== 'https:' || media.origin !== parsed.CAMERA_WHEP_BASE_URL) {
+            throw new Error('CAMERA_WHEP_BASE_URL_MUST_BE_HTTPS_ORIGIN');
+        }
     }
 
     return Object.freeze(parsed);

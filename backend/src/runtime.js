@@ -175,7 +175,11 @@ export function createRobotRuntime({
         lifecycle,
     });
 
-    const cameraService = createCameraService();
+    const cameraService = createCameraService({
+        mode: config.CAMERA_MEDIA_MODE,
+        whepBaseUrl: config.CAMERA_WHEP_BASE_URL,
+        lifecycle,
+    });
 
     function publishMappingPose() {
         const state = sharedRobotState.getSnapshot();
@@ -215,6 +219,7 @@ export function createRobotRuntime({
         missionService: missionServiceInstance,
         cameraService,
         dispose() {
+            cameraService.dispose();
             clearInterval(mappingAgeTimer);
             unsubscribeMappingPose();
             mapGridService.dispose();

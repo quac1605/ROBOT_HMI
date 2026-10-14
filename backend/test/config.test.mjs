@@ -71,3 +71,15 @@ test('loadConfig bắt buộc HTTPS cho APP_ORIGIN trong môi trường producti
     env.APP_ORIGIN = 'http://127.0.0.1:5173';
     assert.throws(() => loadConfig(env), /PRODUCTION_REQUIRES_HTTPS/);
 });
+
+test('ROS camera requires a HTTPS WHEP origin; motion adapter stays mock', () => {
+    const env = makeBaseEnv();
+    env.CAMERA_MEDIA_MODE = 'ros';
+    assert.throws(() => loadConfig(env), /CAMERA_WHEP_BASE_URL_MUST_BE_HTTPS_ORIGIN/);
+    env.CAMERA_WHEP_BASE_URL = 'http://127.0.0.1:8889';
+    assert.throws(() => loadConfig(env), /CAMERA_WHEP_BASE_URL_MUST_BE_HTTPS_ORIGIN/);
+    env.CAMERA_WHEP_BASE_URL = 'https://127.0.0.1:8889';
+    const cfg = loadConfig(env);
+    assert.equal(cfg.CAMERA_MEDIA_MODE, 'ros');
+    assert.equal(cfg.ROBOT_ADAPTER, 'mock');
+});
