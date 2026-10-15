@@ -1,7 +1,32 @@
-// utils/controlLeaseCore.js
+/**
+ * [READ FLOW STEP 15] Máy trạng thái lease: một chủ thể giữ quyền lái hữu hạn.
+ * Core đồng bộ, dùng chung cho mock frontend và authority backend; không mở
+ * WebSocket, không tạo timer và không trực tiếp publish ROS Twist. Authority
+ * inject guard/callback vận tốc, chạy tick và biến revocation thành event.
+ *
+ * policy mặc định: command watchdog 300 ms, freshness token 500 ms, lease 15 s.
+ * Đây là ngưỡng phần mềm; không thay thế watchdog hoặc E-stop vật lý trên robot.
+ * @module control-domain/controlLeaseCore
+ */
 import { TeleopVelocityMessageSchema, ControlLimitsSchema, ControlContextSchema } from '@robot-hmi/contracts/control';
 import { CONTROL_POLICY, ZERO, MANUAL_MAPPING_LIMITS, isFixedMappingVelocity } from './controlPolicy.js';
 
+/**
+ * Tạo vùng nhớ quyền điều khiển của một robot, độc lập với React/HTTP/ROS.
+ * @param {object} options Phụ thuộc nội bộ đã tin cậy, không nhận từ request body.
+ * @param {() => number} [options.now] Đồng hồ monotonic ms để xét deadline.
+ * @param {() => number} [options.wallNow] Đồng hồ epoch ms để tạo timestamp UI.
+ * @param {() => string} [options.uuid] Sinh ID lease và freshness token.
+ * @param {object} [options.policy=CONTROL_POLICY] TTL và ngân sách watchdog.
+ * @param {object} [options.limits] Trần vận tốc manual; mapping có profile 0.3 riêng.
+ * @param {Function} options.checkAcquire Context -> null hoặc mã lỗi trước cấp lease.
+ * @param {Function} options.checkDrive Context -> null hoặc mã lỗi khi đang lái.
+ * @param {Function} options.setVelocity Nhận {linearX, angularZ}, cập nhật command sink.
+ * @param {Function} options.claimMode Nhận leaseId/context để nhận quyền mode/motion.
+ * @param {Function} options.releaseMode Nhận leaseId/context để trả đúng quyền đã giữ.
+ * @returns {object} API acquire/heartbeat/send/release/stop/view/tick/dispose.
+ * @throws {Error} Lỗi Zod nếu limits cấu hình không đúng contract.
+ */
 export function createControlLeaseCore({
     now = () => performance.now(),    // Monotonic clock (performance.now)
     wallNow = () => Date.now(),       // Wall clock (để tạo ISO string)
@@ -18,18 +43,33 @@ export function createControlLeaseCore({
     // Validate limits ngay khi tạo
     limits = ControlLimitsSchema.parse(limits);
 
+    // sessionId ở core là khóa chủ thể nội bộ. Backend bind theo WS/tab rồi mới
+    // gọi core; cùng tài khoản hoặc cùng cookie không tự trở thành cùng owner.
     let owner = null;      // Record của người đang giữ lease, null = không ai
     let generation = 0;    // Tăng mỗi khi acquire hoặc revoke
     let blocked = false;   // Chặn re-entry trong callback
     let disposed = false;
     const revoked = [];    // Queue revocation để adapter drain
 
-    // Helpers
+    /**
+     * @param {string} code Mã lỗi domain để lớp HTTP/WS quyết định cách trả về.
+     * @returns {never}
+     * @throws {Error} Luôn ném Error có thuộc tính code, không tự nuốt lỗi.
+     */
     const fail = code => { throw Object.assign(new Error(code), { code }); };
+    /** @returns {void} @throws {Error} SERVICE_DISPOSED khi API đã đóng. */
     const usable = () => { if (disposed) fail('SERVICE_DISPOSED'); };
+    /**
+     * @param {string} session Khóa chủ thể đã được authority xác thực.
+     * @returns {void}
+     * @throws {Error} UNAUTHENTICATED nếu thiếu khóa; core không đọc cookie.
+     */
     const sessionRequired = session => { if (!session) fail('UNAUTHENTICATED'); };
 
-    // Tạo DTO từ record (chỉ expose những gì cần thiết)
+    /**
+     * @param {object} record Lease nội bộ, có token, sequence và deadline monotonic.
+     * @returns {object} DTO sao chép context/limits; giấu khóa owner và kho token.
+     */
     const dto = record => ({
         leaseId: record.leaseId,
         controlGeneration: record.generation,
@@ -38,8 +78,13 @@ export function createControlLeaseCore({
         context: structuredClone(record.context),
     });
 
-    // revoke: hủy owner, zero velocity, tăng generation
-    // THỨ TỰ QUAN TRỌNG: null owner TRƯỚC KHI gọi callback (fence re-entry)
+    /**
+     * Hủy quyền trước callback để callback lồng nhau không dùng lại owner cũ.
+     * Generation tăng cả khi chưa có owner, giúp fence thao tác đã lỗi thời.
+     * @param {string} reason Mã lý do dùng cho control.revoked ở authority.
+     * @returns {number} Generation sau thu hồi; chưa phải xác nhận robot đã dừng.
+     * @throws {Error} Lỗi callback setVelocity/releaseMode được truyền ra caller.
+     */
     function revoke(reason) {
         const previous = owner;
         owner = null;       // ← Fence TRƯỚC. Callback không thể thấy owner cũ.
@@ -60,9 +105,13 @@ export function createControlLeaseCore({
         return generation;
     }
 
-    // Guard là callback đồng bộ nhưng có thể ném lỗi hoặc thu hồi lease qua
-    // một callback lồng nhau. Chỉ record đang thực sự sở hữu robot mới được
-    // phép đi tiếp; mọi lỗi guard phải chốt zero trước khi trả quyền điều khiển.
+    /**
+     * Guard có thể gọi lồng nhau hoặc ném lỗi; kiểm tra lại identity + generation
+     * sau callback để một record đã bị thay thế không thể tiếp tục gửi vận tốc.
+     * @param {object} record Owner mà thao tác đang kiểm tra.
+     * @returns {?string} null nếu được lái; mã lỗi nếu guard/ownership không hợp lệ.
+     * @throws {Error} Lỗi callback khi revoke; lỗi checkDrive được đổi thành reason.
+     */
     function checkRuntimeDrive(record) {
         let reason;
         try {
@@ -77,8 +126,12 @@ export function createControlLeaseCore({
         return reason || null;
     }
 
-    // tick: được adapter gọi mỗi 25ms qua setInterval
-    // Kiểm tra lease TTL và watchdog timeout
+    /**
+     * Authority gọi định kỳ (mặc định 25 ms) và core gọi trước một số thao tác.
+     * Xét deadline bằng >= để lệnh đến đúng ranh giới không hồi sinh lease.
+     * @returns {void} Có thể revoke và ghi zero khi TTL/watchdog/guard thất bại.
+     * @throws {Error} SERVICE_DISPOSED hoặc lỗi callback trong revoke.
+     */
     function tick() {
         usable();
         if (!owner) return;
@@ -100,7 +153,12 @@ export function createControlLeaseCore({
         checkRuntimeDrive(record);
     }
 
-    // assertOwner: dùng trong send/release để xác nhận người gọi là owner
+    /**
+     * @param {string} sessionId Khóa chủ thể được lớp ngoài xác thực.
+     * @param {string} leaseId ID mà caller đang giữ.
+     * @returns {object} Owner còn sống sau khi xét deadline và runtime guard.
+     * @throws {Error} LEASE_NOT_OWNED, lỗi lifecycle hoặc lỗi callback tick.
+     */
     function assertOwner(sessionId, leaseId) {
         usable();
         sessionRequired(sessionId);
@@ -115,7 +173,14 @@ export function createControlLeaseCore({
     }
 
     return {
-        // Xin quyền lái
+        /**
+         * Cấp lease độc quyền khi guard đồng ý. Deadline không tự gia hạn bởi
+         * heartbeat; context mapping giữ vòng đời SLAM, chỉ nhận quyền chuyển động.
+         * @param {string} sessionId Khóa chủ thể, không phải username.
+         * @param {object} [rawContext={kind:'manual'}] Manual hoặc mappingSessionId.
+         * @returns {object} Lease DTO gồm generation, hạn ISO, limits và context.
+         * @throws {Error} CONTROL_BUSY, lỗi context/guard/lifecycle hoặc claimMode.
+         */
         acquire(sessionId, rawContext = { kind: 'manual' }) {
             usable();
             sessionRequired(sessionId);
@@ -150,7 +215,13 @@ export function createControlLeaseCore({
             return dto(record);
         },
 
-        // Phát freshnessToken mới cho owner (gọi mỗi 100ms)
+        /**
+         * Trả vé ngắn hạn cho chủ thể hiện tại; nhận heartbeat không nuôi watchdog
+         * lệnh. Token cũ vẫn dùng được tới TTL để chịu độ trễ mạng bình thường.
+         * @param {string} sessionId Chủ thể nhận token; authority gọi mỗi 100 ms.
+         * @returns {?object} Heartbeat riêng của owner hoặc null với observer.
+         * @throws {Error} Lỗi lifecycle hoặc callback tick.
+         */
         heartbeat(sessionId) {
             usable();
             sessionRequired(sessionId);
@@ -185,8 +256,14 @@ export function createControlLeaseCore({
             };
         },
 
-        // Gửi velocity command — SYNCHRONOUS
-        // THỨ TỰ: parse → assertOwner (deadline check) → token → sequence → limits → drive check → update
+        /**
+         * Xác thực rồi ghi vận tốc ngay, không có hàng đợi/retry/replay khi mất mạng.
+         * Thứ tự: schema -> owner/deadline -> token -> sequence -> limits -> guard.
+         * @param {string} sessionId Chủ thể gửi lệnh đã bind với kết nối.
+         * @param {unknown} raw DTO leaseId/freshnessToken/sequence/linearX/angularZ.
+         * @returns {void} Đồng bộ; success chỉ nghĩa lệnh đã được chuyển cho sink.
+         * @throws {Error} Lỗi schema/owner/token/sequence/limits/guard hoặc sink.
+         */
         send(sessionId, raw) {
             usable();
             sessionRequired(sessionId);
@@ -222,25 +299,44 @@ export function createControlLeaseCore({
             // void return — KHÔNG trả Promise
         },
 
-        // Trả quyền lái
+        /**
+         * @param {string} sessionId Chủ thể trả quyền.
+         * @param {string} leaseId Lease đang giữ; caller khác không được trả thay.
+         * @returns {void} Thu hồi và gửi zero; xác nhận đứng yên thuộc authority.
+         * @throws {Error} Lỗi ownership/lifecycle/callback.
+         */
         release(sessionId, leaseId) {
             assertOwner(sessionId, leaseId);
             revoke('RELEASED');
         },
 
-        // Dừng khẩn cấp (không cần sessionId — adapter phải auth trước khi gọi)
+        /**
+         * Yêu cầu dừng phần mềm: lớp HTTP/authority phải xác thực trước khi gọi.
+         * Không đồng nghĩa nút E-stop vật lý, cũng không chứng minh bánh đã đứng.
+         * @returns {number} Generation mới để authority gắn với measured stop.
+         * @throws {Error} SERVICE_DISPOSED hoặc lỗi callback revoke.
+         */
         stop() {
             usable();
             return revoke('STOP_REQUESTED');
         },
 
-        // Thu hồi session (gọi khi logout)
+        /**
+         * @param {string} sessionId Chủ thể bị đóng/logout; owner khác không đổi.
+         * @returns {void}
+         * @throws {Error} SERVICE_DISPOSED hoặc lỗi callback revoke.
+         */
         revokeSession(sessionId) {
             usable();
             if (owner?.sessionId === sessionId) revoke('SESSION_ENDED');
         },
 
-        // Xem trạng thái (không có side effect)
+        /**
+         * Đọc có xét tick nên có thể thu hồi lease hết hạn; không phải pure getter.
+         * @param {string} sessionId Chủ thể đang hỏi để phân biệt self/other/none.
+         * @returns {object} Snapshot chỉ kèm lease khi người hỏi chính là owner.
+         * @throws {Error} Lỗi lifecycle hoặc callback tick.
+         */
         view(sessionId) {
             usable();
             sessionRequired(sessionId);
@@ -254,9 +350,17 @@ export function createControlLeaseCore({
 
         tick, // Để adapter gọi từ setInterval
 
-        // Drain revocations sau mỗi operation (kể cả khi throw)
+        /**
+         * @returns {Array<object>} Lấy và xóa queue; authority drain kể cả khi API lỗi
+         * để thông báo revoke không bị bỏ sót hoặc phát lại nhiều lần.
+         */
         takeRevocations() { return revoked.splice(0); },
 
+        /**
+         * Đóng idempotent và gửi zero một lần; timer ngoài core do authority dọn.
+         * @returns {void}
+         * @throws {Error} Lỗi callback revoke; disposed vẫn đã được chốt trước đó.
+         */
         dispose() {
             if (disposed) return;
             disposed = true;
