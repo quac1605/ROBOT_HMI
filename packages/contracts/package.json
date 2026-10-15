@@ -3,9 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "test": "node --test test/*.test.js"
-  },
   "exports": {
     "./robotState": "./src/robotState.js",
     "./camera": "./src/camera.js",

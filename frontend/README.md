@@ -31,12 +31,6 @@ VITE_ROBOT_CLIENT=mock npm run dev
 Camera cần hai video trong `docs/public/demo/`; xem cách tạo ở phần tiếp theo.
 Joystick chỉ được mở sau khi bắt đầu phiên mapping và nhận quyền điều khiển.
 
-### Kiểm chứng tích hợp trên Windows (12/10/2026)
-
-- Build mock và lint đạt; 237/237 Node tests đạt với `--test-concurrency=1`.
-- Bốn browser tests trong `docs/test/browser/combine.spec.js` đạt: ba tab tích hợp, camera, đăng nhập và redirect các đường dẫn cũ.
-- Hai browser tests điều khiển kế thừa `C8-03` và `C8-04` vẫn timeout khi chờ lệnh chuyển động trong lần kiểm tra lại. Bộ browser tests chưa đạt toàn bộ; logic cấp quyền lái và watchdog được giữ nguyên.
-
 ## Camera demo assets (Chặng 8)
 
 Hai video mẫu được lưu tại **`../docs/public/demo/`**, không ở `frontend/public/demo/`.
@@ -52,38 +46,30 @@ Trên Windows có thể dùng `npm.cmd` thay `npm`. Các file trong `docs/public
 
 Plugin `tooling/demoAssetsPlugin.mjs` giữ URL `/demo/front.mp4` và `/demo/rear.mp4`, hỗ trợ byte ranges khi dev và đóng gói vào `dist/demo/` khi build. Không đổi `publicDir` sang toàn bộ `docs`; các logo/icon hiện hữu vẫn hoạt động.
 
-Các lệnh kiểm tra:
+## Kiểm tra mã nguồn và build
 
-Node tests có kiểm tra module dùng chung với backend; cài `npm ci --prefix backend`
-từ repository root trước lần chạy đầu. Khi kiểm tra mock, đặt `VITE_ROBOT_CLIENT=mock`
-như hướng dẫn ở trên.
+Chạy từ `frontend`; khi build mock, đặt `VITE_ROBOT_CLIENT=mock` như hướng dẫn ở trên.
 
 ```bash
 npm run lint -- --max-warnings=0
 npm run build
-npm run test:node
-npm run test:browser
-npm run verify:stage8
 ```
 
-Browser runner tự khởi động/dừng server kiểm thử riêng tại cổng 4173; không cần giữ `npm run dev` để chạy test. Dev server để xem thủ công thường ở cổng 5173. `verify:stage8` là gate **toàn bộ** manifest N8/C8/U8/T8 và hồi quy Chặng 6–7, không chỉ 5 bài core mẫu của bước F. Nó phải báo FAIL khi thiếu bài test/bằng chứng Ubuntu; đây không phải lý do nới gate hoặc tạo artifact passed giả.
+Các bộ test, cấu hình Playwright và scripts test/benchmark/evidence/verify đã được gỡ khỏi ứng dụng. Nội dung trong `docs/`, bao gồm test và báo cáo lịch sử, được giữ nguyên để tham khảo.
 
-## Baseline Ubuntu 24.04 trước Chặng 9
+## Môi trường Ubuntu
 
-Từ repository root, `.nvmrc` pin Node 22.23.3 cho lần bàn giao này. Cài dependencies/browser trên Ubuntu, không chép `node_modules` Windows. Bàn giao riêng video/manifest và hai independent probes trong `docs/chang-08-independent-review-round2` vì chúng không được Git quản lý.
+Từ repository root, `.nvmrc` pin Node 22.23.3. Cài dependencies trên Ubuntu, không chép `node_modules` Windows. Bàn giao riêng video/manifest trong `docs/public/demo/` vì chúng không được Git quản lý.
 
 ```bash
 nvm install
 nvm use
+npm ci --prefix packages/contracts
+npm ci --prefix packages/control-domain
 npm ci --prefix frontend --include=dev
 cd frontend
-npx --no-install playwright install --with-deps chromium
-cd ..
-node docs/test/scripts/ubuntu_environment.mjs
-node docs/test/scripts/verify_ubuntu_baseline.mjs
+VITE_ROBOT_CLIENT=mock npm run dev
 ```
-
-Runner đặt client mock, dùng bundled Chromium, chạy toàn bộ `verify:stage8` và probes 18/6, kiểm report mới và hashes đầu vào không đổi trong lượt chạy. Evidence nằm ở `docs/chang-09-evidence/ubuntu-baseline/<run-id>/`. Chỉ đóng M0 khi runner exit 0; không biến kết quả Windows thành nghiệm thu Ubuntu và luôn giữ `hardwareReady=false`. Hai helper đã có trong source, không cần chép code từ tài liệu để tạo lại.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

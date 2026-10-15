@@ -22,7 +22,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['../docs/test/**/*.{js,jsx,mjs}', 'tooling/**/*.mjs'],
+    files: ['tooling/**/*.mjs'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: {
@@ -34,7 +34,6 @@ export default defineConfig([
   {
     files: [
       '../packages/contracts/src/**/*.js',
-      '../packages/contracts/test/**/*.js',
       '../packages/control-domain/src/**/*.js',
     ],
     extends: [js.configs.recommended],
