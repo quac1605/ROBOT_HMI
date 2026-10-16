@@ -5,10 +5,8 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   Chip,
   CircularProgress,
-  FormControlLabel,
   Stack,
   TextField,
   Typography,
@@ -85,10 +83,6 @@ export default function MappingPage() {
   }, [snapshot, viewerContext, renderModel]);
 
   const poseQuality = resolvePoseQuality(snapshot, { transportStale });
-
-  const toggleLayer = (layerName) => {
-    setLayers((prev) => ({ ...prev, [layerName]: !prev[layerName] }));
-  };
 
   async function handleStartMapping(e) {
     e.preventDefault();
@@ -399,44 +393,6 @@ export default function MappingPage() {
             </Card>
           </Stack>
         </Box>
-
-        <Card variant="outlined">
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={{ xs: 1, md: 3 }}
-              sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}
-            >
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>Chú giải:</Typography>
-                {[
-                  ['Unknown', '#b0bec5'],
-                  ['Free', '#ffffff'],
-                  ['Occupied', '#000000'],
-                ].map(([label, color]) => (
-                  <Stack key={label} direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                    <Box sx={{ width: 16, height: 16, bgcolor: color, border: '1px solid #78909c' }} />
-                    <Typography variant="caption">{label}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-                <FormControlLabel
-                  control={<Checkbox checked={layers.grid} onChange={() => toggleLayer('grid')} size="small" />}
-                  label="Lưới"
-                />
-                <FormControlLabel
-                  control={<Checkbox checked={layers.robot} onChange={() => toggleLayer('robot')} size="small" />}
-                  label="Robot"
-                />
-                <FormControlLabel
-                  control={<Checkbox checked={layers.path} onChange={() => toggleLayer('path')} size="small" />}
-                  label="Đường đi"
-                />
-              </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
 
 
       </Stack>

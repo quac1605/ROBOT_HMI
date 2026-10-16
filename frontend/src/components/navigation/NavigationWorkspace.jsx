@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, Box, CircularProgress, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import Map2D from '../map/Map2D.jsx';
-import NavigationLegend from './NavigationLegend.jsx';
 import { useMapGrid } from '../../hooks/useMapGrid.js';
 import { useOccupancyRaster } from '../../hooks/useOccupancyRaster.js';
 import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
@@ -60,7 +59,6 @@ export default function NavigationWorkspace({ currentMap }) {
                         onGoalChange={goal => nav.setRouteDraft(goal ? [goal] : [])}
                         onWaypointAdd={nav.appendWaypoint} />
                 )}
-                <NavigationLegend />
             </Stack>
 
         </Stack>
