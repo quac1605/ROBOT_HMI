@@ -1,11 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, Box, CircularProgress, Grid, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Alert, Box, CircularProgress, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import Map2D from '../map/Map2D.jsx';
 import NavigationLegend from './NavigationLegend.jsx';
-import WaypointEditor from './WaypointEditor.jsx';
-import MissionPanel from './MissionPanel.jsx';
-import RobotStatusCard from '../status/RobotStatusCard.jsx';
-import NavigationCameraPanel from './NavigationCameraPanel.jsx';
 import { useMapGrid } from '../../hooks/useMapGrid.js';
 import { useOccupancyRaster } from '../../hooks/useOccupancyRaster.js';
 import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
@@ -49,36 +45,24 @@ export default function NavigationWorkspace({ currentMap }) {
                 Navigation mock: đường nối waypoint chỉ là minh họa, chưa kiểm tra vật cản/footprint và không phải Nav2.
                 Robot thật có thể lập đường khác giữa các waypoint.
             </Alert>
-            <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                    <Stack spacing={1}>
-                        <ToggleButtonGroup value={tool} exclusive size="small"
-                            onChange={(_, value) => { if (value) setTool(value); }}>
-                            <ToggleButton value="pan" aria-label="Kéo xem bản đồ">Kéo xem</ToggleButton>
-                            <ToggleButton value="goal" aria-label="Đặt đích">Đặt một đích</ToggleButton>
-                            <ToggleButton value="waypoint" aria-label="Tạo tuyến đường">Thêm waypoint</ToggleButton>
-                        </ToggleButtonGroup>
-                        {!model ? <Box sx={{ p: 4 }}><CircularProgress /></Box> : (
-                            <Map2D model={model} pose={pose} poseQuality={poseQuality}
-                                goal={selected || nav.routeDraft.poses[0] || null}
-                                routeDraft={nav.routeDraft} previewPath={preview} plannedPath={planned} trajectory={trajectory}
-                                tool={tool}
-                                onGoalChange={goal => nav.setRouteDraft(goal ? [goal] : [])}
-                                onWaypointAdd={nav.appendWaypoint} />
-                        )}
-                        <NavigationLegend />
-                    </Stack>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                    <Stack spacing={2}>
-                        <NavigationCameraPanel />
-                        {/* Camera quan sát ở trên; trạng thái robot và tác vụ ở dưới cùng cột. */}
-                        <RobotStatusCard />
-                        <MissionPanel selectedMap={currentMap} />
-                        <WaypointEditor currentMap={currentMap} />
-                    </Stack>
-                </Grid>
-            </Grid>
+            <Stack spacing={1}>
+                <ToggleButtonGroup value={tool} exclusive size="small"
+                    onChange={(_, value) => { if (value) setTool(value); }}>
+                    <ToggleButton value="pan" aria-label="Kéo xem bản đồ">Kéo xem</ToggleButton>
+                    <ToggleButton value="goal" aria-label="Đặt đích">Đặt một đích</ToggleButton>
+                    <ToggleButton value="waypoint" aria-label="Tạo tuyến đường">Thêm waypoint</ToggleButton>
+                </ToggleButtonGroup>
+                {!model ? <Box sx={{ p: 4 }}><CircularProgress /></Box> : (
+                    <Map2D model={model} pose={pose} poseQuality={poseQuality}
+                        goal={selected || nav.routeDraft.poses[0] || null}
+                        routeDraft={nav.routeDraft} previewPath={preview} plannedPath={planned} trajectory={trajectory}
+                        tool={tool}
+                        onGoalChange={goal => nav.setRouteDraft(goal ? [goal] : [])}
+                        onWaypointAdd={nav.appendWaypoint} />
+                )}
+                <NavigationLegend />
+            </Stack>
+
         </Stack>
     );
 }

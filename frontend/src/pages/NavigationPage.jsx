@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { Alert, Box, CircularProgress, Grid, MenuItem, Select, Stack, Typography } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import NavigationWorkspace from '../components/navigation/NavigationWorkspace.jsx';
-import NavigationCameraPanel from '../components/navigation/NavigationCameraPanel.jsx';
+import NavigationDriveCamera from '../components/navigation/NavigationDriveCamera.jsx';
+import NavigationControlPanel from '../components/control/NavigationControlPanel.jsx';
+import MissionPanel from '../components/navigation/MissionPanel.jsx';
+import WaypointEditor from '../components/navigation/WaypointEditor.jsx';
 import RobotStatusCard from '../components/status/RobotStatusCard.jsx';
 import { useRobotClient } from '../hooks/useRobotClient.js';
 import { useNavigationWorkflowStore } from '../state/navigationWorkflowStore.js';
@@ -53,20 +56,28 @@ export default function NavigationPage() {
           </Select>
         </Stack>
         {error && <Alert severity="error">{error}</Alert>}
-        {/* Có bản đồ: ô trạng thái nằm trong NavigationWorkspace; chưa có: hiển thị riêng để vẫn theo dõi được robot */}
-        {selectedMap && !loading
-          ? <Box><NavigationWorkspace currentMap={selectedMap} /></Box>
-          : <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 8 }}>
-                {loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Stack spacing={2}>
-                  <NavigationCameraPanel />
-                  <RobotStatusCard />
-                </Stack>
-              </Grid>
-            </Grid>}
+        {/* Camera và lease owner giữ cùng vị trí qua loading/chọn map.
+            Chỉ vùng bản đồ thay đổi; không dựng lại video khi catalog cập nhật. */}
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Stack spacing={1.5}>
+              {selectedMap && !loading
+                ? <NavigationWorkspace currentMap={selectedMap} />
+                : loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
+              <NavigationControlPanel />
+            </Stack>
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Stack spacing={2}>
+              <Box sx={{ position: { md: 'sticky' }, top: 16, zIndex: 1, bgcolor: 'background.paper', borderRadius: 2 }}>
+                <NavigationDriveCamera />
+              </Box>
+              <RobotStatusCard />
+              {selectedMap && <MissionPanel selectedMap={selectedMap} />}
+              {selectedMap && <WaypointEditor currentMap={selectedMap} />}
+            </Stack>
+          </Grid>
+        </Grid>
       </Stack>
     </PageFrame>
   );

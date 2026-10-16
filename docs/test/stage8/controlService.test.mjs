@@ -176,11 +176,11 @@ test('N8-06: command hợp lệ cập nhật velocity; negative bounds đúng; v
   assert.equal(sharedRobotState.getSnapshot().velocity.linearX, -0.1);
   assert.equal(sharedRobotState.getSnapshot().velocity.angularZ, -0.2);
 
-  // Vượt limits (0.2, 0.5) bị reject
+  // Giới hạn manual được duyệt 0.3/0.3; vẫn reject vượt giới hạn mới.
   assert.throws(() => {
     service.sendVelocity({
       leaseId: lease.leaseId, sequence: 2, freshnessToken: token,
-      linearX: 0.25, angularZ: 0,
+      linearX: 0.301, angularZ: 0,
     }, sid);
   });
 

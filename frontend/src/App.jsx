@@ -6,7 +6,6 @@ import RequireAuth from './auth/RequireAuth.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import MappingPage from './pages/MappingPage.jsx';
 import NavigationPage from './pages/NavigationPage.jsx';
-import GestureDetectionPage from './pages/GestureDetectionPage.jsx';
 
 export default function App() {
   return (
@@ -30,8 +29,8 @@ export default function App() {
           <Route path="/status" element={<Navigate to="/navigation" replace />} />
           <Route path="/mapping" element={<MappingPage />} />
           <Route path="/navigation" element={<NavigationPage />} />
-          <Route path="/gesture" element={<GestureDetectionPage />} />
-          <Route path="/teleop" element={<Navigate to="/mapping" replace />} />
+          <Route path="/gesture" element={<Navigate to="/navigation" replace />} />
+          <Route path="/teleop" element={<Navigate to="/navigation" replace />} />
         </Route>
       </Route>
 

@@ -16,25 +16,26 @@ async function spa(page, route) {
   await page.waitForURL(`**${route}`);
   // URL mutates synchronously; React may batch two popstates without unmounting.
   // Assert the destination DOM before navigating back or resolving a late request.
-  if (route === '/navigation') await expect(page.getByTestId('acquire-control')).toHaveCount(0);
-  if (route === '/mapping') await expect(page.getByTestId('acquire-control')).toBeVisible();
+  if (route === '/mapping') await expect(page.getByTestId('manual-mode-toggle')).toHaveCount(0);
+  if (route === '/navigation') await expect(page.getByTestId('manual-mode-toggle')).toBeVisible();
 }
 
-async function openMapping(page, { startSession = true } = {}) {
+async function openNavigation(page) {
   await page.goto('/login');
   await page.locator('#login-username').fill('admin');
   await page.locator('#login-password').fill('demo-only');
   await page.locator('#login-submit-btn').click();
   await page.waitForURL('**/navigation');
-  await page.goto('/mapping');
   await page.evaluate(async () => {
     window.testClient = (await import('/src/clients/index.js')).robotClient;
-    window.testCalls = { acquire: [], stop: [], release: [], velocity: [] };
+    window.testCalls = { acquire: [], stop: [], release: [], velocity: [], camera: [], finish: [] };
     for (const [method, key] of [
       ['acquireControl', 'acquire'],
       ['requestStop', 'stop'],
       ['releaseControl', 'release'],
       ['sendVelocity', 'velocity'],
+      ['getCameraStream', 'camera'],
+      ['finishMapping', 'finish'],
     ]) {
       const original = window.testClient[method].bind(window.testClient);
       window.testClient[method] = (...args) => {
@@ -43,16 +44,11 @@ async function openMapping(page, { startSession = true } = {}) {
       };
     }
   });
-  if (startSession) {
-    await page.getByLabel('Tên bản đồ mới').fill('Browser manual mapping');
-    await page.getByTestId('mapping-start-button').click();
-    await expect(page.getByText('Đang quét SLAM (Live)')).toBeVisible();
-  }
-  await expect(page.getByTestId('camera-health')).toContainText('Live');
+  await expect(page.getByTestId('navigation-camera-health')).toContainText('Đang phát');
 }
 
 function joystick(page) {
-  return page.getByTestId('mapping-joystick');
+  return page.getByTestId('navigation-joystick');
 }
 
 async function expectJoystickEnabled(page, enabled) {
@@ -81,18 +77,18 @@ async function holdJoystick(page, direction) {
 }
 
 test('C8-01: login -> front clip decode -> switch rear decode; cameraId/nhãn đúng', async ({ page }) => {
-  await openMapping(page, { startSession: false });
-  await expect(page.getByTestId('camera-health')).toContainText('Live');
+  await openNavigation(page);
+  await expect(page.getByTestId('navigation-camera-health')).toContainText('Đang phát');
   await expect(page.getByTestId('camera-video-front')).toBeVisible();
 
-  await page.getByTestId('camera-select-rear').click();
+  await page.getByTestId('navigation-camera-select-rear').click();
   await expect(page.getByTestId('camera-video-rear')).toBeVisible();
-  await expect(page.getByTestId('camera-health')).toContainText('Live');
+  await expect(page.getByTestId('navigation-camera-health')).toContainText('Đang phát');
 });
 
 test('C8-02: giữ và thả ngoài nút không có nonzero command trở lại', async ({ page }) => {
-  await openMapping(page);
-  const acquireBtn = page.getByTestId('acquire-control');
+  await openNavigation(page);
+  const acquireBtn = page.getByTestId('manual-mode-toggle');
   await expect(acquireBtn).toBeEnabled();
   await acquireBtn.click();
 
@@ -112,10 +108,10 @@ test('C8-02: giữ và thả ngoài nút không có nonzero command trở lại'
 });
 
 test('C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera sau không đảo vector', async ({ page }) => {
-  await openMapping(page);
+  await openNavigation(page);
 
   // 1. Lùi: linearX < 0, angularZ === 0
-  await page.getByTestId('acquire-control').click();
+  await page.getByTestId('manual-mode-toggle').click();
   await page.evaluate(() => { window.testCalls.velocity = []; });
   await holdJoystick(page, 'backward');
   await page.waitForFunction(() => window.testCalls.velocity.length > 0);
@@ -125,7 +121,7 @@ test('C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera 
   expect(bwdCmd).toMatchObject({ linearX: -0.3, angularZ: 0 });
 
   // 2. Quay trái: angularZ > 0, linearX === 0
-  await page.getByTestId('acquire-control').click();
+  await page.getByTestId('manual-mode-toggle').click();
   await page.evaluate(() => { window.testCalls.velocity = []; });
   await holdJoystick(page, 'left');
   await page.waitForFunction(() => window.testCalls.velocity.length > 0);
@@ -135,7 +131,7 @@ test('C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera 
   expect(leftCmd).toMatchObject({ linearX: 0, angularZ: 0.3 });
 
   // 3. Quay phải: angularZ < 0, linearX === 0
-  await page.getByTestId('acquire-control').click();
+  await page.getByTestId('manual-mode-toggle').click();
   await page.evaluate(() => { window.testCalls.velocity = []; });
   await holdJoystick(page, 'right');
   await page.waitForFunction(() => window.testCalls.velocity.length > 0);
@@ -145,9 +141,9 @@ test('C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera 
   expect(rightCmd).toMatchObject({ linearX: 0, angularZ: -0.3 });
 
   // 4. Camera sau do người dùng chọn; joystick tiến vẫn theo thân robot.
-  await page.getByTestId('camera-select-rear').click();
-  await expect(page.getByTestId('camera-health')).toContainText('Live');
-  await page.getByTestId('acquire-control').click();
+  await page.getByTestId('navigation-camera-select-rear').click();
+  await expect(page.getByTestId('navigation-camera-health')).toContainText('Đang phát');
+  await page.getByTestId('manual-mode-toggle').click();
   await page.evaluate(() => { window.testCalls.velocity = []; });
   await holdJoystick(page, 'forward');
   try {
@@ -186,65 +182,62 @@ test('C8-03: lùi/quay trái/quay phải đúng dấu/đơn vị; chọn camera 
   expect(fwdRearCmd).toMatchObject({ linearX: 0.3, angularZ: 0 });
 });
 
-test('MJ-B01: lái mapping qua joystick rồi Stop đo được trước khi Finish lưu map', async ({ page }) => {
-  await openMapping(page);
-  // Mock sinh frame bản đồ đầu tiên sau ~500ms; chờ frame đầu thay vì giả định nó có ngay khi chip Live hiện.
-  let before = null;
-  await expect.poll(async () => {
-    before = await page.evaluate(async () => {
-      const { robotClient } = await import('/src/clients/index.js');
-      const { useMappingWorkflowStore } = await import('/src/state/mappingWorkflowStore.js');
-      const id = useMappingWorkflowStore.getState().session.mappingSessionId;
-      try {
-        const grid = await robotClient.getMapGrid({ kind: 'mapping', mappingSessionId: id });
-        const robot = await robotClient.getRobotState();
-        return { id, revision: grid.gridRevision, x: robot.pose?.x };
-      } catch (error) {
-        if (error.code === 'MAP_NOT_READY') return null;
-        throw error;
-      }
-    });
-    return before !== null;
-  }).toBe(true);
-  await page.getByTestId('acquire-control').click();
-  try {
-    await holdJoystick(page, 'forward');
-    await expect.poll(async () => page.evaluate(async id => {
-      const { robotClient } = await import('/src/clients/index.js');
-      return (await robotClient.getMapGrid({ kind: 'mapping', mappingSessionId: id })).gridRevision;
-    }, before.id)).toBeGreaterThan(before.revision);
-    await expect.poll(() => page.evaluate(() => window.testCalls.velocity.length))
-      .toBeGreaterThan(1);
-  } finally {
-    await page.mouse.up();
-  }
-  await confirmedAndQuiet(page);
-  const moved = await page.evaluate(async () => {
-    const { robotClient } = await import('/src/clients/index.js');
-    return robotClient.getRobotState();
+test('MJ-B01: Mapping dừng có bằng chứng trước khi lưu; camera không mở lại trong vòng đời phiên', async ({ page }) => {
+  await openNavigation(page);
+  await spa(page, '/mapping');
+  await expect(page.getByTestId('navigation-camera-health')).toContainText('Live');
+  await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  await expect(page.getByTestId('camera-gesture-status')).toHaveCount(0);
+  await page.evaluate(() => {
+    window.mappingVideo = document.querySelector('[data-testid="camera-video-front"]');
+    window.mappingDescriptorCount = window.testCalls.camera.length;
   });
-  expect(moved.pose.x).toBeGreaterThan(before.x);
-  expect(moved.mode).toBe('mapping');
-  expect(await page.evaluate(() => window.testCalls.velocity.every(v =>
-    v.linearX === 0.3 && v.angularZ === 0))).toBe(true);
+  await page.getByLabel('Tên bản đồ', { exact: true }).fill('Browser mapping save gate');
+  await page.getByTestId('mapping-start-button').click();
+  await expect(page.getByText('Đang quét SLAM (Live)')).toBeVisible();
+  await expect(page.getByTestId('map2d-raster')).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector('video') === window.mappingVideo)).toBe(true);
 
+  // Freeze nguồn đo, không mock response thành confirmed. UI phải giữ Finish
+  // chưa được gọi dù requestStop đã accepted và command mục tiêu đã là zero.
+  await page.evaluate(() => window.testClient._motionSource.setFrozen(true));
   await page.getByTestId('mapping-finish-button').click();
+  await expect.poll(() => page.evaluate(() => window.testCalls.stop.length)).toBeGreaterThan(0);
+  await expect(page.getByTestId('mapping-finish-button')).toBeDisabled();
+  await page.waitForTimeout(250);
+  expect(await page.evaluate(() => window.testCalls.finish.length)).toBe(0);
+  expect(await page.evaluate(async () => (await window.testClient.getControlState()).payload.stop.status))
+    .toBe('unconfirmed');
+
+  await page.evaluate(() => {
+    window.testClient._motionSource.setFrozen(false);
+    window.testClient._motionSource.sample();
+  });
   await expect.poll(() => page.evaluate(async () => {
     const { useMappingWorkflowStore } = await import('/src/state/mappingWorkflowStore.js');
     return useMappingWorkflowStore.getState().viewerContext?.kind;
   })).toBe('saved');
-  await expectJoystickEnabled(page, false);
-  const saved = await page.evaluate(async () => {
-    const { robotClient } = await import('/src/clients/index.js');
-    return (await robotClient.listMaps()).filter(item => item.name === 'Browser manual mapping');
-  });
-  expect(saved).toHaveLength(1);
-  expect(await page.evaluate(() => window.testCalls.stop.length)).toBeGreaterThanOrEqual(2);
+  await expect(page.getByTestId('map2d-raster')).toBeVisible();
+  const result = await page.evaluate(async () => ({
+    saved: (await window.testClient.listMaps()).filter(item => item.name === 'Browser mapping save gate'),
+    finishCalls: window.testCalls.finish.length,
+    cameraCalls: window.testCalls.camera.length,
+    initialCameraCalls: window.mappingDescriptorCount,
+    sameVideo: document.querySelector('video') === window.mappingVideo,
+    stop: (await window.testClient.getControlState()).payload.stop,
+  }));
+  expect(result.saved).toHaveLength(1);
+  expect(result.finishCalls).toBe(1);
+  expect(result.cameraCalls).toBe(result.initialCameraCalls);
+  expect(result.sameVideo).toBe(true);
+  expect(result.stop.status).toBe('confirmed');
+  expect(result.stop.confirmation.evidenceKind).toBe('mock-source-observation');
+  await expect(page.getByTestId('navigation-camera-health')).toContainText('Live');
 });
 
 test('C8-04: pointercancel + lostcapture stop', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   const stick = joystick(page);
 
   // Test 1: pointercancel ngừng publisher
@@ -259,7 +252,7 @@ test('C8-04: pointercancel + lostcapture stop', async ({ page }) => {
   expect(vel1.linearX).toBe(0);
 
   // Test 2: lostpointercapture ngừng publisher
-  await page.getByTestId('acquire-control').click();
+  await page.getByTestId('manual-mode-toggle').click();
   await page.evaluate(() => { window.testCalls.velocity = []; });
   await holdJoystick(page, 'forward');
   await page.waitForFunction(() => window.testCalls.velocity.some(v => v.linearX > 0));
@@ -273,8 +266,8 @@ test('C8-04: pointercancel + lostcapture stop', async ({ page }) => {
 });
 
 test('C8-05: hai pointer trên joystick: chỉ một publisher duy nhất', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
 
   // Pointer 1 hold fwd
   await holdJoystick(page, 'forward');
@@ -309,8 +302,8 @@ test('C8-05: hai pointer trên joystick: chỉ một publisher duy nhất', asyn
 });
 
 test('C8-06: phím Space ngoài input gọi manual stop; trong input không stop', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   // 1. Giữ phím ArrowUp và bấm Space ngoài input -> dừng khẩn cấp
@@ -339,8 +332,8 @@ test('C8-06: phím Space ngoài input gọi manual stop; trong input không stop
 });
 
 test('C8-07: window blur ngừng hold', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   await page.keyboard.down('ArrowUp');
@@ -356,40 +349,40 @@ test('C8-07: window blur ngừng hold', async ({ page }) => {
 });
 
 test('C8-08: đổi route khi holding: cleanup, quay lại không tự cấp quyền', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   await page.keyboard.down('ArrowUp');
   await page.waitForFunction(() => window.testCalls.velocity.some(v => v.linearX > 0));
 
-  // SPA unmount chuyển sang /navigation (không reload trang)
+  // SPA unmount Navigation sang Mapping (không reload trang)
   const stopsBefore = await page.evaluate(() => window.testCalls.stop.length);
-  await page.evaluate(() => {
-    history.pushState(null, '', '/navigation');
-    dispatchEvent(new PopStateEvent('popstate'));
-  });
-  await page.waitForURL('**/navigation');
-  await page.keyboard.up('ArrowUp');
-
-  const stopsAfter = await page.evaluate(() => window.testCalls.stop.length);
-  expect(stopsAfter).toBeGreaterThan(stopsBefore);
-
-  // SPA navigate quay lại /mapping; session vẫn còn, lease không tự phục hồi.
   await page.evaluate(() => {
     history.pushState(null, '', '/mapping');
     dispatchEvent(new PopStateEvent('popstate'));
   });
   await page.waitForURL('**/mapping');
+  await page.keyboard.up('ArrowUp');
+
+  const stopsAfter = await page.evaluate(() => window.testCalls.stop.length);
+  expect(stopsAfter).toBeGreaterThan(stopsBefore);
+
+  // Quay lại Navigation: lease không tự phục hồi.
+  await page.evaluate(() => {
+    history.pushState(null, '', '/navigation');
+    dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await page.waitForURL('**/navigation');
 
   // Phải không tự động cấp quyền lại, joystick bị khóa.
-  await expect(page.getByTestId('acquire-control')).toBeEnabled();
+  await expect(page.getByTestId('manual-mode-toggle')).toBeEnabled();
   await expectJoystickEnabled(page, false);
 });
 
 test('C8-09: switch camera khi đang giữ: stop ngay, freshness reset', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   // Giữ phím tiến
@@ -397,7 +390,7 @@ test('C8-09: switch camera khi đang giữ: stop ngay, freshness reset', async (
   await page.waitForFunction(() => window.testCalls.velocity.some(v => v.linearX > 0));
 
   // Chuyển camera sang Sau khi đang giữ lái
-  await page.getByTestId('camera-select-rear').click();
+  await page.getByTestId('navigation-camera-select-rear').click();
   await confirmedAndQuiet(page);
   await page.keyboard.up('ArrowUp');
 
@@ -408,23 +401,23 @@ test('C8-09: switch camera khi đang giữ: stop ngay, freshness reset', async (
 });
 
 test('C8-10: camera health hiển thị đúng theo trạng thái', async ({ page }) => {
-  await openMapping(page, { startSession: false });
-  const health = page.getByTestId('camera-health');
-  await expect(health).toContainText('Live');
+  await openNavigation(page);
+  const health = page.getByTestId('navigation-camera-health');
+  await expect(health).toContainText('Đang phát');
 
   // Dừng video stream để health không còn được coi là fresh.
   await page.evaluate(() => document.querySelector('video')?.pause());
   await page.waitForTimeout(2000);
-  await expect(health).toHaveText('Chờ frame');
+  await expect(health).toHaveText('Chờ hình');
 
   // Khởi động lại video
   await page.evaluate(() => document.querySelector('video')?.play());
-  await expect(health).toContainText('Live');
+  await expect(health).toContainText('Đang phát');
 });
 
 test('C8-11: heartbeat/control transport mất: ngừng publisher', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   await page.keyboard.down('ArrowUp');
@@ -450,8 +443,8 @@ test('C8-11: heartbeat/control transport mất: ngừng publisher', async ({ pag
 });
 
 test('C8-12: service revoke khóa joystick và loop không tiếp tục', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   // Thu hồi quyền bằng manual stop
@@ -466,7 +459,7 @@ test('C8-12: service revoke khóa joystick và loop không tiếp tục', async 
 
 test('C8-13: manual stop lúc navigation đang thực thi: mission canceling -> terminal hợp lệ', async ({ page }) => {
   // Không start mapping: mission và mapping phải loại trừ nhau.
-  await openMapping(page, { startSession: false });
+  await openNavigation(page);
 
   // Tạo một mission thật đang di chuyển thông qua testClient
   const missionId = await page.evaluate(async () => {
@@ -483,7 +476,7 @@ test('C8-13: manual stop lúc navigation đang thực thi: mission canceling -> 
   // Chờ mission có vận tốc
   await page.waitForFunction(() => window.testClient._motionSource.latest()?.velocity?.linearX > 0);
 
-  // Bấm Yêu cầu dừng trên MappingPage dù chưa có phiên mapping.
+  // Bấm Yêu cầu dừng trên Navigation khi mission đang giữ robot.
   await page.getByTestId('manual-stop').click();
   await expect(page.getByTestId('stop-status')).toContainText('Đã xác nhận');
 
@@ -495,8 +488,8 @@ test('C8-13: manual stop lúc navigation đang thực thi: mission canceling -> 
 });
 
 test('C8-14: E-stop/inhibit không acquire; đủ reasons đúng', async ({ page }) => {
-  await openMapping(page);
-  const acquireBtn = page.getByTestId('acquire-control');
+  await openNavigation(page);
+  const acquireBtn = page.getByTestId('manual-mode-toggle');
   await expect(acquireBtn).toBeEnabled();
 
   // Kích hoạt E-stop vật lý
@@ -509,8 +502,8 @@ test('C8-14: E-stop/inhibit không acquire; đủ reasons đúng', async ({ page
 });
 
 test('C8-15: logout lúc holding: dọn dẹp phiên an toàn', async ({ page }) => {
-  await openMapping(page);
-  await page.getByTestId('acquire-control').click();
+  await openNavigation(page);
+  await page.getByTestId('manual-mode-toggle').click();
   await expectJoystickEnabled(page, true);
 
   // Giữ lái
@@ -528,7 +521,7 @@ test('C8-15: logout lúc holding: dọn dẹp phiên an toàn', async ({ page })
 });
 
 test('C8-16: manual stop retry và observation confirmation', async ({ page }) => {
-  await openMapping(page, { startSession: false });
+  await openNavigation(page);
   const stopBtn = page.getByTestId('manual-stop');
   await expect(stopBtn).toBeEnabled();
   await page.evaluate(() => {
@@ -542,9 +535,9 @@ test('C8-16: manual stop retry và observation confirmation', async ({ page }) =
   });
   await stopBtn.click();
   await expect(page.getByTestId('retry-stop')).toBeVisible();
-  await expect(page.getByTestId('acquire-control')).toBeDisabled();
-  await spa(page, '/navigation');
+  await expect(page.getByTestId('manual-mode-toggle')).toBeDisabled();
   await spa(page, '/mapping');
+  await spa(page, '/navigation');
   await expect(page.getByTestId('retry-stop')).toBeVisible();
   await page.getByTestId('retry-stop').click();
   const attempts = await page.evaluate(() => window.stopAttempts);
@@ -562,11 +555,10 @@ test('C8-16: manual stop retry và observation confirmation', async ({ page }) =
 });
 
 test('U8-07: descriptor mặc định có nhãn và profile mock; video decode hợp lệ', async ({ page }) => {
-  await openMapping(page, { startSession: false });
-  await expect(page.getByTestId('camera-select-front')).toHaveText('Cam trước');
-  await expect(page.getByTestId('camera-select-rear')).toHaveText('Cam sau');
+  await openNavigation(page);
+  await expect(page.getByTestId('navigation-camera-select-front')).toHaveText('Cam trước');
+  await expect(page.getByTestId('navigation-camera-select-rear')).toHaveText('Cam sau');
 
-  await expect(page.getByText('Mô phỏng', { exact: true })).toBeVisible();
   expect(await page.evaluate(async () => (await import('/src/state/controlStore.js'))
     .useControlStore.getState().controlProfile)).toBe('mock');
 
@@ -576,8 +568,8 @@ test('U8-07: descriptor mặc định có nhãn và profile mock; video decode h
 
 for (const exit of ['route', 'logout']) {
   test(`C8-H-${exit}: late acquire after ${exit} never enables a remounted page`, async ({ page }) => {
-    await openMapping(page);
-    await expect(page.getByTestId('acquire-control')).toBeEnabled();
+    await openNavigation(page);
+    await expect(page.getByTestId('manual-mode-toggle')).toBeEnabled();
     await page.evaluate(() => {
       const original = window.testClient.acquireControl.bind(window.testClient);
       window.testClient.acquireControl = async req => {
@@ -586,12 +578,12 @@ for (const exit of ['route', 'logout']) {
         return new Promise(resolve => { window.finishAcquire = () => resolve(lease); });
       };
     });
-    await page.getByTestId('acquire-control').click();
+    await page.getByTestId('manual-mode-toggle').click();
     await page.waitForFunction(() => Boolean(window.finishAcquire));
     await expectJoystickEnabled(page, false);
     if (exit === 'route') {
-      await spa(page, '/navigation');
       await spa(page, '/mapping');
+      await spa(page, '/navigation');
     } else {
       await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
       await page.waitForURL('**/login');
@@ -601,7 +593,7 @@ for (const exit of ['route', 'logout']) {
       .toBe(true);
     expect(await page.evaluate(() => window.testCalls.velocity.length)).toBe(0);
     if (exit === 'route') {
-      await expect(page.getByTestId('acquire-control')).toBeEnabled();
+      await expect(page.getByTestId('manual-mode-toggle')).toBeEnabled();
       await expectJoystickEnabled(page, false);
       expect((await page.evaluate(() => window.testClient.getControlState())).payload.ownership).toBe('none');
     } else {
@@ -611,17 +603,72 @@ for (const exit of ['route', 'logout']) {
 }
 
 test('U8-08: thu hồi quyền/unknown E-stop không mở lái dù camera fresh', async ({ page }) => {
-  await openMapping(page);
+  await openNavigation(page);
 
   // 1. Chưa acquire: joystick disabled dù camera fresh.
   await expectJoystickEnabled(page, false);
 
   // 2. Unknown E-stop: fail closed, khóa acquire và joystick.
   await page.evaluate(() => window.testClient._sharedRobotState.update({ physicalEstopActive: null }));
-  await expect(page.getByTestId('acquire-control')).toBeDisabled();
+  await expect(page.getByTestId('manual-mode-toggle')).toBeDisabled();
   await expectJoystickEnabled(page, false);
 
   // 3. Khôi phục physicalEstopActive = false -> mở lại nút acquire
   await page.evaluate(() => window.testClient._sharedRobotState.update({ physicalEstopActive: false }));
-  await expect(page.getByTestId('acquire-control')).toBeEnabled();
+  await expect(page.getByTestId('manual-mode-toggle')).toBeEnabled();
+});
+
+test('NAV-MANUAL-TOGGLE: bật không tự chạy; tắt khi đang lái dừng và nhả lease', async ({ page }) => {
+  await openNavigation(page);
+  const toggle = page.getByTestId('manual-mode-toggle');
+  await expect(toggle).not.toBeChecked();
+  await toggle.click();
+  await expectJoystickEnabled(page, true);
+  expect(await page.evaluate(() => window.testCalls.acquire[0].context)).toEqual({ kind: 'manual' });
+  expect(await page.evaluate(() => window.testCalls.velocity.length)).toBe(0);
+  await page.keyboard.down('KeyW');
+  await expect.poll(() => page.evaluate(() => window.testCalls.velocity.some(v => v.linearX === 0.3 && v.angularZ === 0))).toBe(true);
+  await toggle.click();
+  await page.keyboard.up('KeyW');
+  await confirmedAndQuiet(page);
+  await expect(toggle).not.toBeChecked();
+  await expectJoystickEnabled(page, false);
+  expect((await page.evaluate(() => window.testClient.getControlState())).payload.ownership).toBe('none');
+});
+
+test('NAV-MANUAL-PENDING: tắt khi acquire pending không cho response muộn bật lại', async ({ page }) => {
+  await openNavigation(page);
+  await page.evaluate(() => {
+    const original = window.testClient.acquireControl.bind(window.testClient);
+    window.testClient.acquireControl = async req => {
+      const lease = await original(req);
+      window.pendingLease = lease;
+      return new Promise(resolve => { window.finishAcquire = () => resolve(lease); });
+    };
+  });
+  const toggle = page.getByTestId('manual-mode-toggle');
+  await toggle.click();
+  await page.waitForFunction(() => Boolean(window.finishAcquire));
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await page.evaluate(() => window.finishAcquire());
+  await expect.poll(() => page.evaluate(() => window.testCalls.release.some(r => r.leaseId === window.pendingLease.leaseId))).toBe(true);
+  await expect(toggle).not.toBeChecked();
+  await expectJoystickEnabled(page, false);
+  expect(await page.evaluate(() => window.testCalls.velocity.length)).toBe(0);
+});
+
+test('NAV-MANUAL-MAPPING: Navigation không xin manual khi phiên mapping còn active', async ({ page }) => {
+  await openNavigation(page);
+  await spa(page, '/mapping');
+  await page.getByLabel('Tên bản đồ', { exact: true }).fill('Mapping blocks manual');
+  await page.getByTestId('mapping-start-button').click();
+  await expect(page.getByText('Đang quét SLAM (Live)')).toBeVisible();
+  await spa(page, '/navigation');
+  await expect(page.getByTestId('navigation-camera-health')).toHaveText('Đang phát');
+  await expect(page.getByTestId('manual-mode-toggle')).toBeDisabled();
+  await expectJoystickEnabled(page, false);
+  expect(await page.evaluate(() => window.testCalls.acquire.length)).toBe(0);
+  await page.keyboard.press('KeyW');
+  expect(await page.evaluate(() => window.testCalls.velocity.length)).toBe(0);
 });

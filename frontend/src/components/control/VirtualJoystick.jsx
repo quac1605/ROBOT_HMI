@@ -4,7 +4,7 @@ import { joystickVector } from '../../utils/joystickVector.js';
 
 const CENTER = Object.freeze({ x: 0, y: 0 });
 
-export default function VirtualJoystick({ disabled, start, update, stop }) {
+export default function VirtualJoystick({ disabled, start, update, stop, testId = 'mapping-joystick', focusRef }) {
   const gesture = useRef(null);
   const [point, setPoint] = useState(CENTER);
 
@@ -73,10 +73,12 @@ export default function VirtualJoystick({ disabled, start, update, stop }) {
     <Box sx={{ display: 'grid', justifyItems: 'center', gap: 0.5 }}>
       <Typography variant="caption" sx={{ fontWeight: 600 }}>Giữ joystick để lái</Typography>
       <Box
+        ref={focusRef}
+        tabIndex={0}
         role="group"
         aria-label="Joystick bốn hướng; W A S D hoặc phím mũi tên cũng điều khiển robot"
         aria-disabled={disabled}
-        data-testid="mapping-joystick"
+        data-testid={testId}
         onPointerDown={event => {
           if (disabled || gesture.current || !event.isPrimary || event.button !== 0) return;
           event.preventDefault();
