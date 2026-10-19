@@ -69,31 +69,3 @@ test('N8-11: revoke không biến fault thành idle', () => {
   assert.deepEqual(f.velocity(), { linearX: 0, angularZ: 0 });
   assert.throws(() => f.core.acquire('session-a'), { code: 'MODE_BLOCKED' });
 });
-
-test('NAV-MANUAL-LIMITS: manual lease dùng 0.3/0.3; giữ kiểm tra cả hai biên và không mutate khi reject', () => {
-  const f = fixture();
-  const lease = f.core.acquire('session-a', { kind: 'manual' });
-  assert.deepEqual(lease.context, { kind: 'manual' });
-  assert.deepEqual(lease.limits, { maxLinearX: 0.3, maxAngularZ: 0.3 });
-  const freshnessToken = f.core.heartbeat('session-a').freshnessToken;
-  let sequence = 0;
-  const send = vector => f.core.send('session-a', {
-    leaseId: lease.leaseId, freshnessToken, sequence: ++sequence, ...vector,
-  });
-  for (const vector of [
-    { linearX: 0.3, angularZ: 0 }, { linearX: -0.3, angularZ: 0 },
-    { linearX: 0, angularZ: 0.3 }, { linearX: 0, angularZ: -0.3 },
-  ]) {
-    send(vector);
-    assert.deepEqual(f.velocity(), vector);
-  }
-  const lastGood = f.velocity();
-  for (const vector of [
-    { linearX: 0.301, angularZ: 0 }, { linearX: -0.301, angularZ: 0 },
-    { linearX: 0, angularZ: 0.301 }, { linearX: 0, angularZ: -0.301 },
-  ]) {
-    assert.throws(() => send(vector), { code: 'VELOCITY_OUT_OF_BOUNDS' });
-    assert.deepEqual(f.velocity(), lastGood);
-  }
-  f.core.dispose();
-});

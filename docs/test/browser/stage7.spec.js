@@ -123,7 +123,7 @@ test.describe('Chặng 7 — remediation acceptance', () => {
         await enterPose(page, 8, 3);
         await activate(page.getByTestId('mission-submit'));
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');
-        await navigate(page, 'Tạo bản đồ', '/mapping');
+        await navigate(page, 'Tạo bản đồ & điều khiển', '/mapping');
 
         await navigate(page, 'Đi đến đích', '/navigation');
         await expect(page.getByTestId('mission-feedback')).toContainText('executing');

@@ -19,6 +19,11 @@ import { createMissionsRepository } from './repositories/missions.js';
 import { createRouteService } from './services/routeService.js';
 import { createMissionService } from './services/missionService.js';
 import { createCameraService } from './services/cameraService.js';
+import { createCmdOutService } from './services/cmdOutService.js';
+import { createRosbridgeCmdOutPublisher } from './ros/rosbridgeCmdOutPublisher.js';
+import { createRosStatusService } from './services/rosStatusService.js';
+import { createRosbridgeClient } from './ros/rosbridgeClient.js';
+import { loadRosStatusSpec } from './ros/rosStatusSpec.js';
 
 function createInitialRobotState() {
     return {
@@ -74,16 +79,29 @@ export function createRobotRuntime({
     connectionRegistry,
     mapPersistence,
     assetStore,
+    rosStatusSpecPath,
 }) {
     const sharedRobotState = createBackendRobotState();
     const motionGate = createMotionAdmissionGate();
     const mappingDriveGate = createMappingDriveGate();
+
+    // Một kết nối rosbridge (ROS 2) dùng chung cho /cmd_out (publish) và /odom, /cmd_in (subscribe).
+    // Không có ROSBRIDGE_URL thì backend không nối ROS, giữ hành vi mock cũ.
+    const rosStatusSpec = config?.ROSBRIDGE_URL ? loadRosStatusSpec(rosStatusSpecPath) : null;
+    const rosbridge = rosStatusSpec ? createRosbridgeClient({
+        url: config.ROSBRIDGE_URL,
+        reconnectMs: rosStatusSpec.bridge.reconnect_ms,
+        logger,
+    }) : null;
+    const cmdOutPublishers = rosbridge ? [createRosbridgeCmdOutPublisher({ client: rosbridge })] : [];
+    const cmdOutService = createCmdOutService({ publishers: cmdOutPublishers, logger });
 
     const adapter = createMockRosAdapter({
         sourceHealthy: () => {
             const state = sharedRobotState.getSnapshot();
             return state.rosConnected === true;
         },
+        onMotionCommand: command => cmdOutService.onMotionCommand(command),
     });
 
     const telemetry = {
@@ -108,6 +126,7 @@ export function createRobotRuntime({
         motionGate,
         motionSource: adapter,
         mappingDriveGate,
+        onStopRequested: () => cmdOutService.emergencyStop(),
     });
 
     const controlSubjectRegistry = createControlSubjectRegistry(controlAuthority);
@@ -181,7 +200,24 @@ export function createRobotRuntime({
         lifecycle,
     });
 
+    // Trạng thái thật từ ROS 2 qua kết nối rosbridge dùng chung.
+    let rosStatusService = null;
+    if (rosbridge) {
+        rosStatusService = createRosStatusService({
+            sharedRobotState,
+            spec: rosStatusSpec,
+            client: rosbridge,
+            logger,
+            ownsClient: false,
+        });
+        // Mọi topic đã đăng ký xong (advertise /cmd_out, subscribe /odom, /cmd_in) mới mở kết nối.
+        rosbridge.start();
+        rosStatusService.start();
+    }
+
     function publishMappingPose() {
+        // Có /odom thật thì pose mock của mapping không được ghi đè lên.
+        if (rosStatusService) return;
         const state = sharedRobotState.getSnapshot();
         if (state.mode !== 'mapping' || !state.activeMappingSessionId) return;
         let observation;
@@ -218,7 +254,10 @@ export function createRobotRuntime({
         routeService,
         missionService: missionServiceInstance,
         cameraService,
+        cmdOutService,
+        rosStatusService,
         dispose() {
+            rosStatusService?.dispose();
             cameraService.dispose();
             clearInterval(mappingAgeTimer);
             unsubscribeMappingPose();
@@ -228,6 +267,8 @@ export function createRobotRuntime({
             controlSubjectRegistry.dispose();
             controlAuthority.dispose();
             adapter.dispose();
+            cmdOutService.dispose();
+            rosbridge?.dispose();
         },
     };
 }

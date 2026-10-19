@@ -15,7 +15,7 @@ async function login(page) {
 
 async function startSession(page, name) {
   await page.goto('/mapping');
-  await page.getByLabel('Tên bản đồ').fill(name);
+  await page.getByLabel('Tên bản đồ mới').fill(name);
   await page.getByTestId('mapping-start-button').click();
   await expect.poll(
     () => page.evaluate(() => window.__STAGE6_TEST_CONTROLS__.getActiveMappingSession()),
@@ -504,7 +504,7 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     await spaNavigate(page, 'Đi đến đích', '/navigation');
     await expect(page.locator(RASTER)).toBeVisible();
     await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.advanceSourceStep(sessionId), started.mappingSessionId);
-    await spaNavigate(page, 'Tạo bản đồ', '/mapping');
+    await spaNavigate(page, 'Tạo bản đồ & điều khiển', '/mapping');
     await expect(page.getByText(/Phiên:/)).toContainText(started.mappingSessionId);
     const after = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getMapGrid({
       kind: 'mapping', mappingSessionId: sessionId,
@@ -520,8 +520,8 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
   test('Case 11: Finish background cập nhật catalog và load exact saved revision', async ({ page }) => {
     const name = `Saved Browser ${Date.now()}`;
     await startSession(page, name);
-    await expect(page.getByTestId('mapping-finish-button')).toBeEnabled();
-    await page.getByTestId('mapping-finish-button').click();
+    await expect(page.getByRole('button', { name: 'Hoàn tất & Lưu bản đồ' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Hoàn tất & Lưu bản đồ' }).click();
     await spaNavigate(page, 'Đi đến đích', '/navigation');
     await expect.poll(async () => page.evaluate(async (mapName) => {
       const maps = await window.__STAGE6_TEST_CONTROLS__.listMaps();
@@ -551,7 +551,7 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
     await page.waitForTimeout(100);
     const beforeFailure = await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.getLiveSessionSnapshot(sessionId), started.mappingSessionId);
     await page.evaluate((sessionId) => window.__STAGE6_TEST_CONTROLS__.failNextSaveForSession(sessionId), started.mappingSessionId);
-    await page.getByTestId('mapping-finish-button').click();
+    await page.getByRole('button', { name: 'Hoàn tất & Lưu bản đồ' }).click();
     await expect(page.getByText('Lưu thất bại', { exact: true })).toBeVisible({ timeout: 5_000 });
     await expect(page.locator(RASTER)).toBeVisible();
     await expect(page.locator(RASTER)).toHaveAttribute('href', /^blob:/);

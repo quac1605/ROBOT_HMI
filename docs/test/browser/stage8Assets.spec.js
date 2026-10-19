@@ -35,14 +35,14 @@ test('F8-A02: MappingPage decodes front/rear at 640x360 and video loops', async 
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await mapping(page);
-  const cameraPanel = await page.getByTestId('navigation-camera-panel').elementHandle();
-  await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  const joystick = await page.getByTestId('mapping-joystick').elementHandle();
+  await expect(page.getByTestId('mapping-joystick')).toHaveAttribute('aria-disabled', 'true');
   for (const id of ['front', 'rear']) {
-    await page.getByTestId(`navigation-camera-select-${id}`).click();
+    await page.getByTestId(`camera-select-${id}`).click();
     const video = page.getByTestId(`camera-video-${id}`);
     await expect.poll(() => video.evaluate(element => ({ width: element.videoWidth, height: element.videoHeight })))
       .toEqual({ width: 640, height: 360 });
-    await expect(page.getByTestId('navigation-camera-health')).toContainText('Live');
+    await expect(page.getByTestId('camera-health')).toContainText('Live');
     const info = await video.evaluate(async element => {
       const frame = () => new Promise(resolve => element.requestVideoFrameCallback((_, metadata) => resolve(metadata.presentedFrames)));
       const first = await frame();
@@ -56,7 +56,7 @@ test('F8-A02: MappingPage decodes front/rear at 640x360 and video loops', async 
     await video.evaluate(element => { element.currentTime = 11.7; });
     await expect.poll(() => video.evaluate(element => element.currentTime)).toBeLessThan(2);
   }
-  expect(await cameraPanel.evaluate(element => element.isConnected)).toBe(true);
+  expect(await joystick.evaluate(element => element.isConnected)).toBe(true);
   expect(errors).toEqual([]);
 });
 

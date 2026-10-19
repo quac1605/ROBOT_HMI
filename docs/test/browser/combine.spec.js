@@ -6,7 +6,7 @@ async function signIn(page) {
   await page.locator('#login-submit-btn').click();
 }
 
-test('combine: two tabs retain camera, manual and mapping features in mock mode', async ({ page }) => {
+test('combine: both tabs retain their integrated features in mock mode', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/login');
@@ -17,30 +17,31 @@ test('combine: two tabs retain camera, manual and mapping features in mock mode'
   await expect(page.getByTestId('robot-status-connection')).toHaveText('Online');
   await expect(page.getByTestId('map2d-raster')).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Tạo bản đồ', exact: true }).click();
+  await page.getByRole('tab', { name: 'Tạo bản đồ & điều khiển', exact: true }).click();
   await expect(page).toHaveURL(/\/mapping$/);
-  await expect(page.getByLabel('Tên bản đồ')).toBeVisible();
-  await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  await expect(page.getByLabel('Tên bản đồ mới')).toBeVisible();
+  await expect(page.getByTestId('mapping-joystick')).toBeVisible();
+  await expect(page.getByTestId('mapping-joystick')).toHaveAttribute('aria-disabled', 'true');
   for (const camera of ['front', 'rear']) {
-    await page.getByTestId(`navigation-camera-select-${camera}`).click();
+    await page.getByTestId(`camera-select-${camera}`).click();
     await expect(page.getByTestId(`camera-video-${camera}`)).toBeVisible();
-    await expect(page.getByTestId('navigation-camera-health')).toContainText('Live');
+    await expect(page.getByTestId('camera-health')).toContainText('Live');
   }
 
   await page.getByRole('tab', { name: 'Đi đến đích & trạng thái', exact: true }).click();
   await expect(page).toHaveURL(/\/navigation$/);
   await expect(page.getByTestId('robot-status-card')).toBeVisible();
   await expect(page.getByTestId('map2d-raster')).toBeVisible();
-  await expect(page.getByTestId('camera-gesture-status')).toContainText('Chưa nhận diện');
-  await expect(page.getByTestId('manual-mode-toggle')).not.toBeChecked();
-  await expect(page.getByTestId('navigation-joystick')).toHaveAttribute('aria-disabled', 'true');
+  // Phát hiện cử chỉ nằm trong khung camera của Navigation, chỉ với cam trước.
+  await expect(page.getByTestId('camera-video-front')).toBeVisible();
+  await expect(page.getByTestId('gesture-current')).toHaveText('Chưa nhận diện');
   expect(errors).toEqual([]);
 });
 
 for (const [requested, destination, testId] of [
-  ['/gesture', '/navigation', 'camera-gesture-status'],
+  ['/gesture', '/navigation', 'gesture-status'],
   ['/status', '/navigation', 'robot-status-card'],
-  ['/teleop', '/navigation', 'navigation-joystick'],
+  ['/teleop', '/mapping', 'mapping-joystick'],
 ]) {
   test(`combine: login from ${requested} returns to ${destination}`, async ({ page }) => {
     await page.goto(requested);

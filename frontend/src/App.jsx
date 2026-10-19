@@ -29,8 +29,9 @@ export default function App() {
           <Route path="/status" element={<Navigate to="/navigation" replace />} />
           <Route path="/mapping" element={<MappingPage />} />
           <Route path="/navigation" element={<NavigationPage />} />
+          {/* Trang cử chỉ đã gộp vào khung camera của /navigation; giữ /gesture để link cũ không gãy */}
           <Route path="/gesture" element={<Navigate to="/navigation" replace />} />
-          <Route path="/teleop" element={<Navigate to="/navigation" replace />} />
+          <Route path="/teleop" element={<Navigate to="/mapping" replace />} />
         </Route>
       </Route>
 

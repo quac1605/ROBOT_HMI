@@ -7,7 +7,7 @@ The MediaMTX RTP receiver must be running on UDP ports 5004 and 5006.
 
 ## @file ros_camera_gateway.py
 # @brief [READ FLOW STEP 4] Cầu nối ảnh ROS 2 sang kênh video của trình duyệt.
-# sensor_msgs/Image là ảnh thô, chưa phải video mà thẻ <video> có thể phát.
+# sensor_msgs/msg/Image là ảnh thô, chưa phải video mà thẻ <video> có thể phát.
 # Mỗi camera có một tiến trình GStreamer mã hóa VP8 và đóng gói RTP; MediaMTX
 # nhận RTP nội bộ rồi thực hiện WHEP/WebRTC với từng người xem. Backend HMI
 # kiểm tra quyền xem ở luồng signaling riêng, không xử lý từng pixel tại đây.
@@ -148,7 +148,7 @@ class CameraGateway(Node):
         self.last_reject_log = {name: 0.0 for name in CAMERAS}
         for name, (topic, frame_id, _) in CAMERAS.items():
             ## @brief Chặn metadata sai trước khi đưa raw bytes vào encoder.
-            # @param msg sensor_msgs/Image do DDS giao tới callback.
+            # @param msg sensor_msgs/msg/Image do DDS giao tới callback.
             # @param camera,expected_frame Giá trị mặc định cố định binding của
             # vòng for; nếu chỉ đóng trên name, cả hai callback dễ dùng camera cuối.
             # @return None; ảnh sai bị loại và log tối đa một lần/giây/camera.

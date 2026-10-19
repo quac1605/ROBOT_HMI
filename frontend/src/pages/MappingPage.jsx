@@ -5,15 +5,17 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
+  FormControlLabel,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import Map2D from '../components/map/Map2D.jsx';
-import NavigationCameraPanel from '../components/navigation/NavigationCameraPanel.jsx';
+import MappingControlPanel from '../components/control/MappingControlPanel.jsx';
 import { useRobotClient } from '../hooks/useRobotClient.js';
 import { useControlActions } from '../hooks/useControlActions.js';
 import { useControlStore } from '../state/controlStore.js';
@@ -47,7 +49,6 @@ export default function MappingPage() {
   const [layers, setLayers] = useState({ grid: true, robot: true, path: true });
   const isSubmittingRef = useRef(false);
 
-  const [startPending, setStartPending] = useState(false);
   const [finishPending, setFinishPending] = useState(false);
   const finishAbortRef = useRef(null);
   const finishAttemptRef = useRef(null); // Giữ payload/requestId khi HTTP chưa rõ kết quả.
@@ -84,14 +85,16 @@ export default function MappingPage() {
 
   const poseQuality = resolvePoseQuality(snapshot, { transportStale });
 
+  const toggleLayer = (layerName) => {
+    setLayers((prev) => ({ ...prev, [layerName]: !prev[layerName] }));
+  };
+
   async function handleStartMapping(e) {
     e.preventDefault();
     const trimmedName = mapNameInput.trim();
-    if (!trimmedName || isSubmittingRef.current || isProcessing ||
-        !isCoordinatorReady || session || finishUnknown) return;
+    if (!trimmedName || isSubmittingRef.current || isProcessing) return;
 
     isSubmittingRef.current = true;
-    setStartPending(true);
     setLocalActionError(null);
 
     try {
@@ -109,7 +112,6 @@ export default function MappingPage() {
       setLocalActionError(err.message || 'Lỗi khi bắt đầu tạo bản đồ');
     } finally {
       isSubmittingRef.current = false;
-      setStartPending(false);
     }
   }
 
@@ -215,10 +217,6 @@ export default function MappingPage() {
   const isFinishing = Boolean(session && session.status === 'finishing');
   const isSaveFailed = Boolean(session && session.status === 'save_failed');
   const isSavedView = Boolean(!session && viewerContext?.kind === 'saved');
-  // Hiển thị Dừng ngay khi gửi start, nhưng chỉ cho finish khi phiên đã active.
-  // Không chuyển về Bắt đầu cho tới khi lưu được xác nhận bởi coordinator.
-  const showStop = startPending || Boolean(session);
-  const actionBusy = startPending || isStarting || isFinishing || finishPending || isProcessing;
 
   return (
     <PageFrame
@@ -226,6 +224,18 @@ export default function MappingPage() {
       subtitle="Khởi tạo phiên quét SLAM 2D Occupancy Grid thời gian thực và lưu vào danh mục"
     >
       <Stack spacing={3}>
+        {/* Banner hướng dẫn mapping */}
+        <Alert severity="info" variant="outlined">
+          Bắt đầu phiên mapping, chọn camera quan sát rồi nhận quyền lái. Giữ joystick để
+          di chuyển robot; SLAM xây dựng bản đồ từ dữ liệu cảm biến. Hoàn tất sẽ dừng robot,
+          chờ xác nhận đứng yên và gửi yêu cầu lưu.
+          {controlProfile === 'mock' && (
+            <Typography component="span" variant="body2" sx={{ display: 'block', mt: 1 }}>
+              Mock lưu trong bộ nhớ; tải lại toàn bộ trang sẽ mất phiên và bản đồ vừa tạo.
+            </Typography>
+          )}
+        </Alert>
+
         {localActionError && <Alert severity="error">{localActionError}</Alert>}
         {lastError && <Alert severity="error">Lỗi quy trình: {lastError.message || String(lastError)}</Alert>}
         {gridError && <Alert severity="warning">Lỗi dữ liệu lưới: {gridError.message}</Alert>}
@@ -280,10 +290,10 @@ export default function MappingPage() {
           </CardContent>
         </Card>
 
-        {/* Bản đồ bên trái; camera và quy trình start/finish bên phải. */}
+        {/* Cửa sổ Bản đồ 2D & Điều khiển Mapping */}
         <Box sx={{
           display: 'grid',
-          // Camera luôn ở cùng vị trí; phiên/job chỉ thay đổi form bên dưới.
+          // Cột phải chứa camera + joystick; nới rộng để khung camera (16:9) to hơn
           gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 340px', lg: 'minmax(0, 1fr) 420px', xl: 'minmax(0, 1fr) 480px' },
           alignItems: 'start', gap: 2,
         }}>
@@ -330,71 +340,127 @@ export default function MappingPage() {
               )}
             </CardContent>
           </Card>
-          <Stack spacing={2} sx={{ minWidth: 0 }}>
-            {/* Không key theo mappingSessionId: start/finish không được mở lại WHEP. */}
-            <NavigationCameraPanel compact showGestureStatus={false}
-              caption="Chọn camera quan sát. Hướng lái theo robot." />
-            <Card variant="outlined" sx={{ borderRadius: 2 }}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Box component="form" onSubmit={event => {
-                  if (showStop) { event.preventDefault(); return; }
-                  void handleStartMapping(event);
-                }}>
-                  <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                    <TextField size="small" placeholder="Tên bản đồ"
-                      value={session?.name ?? mapNameInput}
-                      onChange={event => setMapNameInput(event.target.value)}
-                      disabled={showStop || actionBusy || !isCoordinatorReady || finishUnknown}
-                      slotProps={{ htmlInput: { 'data-testid': 'mapping-name-input', 'aria-label': 'Tên bản đồ' } }}
-                      sx={{ flex: 1, minWidth: 0, '& .MuiOutlinedInput-root': {
-                        borderRadius: 1, '& fieldset': { border: '2px solid #000' },
-                      } }} />
-                    <Button type={showStop ? 'button' : 'submit'} variant="contained"
-                      data-testid={showStop ? 'mapping-finish-button' : 'mapping-start-button'}
-                      aria-busy={actionBusy}
-                      onClick={showStop ? handleFinishMapping : undefined}
-                      disabled={actionBusy || !isCoordinatorReady || finishUnknown ||
-                        (showStop ? !isMappingActive : !mapNameInput.trim())}
-                      sx={{ minWidth: 112, py: 1, border: '2px solid #000', borderRadius: 3,
-                        textTransform: 'none', fontSize: '1.15rem',
-                        bgcolor: showStop ? '#d32f2f' : '#81c784', color: showStop ? '#fff' : '#000',
-                        '&:hover': { bgcolor: showStop ? '#b71c1c' : '#66bb6a' },
-                        '&.Mui-disabled': { bgcolor: showStop ? '#d32f2f' : '#81c784',
-                          color: showStop ? '#fff' : '#263238', opacity: 0.65 },
-                      }}>
-                      {showStop ? 'Dừng' : 'Bắt đầu'}
-                    </Button>
-                  </Stack>
-                </Box>
-                <Typography variant="body2" color="text.secondary" role="status" sx={{ mt: 1.5 }}>
-                  {startPending || isStarting ? 'Đang khởi động phiên mapping…' :
-                    finishPending ? 'Đang dừng robot và chờ xác nhận đứng yên…' :
-                    isFinishing ? 'Đang lưu bản đồ…' :
-                    'Dừng sẽ yêu cầu robot đứng yên, chờ xác nhận rồi lưu bản đồ.'}
-                </Typography>
-                {finishUnknown && (
-                  <Alert severity="warning" sx={{ mt: 1.5 }} action={
-                    <Button disabled={finishPending || !isCoordinatorReady} onClick={retryUncertainFinish}>
-                      Lấy lại kết quả cùng yêu cầu
-                    </Button>
-                  }>
-                    Chưa xác định kết quả lưu. Lấy lại kết quả trước khi tạo yêu cầu mới.
-                  </Alert>
-                )}
-                {isSaveFailed && (
-                  <Stack spacing={1} sx={{ mt: 1.5 }}>
-                    <Alert severity="error">Lưu thất bại. Dữ liệu quét vẫn được giữ để thử lại.</Alert>
-                    <Button variant="outlined" color="warning" data-testid="mapping-retry-button"
-                      disabled={actionBusy || finishUnknown || !isCoordinatorReady}
-                      onClick={handleRetryFinishMapping}>Thử lại lưu bản đồ</Button>
-                  </Stack>
-                )}
-              </CardContent>
-            </Card>
-          </Stack>
+          <Box sx={{ width: { xs: '100%', md: 340, lg: 420, xl: 480 }, flexShrink: 0 }}>
+            <MappingControlPanel
+              key={session?.mappingSessionId ?? 'no-mapping-session'}
+              mappingSessionId={session?.mappingSessionId ?? null}
+              enabled={isMappingActive && !finishPending && !finishUnknown && !isProcessing}
+            />
+          </Box>
         </Box>
 
+        <Card variant="outlined">
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={{ xs: 1, md: 3 }}
+              sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}
+            >
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>Chú giải:</Typography>
+                {[
+                  ['Unknown', '#b0bec5'],
+                  ['Free', '#ffffff'],
+                  ['Occupied', '#000000'],
+                ].map(([label, color]) => (
+                  <Stack key={label} direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                    <Box sx={{ width: 16, height: 16, bgcolor: color, border: '1px solid #78909c' }} />
+                    <Typography variant="caption">{label}</Typography>
+                  </Stack>
+                ))}
+              </Stack>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                <FormControlLabel
+                  control={<Checkbox checked={layers.grid} onChange={() => toggleLayer('grid')} size="small" />}
+                  label="Lưới"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={layers.robot} onChange={() => toggleLayer('robot')} size="small" />}
+                  label="Robot"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={layers.path} onChange={() => toggleLayer('path')} size="small" />}
+                  label="Đường đi"
+                />
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
 
+        {/* Thanh công cụ điều khiển phiên */}
+        <Card variant="outlined">
+          <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+            {!session && (
+              <Box component="form" onSubmit={handleStartMapping}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    label="Tên bản đồ mới"
+                    placeholder="VD: Kho tầng 1, Khu vực A"
+                    value={mapNameInput}
+                    onChange={(e) => setMapNameInput(e.target.value)}
+                    slotProps={{ htmlInput: { 'data-testid': 'mapping-name-input' } }}
+                    sx={{ minWidth: 320 }}
+                    disabled={isProcessing || !isCoordinatorReady}
+                  />
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    disabled={isProcessing || !isCoordinatorReady || !mapNameInput.trim()}
+                    data-testid="mapping-start-button"
+                  >
+                    {isProcessing ? 'Đang xử lý...' : 'Bắt đầu tạo bản đồ'}
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+
+            {finishUnknown && (
+              <Alert severity="warning" sx={{ mb: 2 }} action={
+                <Button disabled={finishPending || !isCoordinatorReady} onClick={retryUncertainFinish}>
+                  Lấy lại kết quả cùng yêu cầu
+                </Button>
+              }>
+                Chưa xác định kết quả lưu. Giữ joystick khóa và lấy lại kết quả trước khi tạo yêu cầu mới.
+              </Alert>
+            )}
+
+            {isMappingActive && (
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  disabled={isProcessing || finishPending || finishUnknown}
+                  onClick={handleFinishMapping}
+                  data-testid="mapping-finish-button"
+                >
+                  {finishPending ? 'Đang dừng và chờ xác nhận…' : isProcessing ? 'Đang xử lý…' : 'Hoàn tất & Lưu bản đồ'}
+                </Button>
+                <Typography variant="body2" color="text.secondary">
+                  Di chuyển robot để mở rộng vùng quét. Nhấn lưu khi đã quét đủ diện tích.
+                </Typography>
+              </Stack>
+            )}
+
+            {isSaveFailed && (
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  disabled={isProcessing || finishPending || finishUnknown}
+                  onClick={handleRetryFinishMapping}
+                  data-testid="mapping-retry-button"
+                >
+                  {finishPending ? 'Đang kiểm tra điều kiện dừng…' : isProcessing ? 'Đang xử lý…' : 'Thử lại lưu bản đồ'}
+                </Button>
+                <Typography variant="body2" color="error">
+                  Lưu thất bại ở lần thử trước. Dữ liệu quét vẫn được bảo toàn nguyên vẹn.
+                </Typography>
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
       </Stack>
     </PageFrame>
   );

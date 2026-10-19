@@ -9,7 +9,7 @@
  * @module control-domain/controlLeaseCore
  */
 import { TeleopVelocityMessageSchema, ControlLimitsSchema, ControlContextSchema } from '@robot-hmi/contracts/control';
-import { CONTROL_POLICY, ZERO, MANUAL_DRIVE_SPEED, MANUAL_MAPPING_LIMITS, isFixedMappingVelocity } from './controlPolicy.js';
+import { CONTROL_POLICY, ZERO, MANUAL_MAPPING_LIMITS, isFixedMappingVelocity } from './controlPolicy.js';
 
 /**
  * Tạo vùng nhớ quyền điều khiển của một robot, độc lập với React/HTTP/ROS.
@@ -32,7 +32,7 @@ export function createControlLeaseCore({
     wallNow = () => Date.now(),       // Wall clock (để tạo ISO string)
     uuid = () => crypto.randomUUID(), // UUID generator (inject để test)
     policy = CONTROL_POLICY,
-    limits = { maxLinearX: MANUAL_DRIVE_SPEED.linearX, maxAngularZ: MANUAL_DRIVE_SPEED.angularZ },
+    limits = { maxLinearX: 0.2, maxAngularZ: 0.5 },
     // Callbacks (trusted internal, không phải plugin tùy ý):
     checkAcquire,   // (context) => null | string — null = OK, string = error code
     checkDrive,     // (context) => null | string — gọi mỗi tick và mỗi send

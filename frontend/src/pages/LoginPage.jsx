@@ -13,7 +13,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext.js';
 import { robotClient } from '../clients/index.js';
 
-const allowedDestinations = new Set(['/mapping', '/navigation', '/gesture']);
+const allowedDestinations = new Set(['/mapping', '/navigation']);
 
 export default function LoginPage() {
     const [username, setUsername] = useState('');

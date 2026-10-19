@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test:unit": "node --test test/cmdOut.test.mjs test/rosStatus.test.mjs",
+    "test:ros-live": "node --test test/rosStatus.live.test.mjs"
+  },
   "dependencies": {
     "@robot-hmi/contracts": "file:../packages/contracts",
     "@robot-hmi/control-domain": "file:../packages/control-domain",
@@ -18,6 +22,7 @@
     "pg": "^8.23.1",
     "pino": "^10.3.1",
     "ws": "^8.22.0",
+    "yaml": "^2.9.1",
     "zod": "^4.6.5"
   }
 }

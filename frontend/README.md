@@ -2,13 +2,12 @@
 
 ## Chạy mock trên nhánh combine
 
-Nhánh `combine` giữ ba trang trên menu ngang:
+Nhánh `combine` giữ hai trang trên menu ngang:
 
 - `/mapping`: tạo bản đồ, camera trước/sau và joystick từ TeleopPage.
-- `/navigation`: điều hướng và ô trạng thái robot từ StatusPage.
-- `/gesture`: camera trước và giao diện trạng thái nhận diện. Phần nhận diện thực tế chưa nối backend/model.
+- `/navigation`: điều hướng, ô trạng thái robot từ StatusPage và khung Camera quan sát. Trạng thái phát hiện người & cử chỉ nằm trong khung camera, chỉ áp dụng cho cam trước. Phần nhận diện thực tế chưa nối backend/model.
 
-Các đường dẫn cũ `/teleop` và `/status` lần lượt chuyển tới `/mapping` và `/navigation`.
+Các đường dẫn cũ `/teleop` chuyển tới `/mapping`; `/status` và `/gesture` chuyển tới `/navigation`.
 Đăng nhập mock bằng `admin` / `demo-only`.
 
 Từ thư mục gốc repository, cài dependencies của các package dùng chung và frontend:

@@ -13,7 +13,8 @@
     "./mapGrid": "./src/mapGrid.js",
     "./normalizeOccupancyGrid": "./src/normalizeOccupancyGrid.js",
     "./apiManifest": "./src/apiManifest.js",
-    "./transport": "./src/transport.js"
+    "./transport": "./src/transport.js",
+    "./cmdOut": "./src/cmdOut.js"
   },
   "dependencies": {
     "zod": "4.5.4"

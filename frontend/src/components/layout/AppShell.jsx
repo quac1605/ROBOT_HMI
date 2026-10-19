@@ -17,7 +17,7 @@ import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
 // Các tab chức năng hiển thị thành hàng ngang ngay dưới header
 const navItems = [
   ['/navigation', 'Đi đến đích & trạng thái'],
-  ['/mapping', 'Tạo bản đồ'],
+  ['/mapping', 'Tạo bản đồ & điều khiển'],
 ];
 
 export default function AppShell() {
