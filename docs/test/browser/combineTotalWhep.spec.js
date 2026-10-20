@@ -82,8 +82,13 @@ test('combine-total: Mapping session and Navigation map changes keep moving WHEP
   await page.getByLabel('Tên bản đồ', { exact: true }).fill('WHEP mapping session');
   await page.getByTestId('mapping-start-button').click();
   await expect(page.getByText('Đang quét SLAM (Live)')).toBeVisible();
+  // Chính trạng thái đang mapping từng làm nhánh cũ hiện joystick trở lại.
+  await expect(page.getByTestId('mapping-joystick')).toHaveCount(0);
+  await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  await expect(page.getByTestId('acquire-control')).toHaveCount(0);
   await page.getByTestId('mapping-finish-button').click();
   await expect(page.getByText('Bản đồ đã lưu', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('mapping-joystick')).toHaveCount(0);
   expect(await front.evaluate(v => v === window.mappingVideo && v.srcObject === window.mappingStream)).toBe(true);
   expect(requests).toEqual({ post: 1, delete: 0 });
   expect(await front.evaluate(async v => {
@@ -125,6 +130,10 @@ test('combine-total: Mapping session and Navigation map changes keep moving WHEP
     return video === window.navigationVideo && video.srcObject === window.navigationStream;
   })).toBe(true);
   expect(requests).toEqual({ post: 3, delete: 2 });
+  expect(await page.getByTestId('camera-video-front').evaluate(async video => {
+    const frame = () => new Promise(resolve => video.requestVideoFrameCallback((_, metadata) => resolve(metadata.presentedFrames)));
+    return (await frame()) < (await frame());
+  })).toBe(true);
   await page.getByRole('tab', { name: 'Tạo bản đồ', exact: true }).click();
   await expect(page.getByTestId('navigation-camera-health')).toHaveText('Live');
   await expect.poll(() => requests.delete).toBe(3);

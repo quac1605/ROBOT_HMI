@@ -6,6 +6,11 @@ export const observedJobs = new Map();
 
 function recoveredSessionPatch(state, session) {
   if (session) {
+    // Một REST snapshot cũ có thể đến sau job Finish terminal. Chỉ chặn
+    // đúng phiên vừa lưu; phiên mới có ID khác vẫn được khôi phục bình thường.
+    if (state.trackedOperation?.type === 'finish_mapping' &&
+        state.trackedOperation.status === 'completed' &&
+        state.trackedOperation.mappingSessionId === session.mappingSessionId) return {};
     return {
       session,
       viewerContext: { kind: 'mapping', mappingSessionId: session.mappingSessionId },
@@ -84,6 +89,7 @@ export async function trackAcceptedJob(
     type,
     requestId,
     acceptedSession,
+    mappingSessionId: operationContext.mappingSessionId,
     mappingName: operationContext.name ?? currentSession?.name ?? null,
   });
 
@@ -167,7 +173,10 @@ export const useMappingWorkflowStore = create((set) => ({
   claimAcceptedFinish: (requestId) => {
     let claimed = false;
     set((state) => {
-      if (!state.ready || state.finishAttempt?.requestId !== requestId ||
+      // ready=false trong lúc coordinator đối soát lại kết nối không vô hiệu
+      // hóa AcceptedJob đã thuộc đúng requestId. Nếu bỏ response tại đây,
+      // attempt sẽ kẹt ở pending và người dùng không có cách tiếp tục.
+      if (state.finishAttempt?.requestId !== requestId ||
           !['pending', 'unknown'].includes(state.finishAttempt.phase)) return {};
       claimed = true;
       return { finishAttempt: { ...state.finishAttempt, phase: 'tracking' } };
@@ -177,7 +186,8 @@ export const useMappingWorkflowStore = create((set) => ({
   clearFinishAttempt: (requestId) => set((state) =>
     state.finishAttempt?.requestId === requestId ? { finishAttempt: null } : {}),
 
-  selectTrackedJob: ({ jobId, type, requestId, acceptedSession = null, mappingName = null }) =>
+  selectTrackedJob: ({ jobId, type, requestId, acceptedSession = null,
+    mappingSessionId = null, mappingName = null }) =>
     set((state) => {
       const nextSession = acceptedSession ?? (
         type === 'finish_mapping' && state.session
@@ -193,6 +203,8 @@ export const useMappingWorkflowStore = create((set) => ({
           jobId,
           type,
           requestId,
+          mappingSessionId: mappingSessionId ?? acceptedSession?.mappingSessionId ??
+            state.session?.mappingSessionId ?? null,
           mappingName,
           status: 'accepted',
           result: null,

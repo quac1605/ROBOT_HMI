@@ -56,7 +56,7 @@ function cameraOf(control) {
 export default function NavigationControlPanel() {
   const client = useRobotClient();
   const actions = useControlActions();
-  // Camera ghi timestamp mỗi frame; UI lấy timestamp mới ở tick hiển thị 100 ms.
+  // Camera ghi timestamp mỗi frame; UI lấy timestamp mới ở tick hiển thị 250 ms.
   // Lease/stop/generation vẫn thông báo ngay, publisher luôn đọc getState() mới.
   const controlState = useControlStore(useShallow(state => ({ ...state, lastFrameAt: null })));
   const control = { ...controlState, lastFrameAt: useControlStore.getState().lastFrameAt };
@@ -76,7 +76,7 @@ export default function NavigationControlPanel() {
   useEffect(() => {
     const refresh = () => setDisplayNow(performance.now());
     refresh();
-    const timer = setInterval(refresh, 100);
+    const timer = setInterval(refresh, 250);
     return () => clearInterval(timer);
   }, []);
 
@@ -217,7 +217,8 @@ export default function NavigationControlPanel() {
           {control.stopUnconfirmed ? 'Đang chờ xác nhận dừng' :
             control.stopState?.status === 'confirmed' ? 'Đã xác nhận robot dừng' : 'Chưa có yêu cầu dừng'}
         </Typography>
-        {!manualEnabled && blocker && <Alert severity="info" data-testid="manual-blocker">{blocker}</Alert>}
+        {blocker && (!manualEnabled || !joystickEnabled) &&
+          <Alert severity="info" data-testid="manual-blocker">{blocker}</Alert>}
         {control.lease && !fixedSpeedFits(control.lease) &&
           <Alert severity="error">Giới hạn lease không cho phép tốc độ 0.3 m/s và 0.3 rad/s.</Alert>}
         {control.controlError && <Alert severity="error" data-testid="control-error">{control.controlError}</Alert>}

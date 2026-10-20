@@ -92,10 +92,13 @@ export function createNavigationCoordinator(client, {
         // REST hiện không có cursor: không cho snapshot đang await đè WS mới.
         // Nếu stream quá bận cả 3 lần, giữ khóa và yêu cầu đối soát lại.
         if (version !== eventVersion || selectedId !== missionStore.getState().selectedMissionId) continue;
+        // Active-session snapshot được lấy trước lần GET job. Áp dụng nó trước,
+        // để job terminal mới hơn có quyền kết thúc phiên và chọn saved viewer.
+        // Nếu làm ngược lại, snapshot mapping cũ sẽ hồi sinh phiên đã lưu.
+        mappingStore.getState().replaceRecoveredSession(mappingResult.session);
         await reconcileJobs();
         if (!active) return;
         if (version !== eventVersion) continue;
-        mappingStore.getState().replaceRecoveredSession(mappingResult.session);
         missionStore.getState().applyRecovery(activeResult.mission, selectedResult);
         mappingStore.getState().setReady(true);
         // Resubscribe lấy path hiện tại, kể cả sau đổi epoch nhưng missionId giữ nguyên.

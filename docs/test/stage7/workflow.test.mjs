@@ -170,6 +170,41 @@ test('C7 coordinator: REST chậm không đè mission event mới, callback sau 
     assert.equal(missions.getState().activeMissionId, null);
 });
 
+test('C7 recovery: job Finish terminal thắng snapshot phiên mapping cũ', async t => {
+    reset();
+    const session = {
+        mappingSessionId: 'session-finished', name: 'Map đã lưu',
+        status: 'mapping', startedAt: new Date().toISOString(),
+    };
+    mapping.getState().setSession(session);
+    mapping.getState().selectTrackedJob({
+        jobId: 'job-finished', type: 'finish_mapping', requestId: 'req-finished',
+        acceptedSession: { ...session, status: 'finishing' },
+    });
+    const client = {
+        subscribeJobs: () => () => {},
+        subscribeMissions: () => () => {},
+        subscribeRobotState: () => () => {},
+        subscribeNavigationPath: () => () => {},
+        getActiveMission: async () => ({ mission: null }),
+        // REST này có thể được lấy trước khi worker lưu xong.
+        getActiveMappingSession: async () => ({ session }),
+        getJob: async () => ({
+            jobId: 'job-finished', type: 'finish_mapping', status: 'completed',
+            result: { mapId: 'saved-map', mapRevision: 'rev-2' },
+            error: null, createdAt: new Date().toISOString(),
+        }),
+    };
+    const coordinator = createNavigationCoordinator(client);
+    t.after(() => { coordinator.dispose(); reset(); });
+    const state = await until(() => mapping.getState(), value => value.ready);
+    assert.equal(state.session, null);
+    assert.deepEqual(state.viewerContext, {
+        kind: 'saved', mapId: 'saved-map', mapRevision: 'rev-2',
+    });
+    assert.equal(state.trackedOperation.status, 'completed');
+});
+
 test('C7 retry: HTTP timeout sau accepted, mission đã terminal vẫn replay cùng requestId', async t => {
     reset();
     const c = createMockRobotClient();

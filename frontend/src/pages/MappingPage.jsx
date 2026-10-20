@@ -38,6 +38,7 @@ async function trackAcceptedFinish(client, attempt, response) {
       useMappingWorkflowStore, {
         isCurrent: () =>
           useMappingWorkflowStore.getState().finishAttempt?.requestId === attempt.requestId,
+        mappingSessionId: attempt.mappingSessionId,
       });
     useMappingWorkflowStore.getState().clearFinishAttempt(attempt.requestId);
   } catch (error) {

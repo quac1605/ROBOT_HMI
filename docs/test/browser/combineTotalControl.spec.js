@@ -11,10 +11,16 @@ test('combine-total: leaving Navigation stops manual lease; Mapping has camera b
   await page.evaluate(async () => {
     window.testClient = (await import('/src/clients/index.js')).robotClient;
     window.velocityCalls = [];
+    window.stopCalls = [];
     const send = window.testClient.sendVelocity.bind(window.testClient);
+    const requestStop = window.testClient.requestStop.bind(window.testClient);
     window.testClient.sendVelocity = message => {
       window.velocityCalls.push({ ...message });
       return send(message);
+    };
+    window.testClient.requestStop = message => {
+      window.stopCalls.push({ ...message });
+      return requestStop(message);
     };
   });
 
@@ -24,6 +30,13 @@ test('combine-total: leaving Navigation stops manual lease; Mapping has camera b
   await expect(manualToggle).not.toBeChecked();
   await manualToggle.click();
   await expect(page.getByTestId('navigation-joystick')).toHaveAttribute('aria-disabled', 'false');
+  // Focus trong MUI Select: Space mở danh sách map, không được phát manual stop.
+  await page.locator('#map-selector-select').focus();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  expect(await page.evaluate(() => window.stopCalls.length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await page.getByTestId('navigation-joystick').focus();
   await page.keyboard.down('w');
   await expect.poll(() => page.evaluate(() => window.velocityCalls.filter(v => v.linearX > 0).length))
     .toBeGreaterThan(0);

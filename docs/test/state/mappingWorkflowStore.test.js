@@ -122,3 +122,70 @@ test('null recovery xóa session/viewer mapping cũ nhưng giữ saved viewer h�
     mapRevision: 'rev-2',
   });
 });
+
+test('Accepted Finish đến trong lúc đối soát vẫn theo requestId và áp dụng job đã hoàn tất', async () => {
+  resetStore();
+  const store = useMappingWorkflowStore;
+  const requestId = 'finish-during-recovery';
+  store.getState().setReady(true);
+  store.getState().setSession({
+    mappingSessionId: 'sess-recovery', name: 'Map hồi phục',
+    status: 'mapping', startedAt: new Date().toISOString(),
+  });
+  assert.equal(store.getState().beginFinishAttempt({ requestId, mappingSessionId: 'sess-recovery' }), true);
+
+  // recover() tạm hạ ready trong khi HTTP finish đã được backend chấp nhận.
+  store.getState().setReady(false);
+  assert.equal(store.getState().claimAcceptedFinish('wrong-request'), false);
+  assert.equal(store.getState().claimAcceptedFinish(requestId), true);
+  assert.equal(store.getState().claimAcceptedFinish(requestId), false);
+
+  const client = {
+    getActiveMappingSession: async () => ({ session: null }),
+    getJob: async () => ({
+      jobId: 'job-recovery', type: 'finish_mapping', status: 'completed',
+      result: { mapId: 'map-recovery', mapRevision: 'rev-recovery' },
+      error: null, createdAt: new Date().toISOString(),
+    }),
+  };
+  await trackAcceptedJob(
+    { jobId: 'job-recovery', status: 'accepted' },
+    'finish_mapping', requestId, client, store,
+    { isCurrent: () => store.getState().finishAttempt?.requestId === requestId }
+  );
+  store.getState().clearFinishAttempt(requestId);
+  assert.equal(store.getState().ready, false);
+  assert.equal(store.getState().finishAttempt, null);
+  assert.equal(store.getState().session, null);
+  assert.deepEqual(store.getState().viewerContext, {
+    kind: 'saved', mapId: 'map-recovery', mapRevision: 'rev-recovery',
+  });
+});
+
+test('snapshot cũ không hồi sinh phiên đã lưu; phiên mới ID khác vẫn được nhận', () => {
+  resetStore();
+  const store = useMappingWorkflowStore;
+  const oldSession = {
+    mappingSessionId: 'session-old', name: 'Bản đồ cũ',
+    status: 'mapping', startedAt: new Date().toISOString(),
+  };
+  store.getState().setSession(oldSession);
+  store.getState().selectTrackedJob({
+    jobId: 'job-old', type: 'finish_mapping', requestId: 'request-old',
+    acceptedSession: { ...oldSession, status: 'finishing' },
+  });
+  handleIncomingJob({
+    jobId: 'job-old', type: 'finish_mapping', status: 'completed',
+    result: { mapId: 'saved-old', mapRevision: 'rev-old' },
+    error: null, createdAt: new Date().toISOString(),
+  });
+  store.getState().replaceRecoveredSession(oldSession);
+  assert.equal(store.getState().session, null);
+  assert.deepEqual(store.getState().viewerContext, {
+    kind: 'saved', mapId: 'saved-old', mapRevision: 'rev-old',
+  });
+
+  const newSession = { ...oldSession, mappingSessionId: 'session-new', name: 'Bản đồ mới' };
+  store.getState().replaceRecoveredSession(newSession);
+  assert.equal(store.getState().session.mappingSessionId, 'session-new');
+});
