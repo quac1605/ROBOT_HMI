@@ -44,7 +44,7 @@ export default function LoginPage() {
             await signIn({ username: username.trim(), password });
             // Nếu trước đó người dùng định vào trang nào thì sau khi login đẩy về đúng trang đó
             const requested = location.state?.from;
-            const target = requested === '/teleop' ? '/mapping' : requested === '/status' ? '/navigation' : requested;
+            const target = requested === '/teleop' || requested === '/status' ? '/navigation' : requested;
             navigate(allowedDestinations.has(target) ? target : '/navigation', { replace: true });
         } catch (cause) {
             setError(cause.message);

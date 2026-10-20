@@ -37,6 +37,7 @@ test('F8-A02: MappingPage decodes front/rear at 640x360 and video loops', async 
   await mapping(page);
   const cameraPanel = await page.getByTestId('navigation-camera-panel').elementHandle();
   await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  await expect(page.getByTestId('mapping-joystick')).toHaveCount(0);
   for (const id of ['front', 'rear']) {
     await page.getByTestId(`navigation-camera-select-${id}`).click();
     const video = page.getByTestId(`camera-video-${id}`);

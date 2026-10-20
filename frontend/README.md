@@ -1,14 +1,13 @@
 # React + Vite
 
-## Chạy mock trên nhánh combine
+## Chạy mock trên nhánh tích hợp
 
-Nhánh `combine` giữ ba trang trên menu ngang:
+Menu ngang có hai trang:
 
-- `/mapping`: tạo bản đồ, camera trước/sau và joystick từ TeleopPage.
-- `/navigation`: điều hướng và ô trạng thái robot từ StatusPage.
-- `/gesture`: camera trước và giao diện trạng thái nhận diện. Phần nhận diện thực tế chưa nối backend/model.
+- `/navigation`: điều hướng, trạng thái robot, camera trước/sau, trạng thái cử chỉ và điều khiển manual của `combine`.
+- `/mapping`: tạo/lưu bản đồ và xem camera trước/sau. Camera không bị tháo khi phiên bắt đầu hoặc kết thúc.
 
-Các đường dẫn cũ `/teleop` và `/status` lần lượt chuyển tới `/mapping` và `/navigation`.
+Các đường dẫn cũ `/teleop`, `/status` và `/gesture` chuyển tới `/navigation`. Trạng thái cử chỉ hiện chỉ là giao diện chờ dữ liệu nhận diện, không phát lệnh lái.
 Đăng nhập mock bằng `admin` / `demo-only`.
 
 Từ thư mục gốc repository, cài dependencies của các package dùng chung và frontend:
@@ -29,7 +28,7 @@ VITE_ROBOT_CLIENT=mock npm run dev
 ```
 
 Camera cần hai video trong `docs/public/demo/`; xem cách tạo ở phần tiếp theo.
-Joystick chỉ được mở sau khi bắt đầu phiên mapping và nhận quyền điều khiển.
+Điều khiển thủ công và joystick nằm ở Navigation. Khi rời Navigation để sang Mapping, quyền lái được nhả và robot được yêu cầu dừng.
 
 ## Camera demo assets (Chặng 8)
 

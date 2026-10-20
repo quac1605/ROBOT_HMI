@@ -64,6 +64,7 @@ export async function trackAcceptedJob(
   store = useMappingWorkflowStore,
   operationContext = {}
 ) {
+  if (operationContext.isCurrent && !operationContext.isCurrent()) return;
   const currentSession = store.getState().session;
   const acceptedSession = type === 'start_mapping' && operationContext.name
     ? {
@@ -91,6 +92,9 @@ export async function trackAcceptedJob(
     client.getActiveMappingSession(),
     client.getJob(response.jobId),
   ]);
+  // A page may leave while this reconciliation awaits HTTP. Its authenticated
+  // coordinator still owns the store across routes, but logout/reset must win.
+  if (operationContext.isCurrent && !operationContext.isCurrent()) return;
 
   // Service recovery is authoritative and supplies the exact requested name
   // even for callers that use the backward-compatible five-argument API.
@@ -121,6 +125,8 @@ export async function trackAcceptedJob(
 export const useMappingWorkflowStore = create((set) => ({
   session: null,
   trackedOperation: null,
+  // Finish request identity survives page changes until its AcceptedJob is known.
+  finishAttempt: null,
   viewerContext: null,
   catalogRefreshRevision: 0,
   processing: false,
@@ -138,6 +144,38 @@ export const useMappingWorkflowStore = create((set) => ({
   setViewerContext: (viewerContext) => set({ viewerContext }),
   setProcessing: (processing) => set({ processing }),
   setLastError: (lastError) => set({ lastError }),
+
+  beginFinishAttempt: (attempt) => {
+    let started = false;
+    set((state) => {
+      if (!state.ready || state.finishAttempt) return {};
+      started = true;
+      return { finishAttempt: { ...attempt, phase: 'pending' } };
+    });
+    return started;
+  },
+  transitionFinishAttempt: (requestId, fromPhase, toPhase) => {
+    let changed = false;
+    set((state) => {
+      if (state.finishAttempt?.requestId !== requestId ||
+          state.finishAttempt.phase !== fromPhase) return {};
+      changed = true;
+      return { finishAttempt: { ...state.finishAttempt, phase: toPhase } };
+    });
+    return changed;
+  },
+  claimAcceptedFinish: (requestId) => {
+    let claimed = false;
+    set((state) => {
+      if (!state.ready || state.finishAttempt?.requestId !== requestId ||
+          !['pending', 'unknown'].includes(state.finishAttempt.phase)) return {};
+      claimed = true;
+      return { finishAttempt: { ...state.finishAttempt, phase: 'tracking' } };
+    });
+    return claimed;
+  },
+  clearFinishAttempt: (requestId) => set((state) =>
+    state.finishAttempt?.requestId === requestId ? { finishAttempt: null } : {}),
 
   selectTrackedJob: ({ jobId, type, requestId, acceptedSession = null, mappingName = null }) =>
     set((state) => {
@@ -217,6 +255,7 @@ export const useMappingWorkflowStore = create((set) => ({
   retainLiveAfterSaveFailure: (error) =>
     set((state) => ({
       session: state.session ? { ...state.session, status: 'save_failed' } : null,
+      finishAttempt: null,
       processing: false,
       lastError: error,
     })),
@@ -224,6 +263,7 @@ export const useMappingWorkflowStore = create((set) => ({
   finishWithSavedContext: ({ kind = 'saved', mapId, mapRevision }) =>
     set((state) => ({
       session: null,
+      finishAttempt: null,
       viewerContext: { kind, mapId, mapRevision },
       processing: false,
       lastError: null,
@@ -247,6 +287,7 @@ export const useMappingWorkflowStore = create((set) => ({
     set({
       session: null,
       trackedOperation: null,
+      finishAttempt: null,
       viewerContext: null,
       catalogRefreshRevision: 0,
       processing: false,

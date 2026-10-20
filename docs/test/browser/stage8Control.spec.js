@@ -187,6 +187,7 @@ test('MJ-B01: Mapping dừng có bằng chứng trước khi lưu; camera không
   await spa(page, '/mapping');
   await expect(page.getByTestId('navigation-camera-health')).toContainText('Live');
   await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  await expect(page.getByTestId('mapping-joystick')).toHaveCount(0);
   await expect(page.getByTestId('camera-gesture-status')).toHaveCount(0);
   await page.evaluate(() => {
     window.mappingVideo = document.querySelector('[data-testid="camera-video-front"]');

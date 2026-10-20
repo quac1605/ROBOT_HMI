@@ -27,6 +27,27 @@ import { resolveVisiblePose } from '../utils/mapCoordinates.js';
 import { sameMapContext } from '../utils/mapRenderModel.js';
 import { resolvePoseQuality } from '../utils/poseQuality.js';
 
+async function trackAcceptedFinish(client, attempt, response) {
+  const workflow = useMappingWorkflowStore.getState();
+  // A delayed response and a user replay can both return the same AcceptedJob.
+  // Exactly one of them may install tracking for this request ID.
+  if (!workflow.claimAcceptedFinish(attempt.requestId)) return;
+
+  try {
+    await trackAcceptedJob(response, 'finish_mapping', attempt.requestId, client,
+      useMappingWorkflowStore, {
+        isCurrent: () =>
+          useMappingWorkflowStore.getState().finishAttempt?.requestId === attempt.requestId,
+      });
+    useMappingWorkflowStore.getState().clearFinishAttempt(attempt.requestId);
+  } catch (error) {
+    useMappingWorkflowStore.getState().transitionFinishAttempt(
+      attempt.requestId, 'tracking', 'unknown'
+    );
+    throw error;
+  }
+}
+
 export default function MappingPage() {
   const client = useRobotClient();
   const snapshot = useRobotStore((state) => state.snapshot);
@@ -41,19 +62,25 @@ export default function MappingPage() {
   const isCoordinatorReady = useMappingWorkflowStore((state) => state.ready);
   const lastError = useMappingWorkflowStore((state) => state.lastError);
   const trackedOperation = useMappingWorkflowStore((state) => state.trackedOperation);
+  const finishAttempt = useMappingWorkflowStore((state) => state.finishAttempt);
+  const finishUnknown = finishAttempt?.phase === 'unknown';
 
   const [mapNameInput, setMapNameInput] = useState('');
   const [localActionError, setLocalActionError] = useState(null);
-  const [layers, setLayers] = useState({ grid: true, robot: true, path: true });
+  const [layers] = useState({ grid: true, robot: true, path: true });
   const isSubmittingRef = useRef(false);
 
   const [startPending, setStartPending] = useState(false);
   const [finishPending, setFinishPending] = useState(false);
   const finishAbortRef = useRef(null);
-  const finishAttemptRef = useRef(null); // Giữ payload/requestId khi HTTP chưa rõ kết quả.
-  const [finishUnknown, setFinishUnknown] = useState(false);
   useEffect(() => () => {
     finishAbortRef.current?.abort();
+    const attempt = useMappingWorkflowStore.getState().finishAttempt;
+    if (attempt?.phase === 'pending') {
+      useMappingWorkflowStore.getState().transitionFinishAttempt(
+        attempt.requestId, 'pending', 'unknown'
+      );
+    }
   }, []);
 
   // Hook lấy dữ liệu OccupancyGrid theo viewerContext (live mapping hoặc vừa lưu)
@@ -88,7 +115,7 @@ export default function MappingPage() {
     e.preventDefault();
     const trimmedName = mapNameInput.trim();
     if (!trimmedName || isSubmittingRef.current || isProcessing ||
-        !isCoordinatorReady || session || finishUnknown) return;
+        !isCoordinatorReady || session || finishAttempt) return;
 
     isSubmittingRef.current = true;
     setStartPending(true);
@@ -115,7 +142,8 @@ export default function MappingPage() {
 
   async function submitFinishMapping(retry) {
     const current = useMappingWorkflowStore.getState().session;
-    if (isSubmittingRef.current || finishAttemptRef.current || isProcessing || !isCoordinatorReady || !current) return;
+    if (isSubmittingRef.current || useMappingWorkflowStore.getState().finishAttempt ||
+        isProcessing || !isCoordinatorReady || !current) return;
     if (retry ? current.status !== 'save_failed' : current.status !== 'mapping') return;
 
     isSubmittingRef.current = true;
@@ -123,6 +151,7 @@ export default function MappingPage() {
     setLocalActionError(null);
     const abort = new AbortController();
     finishAbortRef.current = abort;
+    let attempt = null;
     try {
       // Stop action ghi stopUnconfirmed đồng bộ: hook dừng publisher ngay.
       // Backend revoke lease và zero. Nếu đang có stop inFlight thì dùng cùng promise.
@@ -142,22 +171,24 @@ export default function MappingPage() {
       }
       // Backend kiểm tra lại no lease + fresh stationary + gate trước khi accept.
       // UI chỉ track một AcceptedJob thật từ server, không tự tạo accepted giả.
-      const attempt = {
+      attempt = {
         mappingSessionId: latest.mappingSessionId,
         name: latest.name,
         requestId: crypto.randomUUID(),
       };
       // Ghi trước network call: timeout không được làm mất ID nghiệp vụ này.
-      finishAttemptRef.current = attempt;
+      if (!useMappingWorkflowStore.getState().beginFinishAttempt(attempt)) return;
       const response = await client.finishMapping(attempt);
-      if (!abort.signal.aborted) {
-        await trackAcceptedJob(response, 'finish_mapping', attempt.requestId, client, useMappingWorkflowStore);
-        finishAttemptRef.current = null;
-        setFinishUnknown(false);
-      }
+      // Page may have unmounted while HTTP was pending. The coordinator and
+      // request identity live outside this route, so keep following the job.
+      await trackAcceptedFinish(client, attempt, response);
     } catch (error) {
+      if (attempt) {
+        useMappingWorkflowStore.getState().transitionFinishAttempt(
+          attempt.requestId, 'pending', 'unknown'
+        );
+      }
       if (!abort.signal.aborted) {
-        setFinishUnknown(Boolean(finishAttemptRef.current));
         setLocalActionError(error.message || 'Chưa thể dừng và lưu bản đồ.');
       }
     } finally {
@@ -170,8 +201,11 @@ export default function MappingPage() {
   }
 
   async function retryUncertainFinish() {
-    const attempt = finishAttemptRef.current;
-    if (!attempt || isSubmittingRef.current || !isCoordinatorReady) return;
+    const attempt = useMappingWorkflowStore.getState().finishAttempt;
+    if (attempt?.phase !== 'unknown' || isSubmittingRef.current || !isCoordinatorReady) return;
+    if (!useMappingWorkflowStore.getState().transitionFinishAttempt(
+      attempt.requestId, 'unknown', 'pending'
+    )) return;
     isSubmittingRef.current = true;
     setFinishPending(true);
     const abort = new AbortController();
@@ -180,16 +214,20 @@ export default function MappingPage() {
       // Người dùng bấm retry cùng payload. Không tự retry; không tạo requestId mới.
       // Replay vẫn hợp lệ khi backend đã kết thúc session, nên không đòi session
       // còn mapping trước call này. Ledger sẽ trả đúng job cũ.
-      const response = await client.finishMapping(attempt);
+      const response = await client.finishMapping({
+        mappingSessionId: attempt.mappingSessionId,
+        name: attempt.name,
+        requestId: attempt.requestId,
+      });
+      await trackAcceptedFinish(client, attempt, response);
       if (!abort.signal.aborted) {
-        await trackAcceptedJob(response, 'finish_mapping', attempt.requestId, client, useMappingWorkflowStore);
-        finishAttemptRef.current = null;
-        setFinishUnknown(false);
         setLocalActionError(null);
       }
     } catch (error) {
+      useMappingWorkflowStore.getState().transitionFinishAttempt(
+        attempt.requestId, 'pending', 'unknown'
+      );
       if (!abort.signal.aborted) {
-        setFinishUnknown(true);
         setLocalActionError(error.message || 'Chưa lấy lại được kết quả lưu.');
       }
     } finally {
@@ -218,7 +256,8 @@ export default function MappingPage() {
   // Hiển thị Dừng ngay khi gửi start, nhưng chỉ cho finish khi phiên đã active.
   // Không chuyển về Bắt đầu cho tới khi lưu được xác nhận bởi coordinator.
   const showStop = startPending || Boolean(session);
-  const actionBusy = startPending || isStarting || isFinishing || finishPending || isProcessing;
+  const actionBusy = startPending || isStarting || isFinishing || finishPending || isProcessing ||
+    finishAttempt?.phase === 'pending' || finishAttempt?.phase === 'tracking';
 
   return (
     <PageFrame

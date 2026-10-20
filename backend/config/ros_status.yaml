@@ -1,0 +1,48 @@
+# backend/config/ros_status.yaml
+#
+# HỢP ĐỒNG TRẠNG THÁI ROBOT: ROS 2 -> BACKEND HMI -> FRONTEND (ô "Trạng thái robot" ở /navigation).
+# HMI SUBSCRIBE các topic dưới đây. Trên cùng kết nối rosbridge, HMI còn PUBLISH /cmd_out
+# (std_msgs/msg/String, xem readme_ros.md); vận tốc trong /cmd_out cùng kiểu và đơn vị với /cmd_in.
+# Các bên phía robot publish đúng topic/kiểu message này; kiểm tra bằng:
+#   ros2 topic echo /odom --once      ros2 topic hz /odom
+#   ros2 topic echo /cmd_in --once    ros2 topic hz /cmd_in
+#
+# Backend chỉ bật nguồn ROS khi có biến môi trường ROSBRIDGE_URL (ví dụ ws://<robot-ip>:9090).
+# Phía robot chạy: ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+
+version: 1
+
+bridge:
+  protocol: rosbridge_v2
+  reconnect_ms: 2000          # mất kết nối rosbridge thì thử lại sau chừng này ms
+
+publish_rate_hz: 10           # tần số backend đẩy 'robot.state' lên frontend (kiêm heartbeat)
+
+status:
+  # Status 1: vị trí và góc quay
+  pose:
+    topic: /odom
+    type: nav_msgs/msg/Odometry
+    default_frame_id: odom    # dùng khi header.frame_id rỗng
+    throttle_ms: 50           # rosbridge gửi tối đa 20 msg/s về backend
+    timeout_ms: 1500          # quá hạn không có /odom -> rosConnected=false (HMI báo mất tín hiệu)
+    fields:
+      x: pose.pose.position.x             # m
+      y: pose.pose.position.y             # m
+      yaw: pose.pose.orientation          # quaternion -> rad trong (-pi, pi], frontend tự đổi sang độ
+
+  # Status 2: vận tốc dài và vận tốc góc
+  velocity:
+    topic: /cmd_in
+    type: geometry_msgs/msg/Twist
+    throttle_ms: 50
+    timeout_ms: 1500          # quá hạn không có /cmd_in -> coi như vận tốc = 0
+    fields:
+      linear_x: linear.x                  # m/s
+      angular_z: angular.z                # rad/s
+
+# Dữ liệu backend đẩy lên frontend (WebSocket, frame type 'robot.state', payload JSON theo RobotStateSchema):
+#   pose:                  { frameId: string, x: m, y: m, yaw: rad } | null
+#   poseSourceUpdateAgeMs: ms kể từ msg /odom cuối | null
+#   velocity:              { linearX: m/s, angularZ: rad/s }
+#   rosConnected:          true khi rosbridge đang mở VÀ /odom còn trong timeout_ms

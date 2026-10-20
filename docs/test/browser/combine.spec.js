@@ -21,6 +21,7 @@ test('combine: two tabs retain camera, manual and mapping features in mock mode'
   await expect(page).toHaveURL(/\/mapping$/);
   await expect(page.getByLabel('Tên bản đồ')).toBeVisible();
   await expect(page.getByTestId('navigation-joystick')).toHaveCount(0);
+  await expect(page.getByTestId('mapping-joystick')).toHaveCount(0);
   for (const camera of ['front', 'rear']) {
     await page.getByTestId(`navigation-camera-select-${camera}`).click();
     await expect(page.getByTestId(`camera-video-${camera}`)).toBeVisible();

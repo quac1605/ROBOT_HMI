@@ -1,6 +1,6 @@
 /**
  * backend/src/ros/mockRosAdapter.js
- * 
+ *
  * ADAPTER MÔ PHỎNG NGUỒN VẬN TỐC VÀ CẢM BIẾN ROBOT (M7 / M8 / F8.1 - F8.5).
  */
 import { createMockMotionSource } from '@robot-hmi/control-domain/mockMotionSource';
@@ -15,6 +15,9 @@ export function createMockRosAdapter({
     clearEvery = handle => clearInterval(handle),
     sourceHealthy = () => true,
     periodMs = 50,
+    // Hook tùy chọn ({ origin, velocity }), gọi sau mỗi lệnh đã ghi.
+    // origin: 'teleop' (đường quyền lái), 'mission' (đi đến đích), 'stop' (dừng nội bộ).
+    onMotionCommand = null,
 } = {}) {
     const source = createMockMotionSource({
         now,
@@ -30,6 +33,28 @@ export function createMockRosAdapter({
     const unsubscribeMappingMotion = source.subscribe(sample => mappingSource.ingest(sample));
     let activeMission = null;
     const disposeSource = source.dispose.bind(source);
+    // Giữ hàm gốc vì Object.assign bên dưới thay writeCommand/ensureStopped bằng bản có báo lệnh.
+    const rawWriteCommand = source.writeCommand.bind(source);
+    const rawEnsureStopped = source.ensureStopped.bind(source);
+
+    function notifyMotionCommand(origin) {
+        if (!onMotionCommand) return;
+        // Lỗi của listener không được làm hỏng đường ghi lệnh.
+        try { onMotionCommand({ origin, velocity: source.getCommand().velocity }); }
+        catch { /* cô lập lỗi listener */ }
+    }
+
+    function writeCommand(origin, velocity) {
+        const revision = rawWriteCommand(velocity);
+        notifyMotionCommand(origin);
+        return revision;
+    }
+
+    function ensureStopped() {
+        const revision = rawEnsureStopped();
+        notifyMotionCommand('stop');
+        return revision;
+    }
 
     function assertMissionOwner(handle) {
         if (!activeMission || handle !== activeMission) {
@@ -42,6 +67,8 @@ export function createMockRosAdapter({
     return Object.assign(source, {
         capabilities: ADAPTER_CAPABILITIES,
         motionSource: source,
+        writeCommand: velocity => writeCommand('teleop', velocity),
+        ensureStopped,
         getMappingGrid(mappingSessionId) {
             const observation = mappingSource.get(mappingSessionId);
             if (!observation) {
@@ -92,23 +119,24 @@ export function createMockRosAdapter({
                     code: 'MISSION_ACTIVE_OR_UNKNOWN', status: 409,
                 });
             }
-            source.ensureStopped();
+            rawEnsureStopped();
             activeMission = Object.freeze({ missionId, runId: uuid() });
+            notifyMotionCommand('mission');
             return activeMission;
         },
         writeMissionVelocity(handle, velocity) {
             assertMissionOwner(handle);
-            return source.writeCommand(velocity);
+            return writeCommand('mission', velocity);
         },
         finishMission(handle) {
             assertMissionOwner(handle);
             activeMission = null; // Fence callbacks before the zero command.
-            return source.ensureStopped();
+            return ensureStopped();
         },
         cancelMission(handle) {
             if (handle !== activeMission) return false;
             activeMission = null; // Late progress cannot write after stop.
-            source.ensureStopped();
+            ensureStopped();
             return true;
         },
         dispose() {

@@ -453,13 +453,17 @@ test.describe('Chặng 6 — Chromium acceptance với production modules và or
         return React.createElement('div', { id: 'hook-result' }, raster ? 'raster' : 'pending');
       }
       const host = document.createElement('div');
-      document.body.replaceChildren(host);
+      // Keep the running HMI root mounted. Replacing all body children races
+      // with its telemetry renders and creates unrelated React removeChild errors.
+      document.body.append(host);
       const root = createRoot(host);
       root.render(React.createElement(React.StrictMode, null, React.createElement(Harness)));
       await new Promise((resolve) => setTimeout(resolve, 20));
       root.unmount();
       await new Promise((resolve) => setTimeout(resolve, 220));
-      return { renderedRaster, counters: runtime.getCounters(), body: document.body.textContent };
+      const body = host.textContent;
+      host.remove();
+      return { renderedRaster, counters: runtime.getCounters(), body };
     });
     expect(result.renderedRaster).toBe(0);
     expect(result.counters.activeCount).toBe(0);
