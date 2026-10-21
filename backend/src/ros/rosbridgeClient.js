@@ -2,7 +2,7 @@
  * backend/src/ros/rosbridgeClient.js
  *
  * CLIENT TỐI GIẢN CHO GIAO THỨC ROSBRIDGE V2 (WebSocket + JSON) CỦA ROS 2.
- * Một kết nối dùng chung cho cả subscribe (/odom, /cmd_in) và publish (/cmd_out).
+ * Một kết nối dùng chung cho cả subscribe (/odom, /cmd_out) và publish (/cmd_in).
  * Tự kết nối lại khi mất kết nối; sau mỗi lần mở đăng ký lại toàn bộ topic.
  */
 import { WebSocket } from 'ws';

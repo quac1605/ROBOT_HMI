@@ -31,7 +31,7 @@ export function odometryToPose(msg, defaultFrameId = 'odom') {
 
 /**
  * geometry_msgs/msg/Twist -> VelocitySchema { linearX, angularZ }.
- * Cùng kiểu vận tốc mà /cmd_out dùng (buildCmdOutMessage), nên hai chiều khớp đơn vị và dấu.
+ * Cùng kiểu vận tốc mà /cmd_in dùng (buildCmdInMessage), nên hai chiều khớp đơn vị và dấu.
  */
 export function twistToVelocity(msg) {
     const result = VelocitySchema.safeParse({ linearX: msg?.linear?.x, angularZ: msg?.angular?.z });

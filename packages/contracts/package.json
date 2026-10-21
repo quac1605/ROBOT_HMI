@@ -14,7 +14,7 @@
     "./normalizeOccupancyGrid": "./src/normalizeOccupancyGrid.js",
     "./apiManifest": "./src/apiManifest.js",
     "./transport": "./src/transport.js",
-    "./cmdOut": "./src/cmdOut.js"
+    "./cmdIn": "./src/cmdIn.js"
   },
   "dependencies": {
     "zod": "4.5.4"

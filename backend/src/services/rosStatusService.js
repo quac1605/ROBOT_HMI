@@ -1,7 +1,7 @@
 /**
  * backend/src/services/rosStatusService.js
  *
- * TRẠNG THÁI ROBOT TỪ ROS 2: /odom -> pose, /cmd_in -> velocity (theo config/ros_status.yaml).
+ * TRẠNG THÁI ROBOT TỪ ROS 2: /odom -> pose, /cmd_out -> velocity (theo config/ros_status.yaml).
  * Gom message mới nhất rồi ghi vào sharedRobotState với tần số cố định (publish_rate_hz),
  * nên frontend luôn nhận 'robot.state' đều đặn kể cả khi robot đứng yên (heartbeat).
  */
@@ -17,7 +17,7 @@ export function createRosStatusService({
     setEvery = (fn, ms) => setInterval(fn, ms),
     clearEvery = handle => clearInterval(handle),
     logger,
-    // false khi client dùng chung (runtime tự start/dispose, vì /cmd_out cũng đi qua nó).
+    // false khi client dùng chung (runtime tự start/dispose, vì /cmd_in cũng đi qua nó).
     ownsClient = true,
 }) {
     const { pose: poseSpec, velocity: velocitySpec } = spec.status;
@@ -49,7 +49,7 @@ export function createRosStatusService({
             rosConnected: client.isConnected() && poseAge !== null && poseAge <= poseSpec.timeout_ms,
             pose: pose && { ...pose },
             poseSourceUpdateAgeMs: poseAge === null ? null : Math.round(poseAge),
-            // Mất /cmd_in quá timeout thì coi như robot không còn được ra lệnh chạy.
+            // Mất /cmd_out quá timeout thì coi như robot không còn được ra lệnh chạy.
             velocity: velocityFresh ? { ...velocity } : { ...ZERO },
         };
     }

@@ -1,7 +1,7 @@
 /**
  * backend/test/rosStatus.test.mjs
  *
- * KIỂM THỬ TRẠNG THÁI ROBOT TỪ ROS 2 (/odom -> pose, /cmd_in -> velocity).
+ * KIỂM THỬ TRẠNG THÁI ROBOT TỪ ROS 2 (/odom -> pose, /cmd_out -> velocity).
  * Dùng rosbridge server giả (WebSocket, giao thức rosbridge v2) nên không cần cài ROS hay Postgres.
  */
 import test from 'node:test';
@@ -27,7 +27,7 @@ const FAST_SPEC = parseRosStatusSpec({
     publish_rate_hz: 50,
     status: {
         pose: { topic: '/odom', type: 'nav_msgs/msg/Odometry', default_frame_id: 'odom', throttle_ms: 0, timeout_ms: 300 },
-        velocity: { topic: '/cmd_in', type: 'geometry_msgs/msg/Twist', throttle_ms: 0, timeout_ms: 300 },
+        velocity: { topic: '/cmd_out', type: 'geometry_msgs/msg/Twist', throttle_ms: 0, timeout_ms: 300 },
     },
 });
 
@@ -93,11 +93,11 @@ test('odometryToPose / twistToVelocity: message sai trả về null', () => {
     assert.equal(twistToVelocity(undefined), null);
 });
 
-test('ros_status.yaml: spec thật hợp lệ, đúng /odom và /cmd_in', () => {
+test('ros_status.yaml: spec thật hợp lệ, đúng /odom và /cmd_out', () => {
     const spec = loadRosStatusSpec();
     assert.equal(spec.status.pose.topic, '/odom');
     assert.equal(spec.status.pose.type, 'nav_msgs/msg/Odometry');
-    assert.equal(spec.status.velocity.topic, '/cmd_in');
+    assert.equal(spec.status.velocity.topic, '/cmd_out');
     assert.equal(spec.status.velocity.type, 'geometry_msgs/msg/Twist');
     assert.equal(spec.publish_rate_hz, 10);
 });
@@ -107,7 +107,7 @@ test('ros_status.yaml: spec sai cấu trúc bị từ chối ngay', () => {
     const file = path.join(dir, 'bad.yaml');
     writeFileSync(file, 'version: 1\nbridge: { protocol: rosbridge_v2, reconnect_ms: 1000 }\npublish_rate_hz: 10\n'
         + 'status:\n  pose: { topic: odom, type: nav_msgs/msg/Odometry, default_frame_id: odom, timeout_ms: 1000 }\n'
-        + '  velocity: { topic: /cmd_in, type: geometry_msgs/msg/TwistStamped, timeout_ms: 1000 }\n');
+        + '  velocity: { topic: /cmd_out, type: geometry_msgs/msg/TwistStamped, timeout_ms: 1000 }\n');
     assert.throws(() => loadRosStatusSpec(file),
         /ROS_STATUS_SPEC_INVALID.*status\.pose\.topic.*status\.velocity\.type/);
 });
@@ -126,7 +126,7 @@ test('config: ROSBRIDGE_URL tùy chọn, chỉ nhận ws:// hoặc wss://', () =
         /CONFIG_VALIDATION_FAILED.*ROSBRIDGE_URL/);
 });
 
-test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.state cho frontend', async t => {
+test('Luồng: rosbridge /odom + /cmd_out -> sharedRobotState -> frame robot.state cho frontend', async t => {
     const bridge = await startFakeRosbridge();
     const sharedRobotState = createBackendRobotState();
     const registry = createFakeRegistry();
@@ -142,7 +142,7 @@ test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.stat
     // 1. Backend đăng ký đúng topic và kiểu message trong spec
     await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe ops' });
     assert.deepEqual(bridge.subscribeOps.map(op => [op.topic, op.type]).sort(), [
-        ['/cmd_in', 'geometry_msgs/msg/Twist'],
+        ['/cmd_out', 'geometry_msgs/msg/Twist'],
         ['/odom', 'nav_msgs/msg/Odometry'],
     ]);
 
@@ -152,7 +152,7 @@ test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.stat
 
     // 3. Có dữ liệu -> state và frame robot.state mang đúng số liệu
     bridge.publish('/odom', odometry({ x: 2.5, y: -1.2, yaw: Math.PI / 4 }));
-    bridge.publish('/cmd_in', twist(0.35, -0.6));
+    bridge.publish('/cmd_out', twist(0.35, -0.6));
     const payload = await waitFor(() => {
         const state = registry.lastState();
         return state?.rosConnected && state.velocity.linearX === 0.35 ? state : null;
@@ -169,7 +169,7 @@ test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.stat
 
     // 4. Message hỏng bị bỏ qua, không ghi đè số liệu tốt
     bridge.publish('/odom', { pose: { pose: { position: { x: 'abc' } } } });
-    bridge.publish('/cmd_in', { linear: {} });
+    bridge.publish('/cmd_out', { linear: {} });
     bridge.sendRaw('{not json');
     await waitFor(() => service.getStatus().droppedMessages === 2, { label: 'đếm message hỏng' });
     assert.equal(sharedRobotState.getSnapshot().pose.x, 2.5);
@@ -179,7 +179,7 @@ test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.stat
     assert.ok(sequences.every((s, i) => i === 0 || s > sequences[i - 1]));
 });
 
-test('Luồng: /cmd_in im lặng -> vận tốc 0; /odom im lặng -> rosConnected=false nhưng giữ pose cuối', async t => {
+test('Luồng: /cmd_out im lặng -> vận tốc 0; /odom im lặng -> rosConnected=false nhưng giữ pose cuối', async t => {
     const bridge = await startFakeRosbridge();
     const sharedRobotState = createBackendRobotState();
     const service = createRosStatusService({
@@ -191,8 +191,8 @@ test('Luồng: /cmd_in im lặng -> vận tốc 0; /odom im lặng -> rosConnect
     service.start();
     await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe ops' });
 
-    bridge.publish('/cmd_in', twist(0.5, 0.1));
-    // Giữ /odom đều đặn để chỉ /cmd_in quá hạn
+    bridge.publish('/cmd_out', twist(0.5, 0.1));
+    // Giữ /odom đều đặn để chỉ /cmd_out quá hạn
     const keepOdom = setInterval(() => bridge.publish('/odom', odometry({ x: 1, y: 1, yaw: 0 })), 50);
     t.after(() => clearInterval(keepOdom));
 
@@ -200,7 +200,7 @@ test('Luồng: /cmd_in im lặng -> vận tốc 0; /odom im lặng -> rosConnect
     await waitFor(() => {
         const s = sharedRobotState.getSnapshot();
         return s.rosConnected && s.velocity.linearX === 0 && s.velocity.angularZ === 0;
-    }, { label: 'vận tốc về 0 sau timeout /cmd_in' });
+    }, { label: 'vận tốc về 0 sau timeout /cmd_out' });
 
     clearInterval(keepOdom);
     const lost = await waitFor(() => {
@@ -238,7 +238,7 @@ test('Luồng: rosbridge rớt -> rosConnected=false; bật lại -> tự kết 
     }, { label: 'online lại với pose mới' });
 });
 
-test('Runtime: có ROSBRIDGE_URL thì createRobotRuntime đẩy /odom, /cmd_in lên robot.state', async t => {
+test('Runtime: có ROSBRIDGE_URL thì createRobotRuntime đẩy /odom, /cmd_out lên robot.state', async t => {
     const bridge = await startFakeRosbridge();
     const registry = createFakeRegistry();
     const runtime = createRobotRuntime({
@@ -255,7 +255,7 @@ test('Runtime: có ROSBRIDGE_URL thì createRobotRuntime đẩy /odom, /cmd_in l
 
     await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe ops' });
     bridge.publish('/odom', odometry({ x: -0.75, y: 0.5, yaw: -Math.PI / 2 }));
-    bridge.publish('/cmd_in', twist(0.2, 0.3));
+    bridge.publish('/cmd_out', twist(0.2, 0.3));
     const payload = await waitFor(() => {
         const state = registry.lastState();
         return state?.rosConnected && state.velocity.angularZ === 0.3 ? state : null;

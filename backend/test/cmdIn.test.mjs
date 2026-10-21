@@ -1,7 +1,7 @@
 /**
- * backend/test/cmdOut.test.mjs
+ * backend/test/cmdIn.test.mjs
  *
- * KIỂM THỬ GÓI /cmd_out: CHỌN MODE, GHÉP VỚI ADAPTER + controlAuthority, PUBLISHER rosbridge, CONFIG.
+ * KIỂM THỬ GÓI /cmd_in: CHỌN MODE, GHÉP VỚI ADAPTER + controlAuthority, PUBLISHER rosbridge, CONFIG.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,10 +9,10 @@ import { EventEmitter } from 'node:events';
 import { createMotionAdmissionGate } from '@robot-hmi/control-domain/motionAdmissionGate';
 import { createControlAuthority } from '@robot-hmi/control-domain/controlAuthority';
 import { WebSocketServer } from 'ws';
-import { CmdOutMessageSchema, buildCmdOutMessage } from '@robot-hmi/contracts/cmdOut';
-import { createCmdOutService } from '../src/services/cmdOutService.js';
+import { CmdInMessageSchema, buildCmdInMessage } from '@robot-hmi/contracts/cmdIn';
+import { createCmdInService } from '../src/services/cmdInService.js';
 import { createMockRosAdapter } from '../src/ros/mockRosAdapter.js';
-import { createRosbridgeCmdOutPublisher } from '../src/ros/rosbridgeCmdOutPublisher.js';
+import { createRosbridgeCmdInPublisher } from '../src/ros/rosbridgeCmdInPublisher.js';
 import { createRosbridgeClient } from '../src/ros/rosbridgeClient.js';
 import { twistToVelocity } from '../src/ros/rosStatusMessages.js';
 import { createRobotRuntime } from '../src/runtime.js';
@@ -27,28 +27,28 @@ function recorder() {
     return { sent, publisher: { publish: message => sent.push(structuredClone(message)) } };
 }
 
-// --- cmdOutService: quy tắc chọn mode ---
+// --- cmdInService: quy tắc chọn mode ---
 
 test('không phát gì trước lệnh điều khiển đầu tiên', () => {
     const { sent, publisher } = recorder();
-    const service = createCmdOutService({ publishers: [publisher] });
+    const service = createCmdInService({ publishers: [publisher] });
     service.onMotionCommand({ origin: 'stop', velocity: ZERO });
     assert.deepEqual(sent, []);
 });
 
 test('teleop là manual và mang đúng vận tốc', () => {
     const { sent, publisher } = recorder();
-    const service = createCmdOutService({ publishers: [publisher] });
+    const service = createCmdInService({ publishers: [publisher] });
     service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: 0.3 } });
     service.onMotionCommand({ origin: 'teleop', velocity: { linearX: -0.3, angularZ: 0 } });
     service.onMotionCommand({ origin: 'teleop', velocity: ZERO });
     assert.deepEqual(sent, [packet('manual', 0, 0.3), packet('manual', -0.3, 0), packet('manual')]);
-    for (const message of sent) CmdOutMessageSchema.parse(message);
+    for (const message of sent) CmdInMessageSchema.parse(message);
 });
 
 test('emergency được giữ qua lệnh 0, lệnh lái khác 0 đưa về manual', () => {
     const { sent, publisher } = recorder();
-    const service = createCmdOutService({ publishers: [publisher] });
+    const service = createCmdInService({ publishers: [publisher] });
     service.emergencyStop();
     service.onMotionCommand({ origin: 'teleop', velocity: ZERO });
     service.onMotionCommand({ origin: 'stop', velocity: ZERO });
@@ -58,7 +58,7 @@ test('emergency được giữ qua lệnh 0, lệnh lái khác 0 đưa về manu
 
 test('nhiệm vụ là auto, vận tốc luôn 0; dừng nội bộ giữ auto; emergency về auto khi có nhiệm vụ mới', () => {
     const { sent, publisher } = recorder();
-    const service = createCmdOutService({ publishers: [publisher] });
+    const service = createCmdInService({ publishers: [publisher] });
     service.emergencyStop();
     service.onMotionCommand({ origin: 'mission', velocity: ZERO });
     service.onMotionCommand({ origin: 'mission', velocity: { linearX: 0.3, angularZ: 0.05 } });
@@ -69,16 +69,16 @@ test('nhiệm vụ là auto, vận tốc luôn 0; dừng nội bộ giữ auto; 
 test('publisher lỗi không chặn publisher khác', () => {
     const { sent, publisher } = recorder();
     const broken = { publish() { throw new Error('boom'); } };
-    const service = createCmdOutService({ publishers: [broken, publisher] });
+    const service = createCmdInService({ publishers: [broken, publisher] });
     service.emergencyStop();
     assert.deepEqual(sent, [packet('emergency')]);
 });
 
-// --- Ghép adapter + controlAuthority + cmdOutService như runtime.js ---
+// --- Ghép adapter + controlAuthority + cmdInService như runtime.js ---
 
 function createStack() {
     const { sent, publisher } = recorder();
-    const cmdOut = createCmdOutService({ publishers: [publisher] });
+    const cmdIn = createCmdInService({ publishers: [publisher] });
     let state = {
         mode: 'idle', rosConnected: true, physicalEstopActive: false, motionInhibited: false,
         motionInhibitReason: null, activeMissionId: null, activeMappingSessionId: null, velocity: ZERO,
@@ -90,14 +90,14 @@ function createStack() {
     // Timer nguồn đo do test điều khiển bằng adapter.sample().
     const adapter = createMockRosAdapter({
         setEvery: () => null, clearEvery: () => {},
-        onMotionCommand: command => cmdOut.onMotionCommand(command),
+        onMotionCommand: command => cmdIn.onMotionCommand(command),
     });
     const authority = createControlAuthority({
         sharedRobotState,
         telemetry: { getControlState: () => ({ snapshot: sharedRobotState.getSnapshot(), transportStale: false }) },
         motionGate: createMotionAdmissionGate(),
         motionSource: adapter,
-        onStopRequested: () => cmdOut.emergencyStop(),
+        onStopRequested: () => cmdIn.emergencyStop(),
     });
     const sessionId = authority.createSession('s1');
     const heartbeats = [];
@@ -105,13 +105,13 @@ function createStack() {
         if (envelope.type === 'control.heartbeat') heartbeats.push(envelope.payload);
     });
     return {
-        sent, adapter, authority, sessionId, cmdOut,
+        sent, adapter, authority, sessionId, cmdIn,
         token: () => heartbeats.at(-1).freshnessToken,
-        dispose() { authority.dispose(); adapter.dispose(); cmdOut.dispose(); },
+        dispose() { authority.dispose(); adapter.dispose(); cmdIn.dispose(); },
     };
 }
 
-test('lái tay qua controlAuthority ra manual; lệnh bị từ chối không ra /cmd_out', async t => {
+test('lái tay qua controlAuthority ra manual; lệnh bị từ chối không ra /cmd_in', async t => {
     const stack = createStack();
     t.after(() => stack.dispose());
     stack.adapter.sample();
@@ -169,24 +169,24 @@ test('vòng đời nhiệm vụ qua adapter phát auto vận tốc 0', t => {
     for (const message of stack.sent) assert.deepEqual(message, packet('auto'));
 });
 
-// --- Kiểu vận tốc dùng chung với /cmd_in ---
+// --- Kiểu vận tốc dùng chung với /cmd_out ---
 
-test('/cmd_out dùng cùng kiểu vận tốc với /cmd_in: Twist -> VelocitySchema -> gói giữ nguyên số liệu', () => {
+test('/cmd_in dùng cùng kiểu vận tốc với /cmd_out: Twist -> VelocitySchema -> gói giữ nguyên số liệu', () => {
     for (const [v, w] of [[0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3], [0.12, -0.45]]) {
         const velocity = twistToVelocity(twist(v, w));
         assert.deepEqual(velocity, { linearX: v, angularZ: w });
-        assert.deepEqual(buildCmdOutMessage({ mode: 'manual', velocity }), packet('manual', v, w));
+        assert.deepEqual(buildCmdInMessage({ mode: 'manual', velocity }), packet('manual', v, w));
     }
     // Định dạng gói không đổi: đúng 3 trường, -0 thành 0.
-    assert.deepEqual(Object.keys(buildCmdOutMessage({ mode: 'auto', velocity: ZERO })), ['target', 'mode', 'velocity']);
-    assert.deepEqual(buildCmdOutMessage({ mode: 'emergency', velocity: { linearX: -0, angularZ: -0 } }),
+    assert.deepEqual(Object.keys(buildCmdInMessage({ mode: 'auto', velocity: ZERO })), ['target', 'mode', 'velocity']);
+    assert.deepEqual(buildCmdInMessage({ mode: 'emergency', velocity: { linearX: -0, angularZ: -0 } }),
         packet('emergency'));
-    // Vận tốc sai kiểu bị chặn như /cmd_in.
-    assert.throws(() => buildCmdOutMessage({ mode: 'manual', velocity: { linear: 0.3, angular: 0 } }));
-    assert.throws(() => buildCmdOutMessage({ mode: 'manual', velocity: { linearX: Number.NaN, angularZ: 0 } }));
+    // Vận tốc sai kiểu bị chặn như /cmd_out.
+    assert.throws(() => buildCmdInMessage({ mode: 'manual', velocity: { linear: 0.3, angular: 0 } }));
+    assert.throws(() => buildCmdInMessage({ mode: 'manual', velocity: { linearX: Number.NaN, angularZ: 0 } }));
 });
 
-// --- rosbridgeCmdOutPublisher trên client dùng chung, WebSocket giả ---
+// --- rosbridgeCmdInPublisher trên client dùng chung, WebSocket giả ---
 
 function fakeSockets() {
     const sockets = [];
@@ -206,19 +206,19 @@ test('publisher advertise khi nối, bỏ gói lúc mất kết nối, nối l�
         setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
         clearTimer: () => {},
     });
-    const publisher = createRosbridgeCmdOutPublisher({ client });
+    const publisher = createRosbridgeCmdInPublisher({ client });
     client.start();
 
     publisher.publish(packet('manual', 0.3, 0)); // chưa nối: bỏ
     sockets[0].emit('open');
     assert.deepEqual(sockets[0].frames[0],
-        { op: 'advertise', id: 'hmi:/cmd_out', topic: '/cmd_out', type: 'std_msgs/msg/String' });
+        { op: 'advertise', id: 'hmi:/cmd_in', topic: '/cmd_in', type: 'std_msgs/msg/String' });
     // Gói mới nhất được gửi lại khi nối, nhưng vận tốc khác 0 cũ bị đưa về 0.
     assert.deepEqual(JSON.parse(sockets[0].frames[1].msg.data), packet('manual'));
 
     publisher.publish(packet('emergency'));
     assert.deepEqual(sockets[0].frames[2], {
-        op: 'publish', topic: '/cmd_out', msg: { data: JSON.stringify(packet('emergency')) },
+        op: 'publish', topic: '/cmd_in', msg: { data: JSON.stringify(packet('emergency')) },
     });
 
     sockets[0].emit('close');
@@ -234,7 +234,7 @@ test('publisher advertise khi nối, bỏ gói lúc mất kết nối, nối l�
     client.dispose();
 });
 
-// --- runtime: một kết nối rosbridge cho cả /cmd_out và /odom, /cmd_in ---
+// --- runtime: một kết nối rosbridge cho cả /cmd_in và /odom, /cmd_out ---
 
 async function startFakeRosbridge() {
     const wss = new WebSocketServer({ host: '127.0.0.1', port: 0 });
@@ -255,7 +255,7 @@ async function startFakeRosbridge() {
     };
 }
 
-test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_in và advertise, publish /cmd_out', async t => {
+test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_out và advertise, publish /cmd_in', async t => {
     const bridge = await startFakeRosbridge();
     const runtime = createRobotRuntime({
         pool: { query: async () => { throw new Error('DB không dùng trong test này'); } },
@@ -270,12 +270,12 @@ test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_in 
     await waitFor(() => bridge.connections[0]?.length === 3, { label: 'subscribe + advertise' });
     const ops = bridge.connections[0];
     assert.deepEqual(ops.map(op => [op.op, op.topic]).sort(), [
-        ['advertise', '/cmd_out'], ['subscribe', '/cmd_in'], ['subscribe', '/odom'],
+        ['advertise', '/cmd_in'], ['subscribe', '/cmd_out'], ['subscribe', '/odom'],
     ]);
 
-    runtime.cmdOutService.emergencyStop();
-    const published = await waitFor(() => ops.find(op => op.op === 'publish'), { label: 'publish /cmd_out' });
-    assert.equal(published.topic, '/cmd_out');
+    runtime.cmdInService.emergencyStop();
+    const published = await waitFor(() => ops.find(op => op.op === 'publish'), { label: 'publish /cmd_in' });
+    assert.equal(published.topic, '/cmd_in');
     assert.deepEqual(JSON.parse(published.msg.data), packet('emergency'));
     assert.equal(bridge.connections.length, 1);
 });
@@ -289,7 +289,7 @@ const baseEnv = {
     DATA_DIR: '/tmp/robot-hmi',
 };
 
-test('config không còn biến riêng cho /cmd_out (dùng chung ROSBRIDGE_URL)', () => {
-    const config = loadConfig({ ...baseEnv, CMD_OUT_ROSBRIDGE_URL: 'ws://127.0.0.1:9090' });
-    assert.equal('CMD_OUT_ROSBRIDGE_URL' in config, false);
+test('config không còn biến riêng cho /cmd_in (dùng chung ROSBRIDGE_URL)', () => {
+    const config = loadConfig({ ...baseEnv, CMD_IN_ROSBRIDGE_URL: 'ws://127.0.0.1:9090' });
+    assert.equal('CMD_IN_ROSBRIDGE_URL' in config, false);
 });

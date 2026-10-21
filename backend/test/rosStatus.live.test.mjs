@@ -1,13 +1,13 @@
 /**
  * backend/test/rosStatus.live.test.mjs
  *
- * KIỂM THỬ VỚI ROS 2 THẬT: một bên ĐẨY /odom, /cmd_in (đóng vai robot), một bên ĐÓN (backend runtime).
+ * KIỂM THỬ VỚI ROS 2 THẬT: một bên ĐẨY /odom, /cmd_out (đóng vai robot), một bên ĐÓN (backend runtime).
  * Cả hai đi qua rosbridge_server thật, message chạy qua ROS 2 (không dùng rosbridge giả).
  *
  * Chạy (cần rosbridge đang mở, ví dụ trong container ros:jazzy):
  *   ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live
  * Không đặt ROSBRIDGE_URL thì toàn bộ test được bỏ qua (skip).
- * Lưu ý: tắt các lệnh `ros2 topic pub /odom` hoặc `/cmd_in` khác trước khi chạy, tránh lẫn dữ liệu.
+ * Lưu ý: tắt các lệnh `ros2 topic pub /odom` hoặc `/cmd_out` khác trước khi chạy, tránh lẫn dữ liệu.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +35,7 @@ async function connectRobotPublisher(url) {
     const loops = new Map();
     const send = op => ws.send(JSON.stringify(op));
     send({ op: 'advertise', id: 'hmi-test:odom', topic: POSE.topic, type: POSE.type });
-    send({ op: 'advertise', id: 'hmi-test:cmd_in', topic: VELOCITY.topic, type: VELOCITY.type });
+    send({ op: 'advertise', id: 'hmi-test:cmd_out', topic: VELOCITY.topic, type: VELOCITY.type });
 
     return {
         /** Phát liên tục message (10 Hz) lên topic cho tới khi stop(topic). */
@@ -52,14 +52,14 @@ async function connectRobotPublisher(url) {
         async close() {
             for (const loop of loops.values()) clearInterval(loop);
             send({ op: 'unadvertise', id: 'hmi-test:odom', topic: POSE.topic });
-            send({ op: 'unadvertise', id: 'hmi-test:cmd_in', topic: VELOCITY.topic });
+            send({ op: 'unadvertise', id: 'hmi-test:cmd_out', topic: VELOCITY.topic });
             ws.close();
             await once(ws, 'close');
         },
     };
 }
 
-test('ROS 2 thật: robot đẩy /odom + /cmd_in, backend đón và phát robot.state', { skip: SKIP }, async t => {
+test('ROS 2 thật: robot đẩy /odom + /cmd_out, backend đón và phát robot.state', { skip: SKIP }, async t => {
     // Bên ĐÓN: backend runtime đầy đủ, đọc spec config/ros_status.yaml, nối rosbridge thật.
     const registry = createFakeRegistry();
     const runtime = createRobotRuntime({

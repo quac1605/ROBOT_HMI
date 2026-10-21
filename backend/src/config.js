@@ -26,7 +26,7 @@ const ConfigShape = z.object({
     CAMERA_WHEP_BASE_URL: z.string().url().optional(),
     DATA_DIR: z.string().min(1),
     TRUST_LOOPBACK_PROXY: z.enum(['true', 'false']).default('false'),
-    // rosbridge của ROS 2: đọc trạng thái robot (/odom, /cmd_in) và phát /cmd_out trên cùng
+    // rosbridge của ROS 2: đọc trạng thái robot (/odom, /cmd_out) và phát /cmd_in trên cùng
     // một kết nối. Bỏ trống thì không nối ROS, giữ nguồn mock.
     ROSBRIDGE_URL: z.preprocess(
         value => (value === '' ? undefined : value),

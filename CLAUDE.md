@@ -11,7 +11,7 @@ Máy dev: Ubuntu 24.04, repo tại `/home/it/Documents/ROBOT_HMI`.
 | `backend/` | Express 5, session/argon2, PostgreSQL, WebSocket. Nối ROS qua `ROSBRIDGE_URL` |
 | `packages/contracts`, `packages/control-domain` | Thư viện JS dùng chung (`file:` dependency) |
 | `tools/ros-camera/` | Gateway camera ROS → GStreamer VP8/RTP → MediaMTX → WebRTC |
-| `readme_ros.md` | Topic ROS: vào `/odom`, `/cmd_in`, `/image_front`, `/image_rear`; ra `/cmd_out` |
+| `readme_ros.md` | Topic ROS: vào `/odom`, `/cmd_out`, `/image_front`, `/image_rear`; ra `/cmd_in` |
 
 ## Môi trường đã setup (2026-10-19)
 
@@ -89,7 +89,7 @@ npm ci --prefix packages/contracts && npm ci --prefix packages/control-domain \
 
 ```bash
 cd backend && npm run test:unit                                          # 23 test, không cần ROS
-cd backend && ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live    # cần ROS publish /odom, /cmd_in
+cd backend && ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live    # cần ROS publish /odom, /cmd_out
 cd frontend && npm run lint && npm run build
 ```
 

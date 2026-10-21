@@ -6,8 +6,8 @@ Người đọc: nhóm làm phần robot ROS 2, và người phát triển backe
 
 File cấu hình liên quan:
 
-- [`backend/config/ros_status.yaml`](backend/config/ros_status.yaml): topic, nhịp và thời gian quá hạn của `/odom`, `/cmd_in`.
-- [`packages/contracts/src/cmdOut.js`](packages/contracts/src/cmdOut.js): tên topic, kiểu và schema gói `/cmd_out`.
+- [`backend/config/ros_status.yaml`](backend/config/ros_status.yaml): topic, nhịp và thời gian quá hạn của `/odom`, `/cmd_out`.
+- [`packages/contracts/src/cmdIn.js`](packages/contracts/src/cmdIn.js): tên topic, kiểu và schema gói `/cmd_in`.
 - [`tools/ros-camera/README.md`](tools/ros-camera/README.md): cách dựng đường camera.
 
 ---
@@ -19,7 +19,7 @@ File cấu hình liên quan:
 | Topic | Kiểu message ROS 2 | Thành phần HMI nhận | Dùng để |
 | --- | --- | --- | --- |
 | `/odom` | `nav_msgs/msg/Odometry` | backend `rosStatusService` | Vị trí `x`, `y` và góc quay `yaw` của robot |
-| `/cmd_in` | `geometry_msgs/msg/Twist` | backend `rosStatusService` | Vận tốc dài và vận tốc góc hiện tại |
+| `/cmd_out` | `geometry_msgs/msg/Twist` | backend `rosStatusService` | Vận tốc dài và vận tốc góc hiện tại |
 | `/image_front` | `sensor_msgs/msg/Image` | `tools/ros-camera/ros_camera_gateway.py` | Ảnh camera trước |
 | `/image_rear` | `sensor_msgs/msg/Image` | `tools/ros-camera/ros_camera_gateway.py` | Ảnh camera sau |
 
@@ -27,7 +27,7 @@ File cấu hình liên quan:
 
 | Topic | Kiểu message ROS 2 | Thành phần HMI gửi | Dùng để |
 | --- | --- | --- | --- |
-| `/cmd_out` | `std_msgs/msg/String` (trường `data` là JSON) | backend `cmdOutService` | Lệnh điều khiển: `mode` và vận tốc |
+| `/cmd_in` | `std_msgs/msg/String` (trường `data` là JSON) | backend `cmdInService` | Lệnh điều khiển: `mode` và vận tốc |
 
 HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không publish.
 
@@ -35,7 +35,7 @@ HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không p
 
 | Kênh | Nội dung | Lấy từ |
 | --- | --- | --- |
-| WebSocket `/ws`, khung `robot.state` | `rosConnected`, `pose`, `poseSourceUpdateAgeMs`, `velocity` | `/odom`, `/cmd_in` |
+| WebSocket `/ws`, khung `robot.state` | `rosConnected`, `pose`, `poseSourceUpdateAgeMs`, `velocity` | `/odom`, `/cmd_out` |
 | WebRTC (qua MediaMTX) | Video camera trước/sau | `/image_front`, `/image_rear` |
 
 ---
@@ -47,7 +47,7 @@ HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không p
 ```
 ┌──────────────────────── Robot / máy ROS 2 Jazzy ────────────────────────┐
 │                                                                          │
-│  node robot ──► /odom, /cmd_in ─┐            ┌─► /cmd_out ──► node robot │
+│  node robot ──► /odom, /cmd_out ─┐            ┌─► /cmd_in ──► node robot │
 │                                 ▼            │                           │
 │                       rosbridge_server (WebSocket :9090)                 │
 │                                 ▲            │                           │
@@ -66,7 +66,7 @@ HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không p
                           │   │ rosbridgeClient ──► rosStatusService           │
                           │   │        ▲                 │ sharedRobotState     │
                           │   │        │                 ▼                     │
-                          │   │ rosbridgeCmdOutPublisher ◄── cmdOutService     │
+                          │   │ rosbridgeCmdInPublisher ◄── cmdInService     │
                           │   │                          ▲                     │
                           │   │      controlAuthority / missionService         │
                           │   └──────────────┬───────────┼─────────────────────┘
@@ -78,12 +78,12 @@ HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không p
                     └────────────────────────────────────────────────────────────┘
 ```
 
-Backend làm việc với ba topic `/odom`, `/cmd_in`, `/cmd_out` qua **một kết nối rosbridge duy nhất**. Hai topic camera đi đường riêng: một node ROS 2 (`rclpy`) đọc ảnh rồi chuyển thành video WebRTC, không đi qua rosbridge.
+Backend làm việc với ba topic `/odom`, `/cmd_out`, `/cmd_in` qua **một kết nối rosbridge duy nhất**. Hai topic camera đi đường riêng: một node ROS 2 (`rclpy`) đọc ảnh rồi chuyển thành video WebRTC, không đi qua rosbridge.
 
-### 2.2 Luồng đầu vào: `/odom`, `/cmd_in` → giao diện
+### 2.2 Luồng đầu vào: `/odom`, `/cmd_out` → giao diện
 
 ```
-/odom, /cmd_in ──► rosbridge_server ──(op: publish)──► rosbridgeClient
+/odom, /cmd_out ──► rosbridge_server ──(op: publish)──► rosbridgeClient
                                                           │ message JSON
                                                           ▼
                            rosStatusMessages: odometryToPose(), twistToVelocity()
@@ -96,7 +96,7 @@ Backend làm việc với ba topic `/odom`, `/cmd_in`, `/cmd_out` qua **một k�
                 robotStateService ──(WS /ws, type 'robot.state')──► ô "Trạng thái robot" ở /navigation
 ```
 
-### 2.3 Luồng đầu ra: thao tác trên giao diện → `/cmd_out`
+### 2.3 Luồng đầu ra: thao tác trên giao diện → `/cmd_in`
 
 ```
 Trình duyệt (frontend)
@@ -108,23 +108,23 @@ Backend
   controlAuthority / missionService   kiểm tra quyền lái, token, giới hạn vận tốc
             │ ghi lệnh đã được chấp nhận
             ▼
-  mockRosAdapter ── onMotionCommand ──► cmdOutService ──► rosbridgeCmdOutPublisher
+  mockRosAdapter ── onMotionCommand ──► cmdInService ──► rosbridgeCmdInPublisher
   controlAuthority ── onStopRequested ──────▲   (chọn mode,        │ rosbridgeClient (dùng chung)
                                                 dựng gói JSON)     ▼
                                                             rosbridge_server
-                                                                   │ topic /cmd_out
+                                                                   │ topic /cmd_in
                                                                    ▼
                                                                  Robot
 ```
 
 1. Frontend không gửi thẳng xuống ROS. Mọi lệnh đi qua backend.
 2. `controlAuthority` và `missionService` quyết định lệnh nào được chấp nhận, rồi ghi vào adapter.
-3. Adapter báo từng lệnh đã ghi cho `cmdOutService` kèm nguồn gốc: `teleop` (joystick), `mission` (đi đến đích) hoặc `stop` (dừng nội bộ).
-4. Khi có yêu cầu dừng, `controlAuthority` báo `cmdOutService` **trước** khi thu hồi quyền lái, nên gói đầu tiên sau yêu cầu dừng đã là `emergency`.
-5. `cmdOutService` chọn `mode`, dựng gói bằng `buildCmdOutMessage` rồi chuyển cho publisher.
-6. Publisher gửi gói qua kết nối rosbridge dùng chung; rosbridge phát lên `/cmd_out`.
+3. Adapter báo từng lệnh đã ghi cho `cmdInService` kèm nguồn gốc: `teleop` (joystick), `mission` (đi đến đích) hoặc `stop` (dừng nội bộ).
+4. Khi có yêu cầu dừng, `controlAuthority` báo `cmdInService` **trước** khi thu hồi quyền lái, nên gói đầu tiên sau yêu cầu dừng đã là `emergency`.
+5. `cmdInService` chọn `mode`, dựng gói bằng `buildCmdInMessage` rồi chuyển cho publisher.
+6. Publisher gửi gói qua kết nối rosbridge dùng chung; rosbridge phát lên `/cmd_in`.
 
-Vì gói được dựng **sau** bước kiểm tra quyền, lệnh bị từ chối (hết token, sai quyền lái, vượt giới hạn) không bao giờ xuất hiện trên `/cmd_out`.
+Vì gói được dựng **sau** bước kiểm tra quyền, lệnh bị từ chối (hết token, sai quyền lái, vượt giới hạn) không bao giờ xuất hiện trên `/cmd_in`.
 
 ---
 
@@ -143,7 +143,7 @@ Vì gói được dựng **sau** bước kiểm tra quyền, lệnh bị từ ch
 - Quaternion được chuẩn hóa trước, rồi `yaw = atan2(2(wz + xy), 1 − 2(y² + z²))`. Frontend tự đổi sang độ.
 - Message thiếu trường, có số không hữu hạn hoặc quaternion bằng 0 bị bỏ và được đếm vào `droppedMessages`.
 
-### 3.2 `/cmd_in`: `geometry_msgs/msg/Twist`
+### 3.2 `/cmd_out`: `geometry_msgs/msg/Twist`
 
 | Trường ROS 2 | Đơn vị | Ánh xạ sang `robot.state` |
 | --- | --- | --- |
@@ -168,7 +168,7 @@ Các trường `linear.y`, `linear.z`, `angular.x`, `angular.y` được bỏ qu
 
 ## 4. Kiểu dữ liệu đầu ra
 
-### 4.1 `/cmd_out`: `std_msgs/msg/String`
+### 4.1 `/cmd_in`: `std_msgs/msg/String`
 
 Trường `data` là một chuỗi JSON:
 
@@ -184,10 +184,10 @@ Trường `data` là một chuỗi JSON:
 | --- | --- | --- |
 | `target` | `null` | Đích đến, để dành cho sau này; hiện luôn `null`. |
 | `mode` | `"emergency"` \| `"auto"` \| `"manual"` | Nguồn đang điều khiển: dừng khẩn cấp, đi đến đích, lái tay. |
-| `velocity.linear` | số, m/s | Cùng nghĩa, đơn vị và chiều dấu với `linear.x` của `/cmd_in`. Dương là tiến. |
-| `velocity.angular` | số, rad/s | Cùng nghĩa, đơn vị và chiều dấu với `angular.z` của `/cmd_in`. Dương là quay trái. |
+| `velocity.linear` | số, m/s | Cùng nghĩa, đơn vị và chiều dấu với `linear.x` của `/cmd_out`. Dương là tiến. |
+| `velocity.angular` | số, rad/s | Cùng nghĩa, đơn vị và chiều dấu với `angular.z` của `/cmd_out`. Dương là quay trái. |
 
-**Vì sao `/cmd_out` là String mà không phải `Twist` như `/cmd_in`:** `Twist` chỉ có 6 số thực, không chứa được `mode` (chữ) và `target` (có thể `null`). Thay vào đó, backend dùng chung **kiểu vận tốc** cho hai chiều: `/cmd_in` được đọc thành `VelocitySchema` `{ linearX, angularZ }`, và `/cmd_out` được dựng từ đúng kiểu đó bằng `buildCmdOutMessage`. Đó là chỗ duy nhất đổi tên trường, nên hai chiều luôn khớp nhau.
+**Vì sao `/cmd_in` là String mà không phải `Twist` như `/cmd_out`:** `Twist` chỉ có 6 số thực, không chứa được `mode` (chữ) và `target` (có thể `null`). Thay vào đó, backend dùng chung **kiểu vận tốc** cho hai chiều: `/cmd_out` được đọc thành `VelocitySchema` `{ linearX, angularZ }`, và `/cmd_in` được dựng từ đúng kiểu đó bằng `buildCmdInMessage`. Đó là chỗ duy nhất đổi tên trường, nên hai chiều luôn khớp nhau.
 
 ### 4.2 Cách chọn `mode`
 
@@ -221,7 +221,7 @@ Giá trị 0.3 lấy từ `MANUAL_DRIVE_SPEED` trong `packages/control-domain/sr
 
 ### 4.4 `robot.state`: dữ liệu backend đẩy lên frontend
 
-Không phải topic ROS, nhưng là đích cuối của `/odom` và `/cmd_in`. Mỗi khung WebSocket trên `/ws`:
+Không phải topic ROS, nhưng là đích cuối của `/odom` và `/cmd_out`. Mỗi khung WebSocket trên `/ws`:
 
 ```json
 {
@@ -241,7 +241,7 @@ Các trường trong `payload` (`packages/contracts/src/robotState.js`) liên qu
 | `rosConnected` | boolean | `true` khi rosbridge đang mở **và** `/odom` cuối còn trong 1500 ms |
 | `pose` | `{ frameId, x, y, yaw }` hoặc `null` | `/odom`; `null` khi chưa từng nhận |
 | `poseSourceUpdateAgeMs` | số (ms) hoặc `null` | Thời gian kể từ `/odom` cuối |
-| `velocity` | `{ linearX, angularZ }` | `/cmd_in`; về `0` khi `/cmd_in` quá hạn |
+| `velocity` | `{ linearX, angularZ }` | `/cmd_out`; về `0` khi `/cmd_out` quá hạn |
 
 ---
 
@@ -255,17 +255,17 @@ Các trường trong `payload` (`packages/contracts/src/robotState.js`) liên qu
 Tin backend gửi tới rosbridge:
 
 ```jsonc
-// Đăng ký nhận /odom và /cmd_in (gửi lại sau mỗi lần nối)
+// Đăng ký nhận /odom và /cmd_out (gửi lại sau mỗi lần nối)
 { "op": "subscribe", "id": "hmi:/odom", "topic": "/odom",
   "type": "nav_msgs/msg/Odometry", "throttle_rate": 50, "queue_length": 1 }
-{ "op": "subscribe", "id": "hmi:/cmd_in", "topic": "/cmd_in",
+{ "op": "subscribe", "id": "hmi:/cmd_out", "topic": "/cmd_out",
   "type": "geometry_msgs/msg/Twist", "throttle_rate": 50, "queue_length": 1 }
 
-// Khai báo sẽ phát /cmd_out (gửi lại sau mỗi lần nối)
-{ "op": "advertise", "id": "hmi:/cmd_out", "topic": "/cmd_out", "type": "std_msgs/msg/String" }
+// Khai báo sẽ phát /cmd_in (gửi lại sau mỗi lần nối)
+{ "op": "advertise", "id": "hmi:/cmd_in", "topic": "/cmd_in", "type": "std_msgs/msg/String" }
 
-// Phát một gói /cmd_out
-{ "op": "publish", "topic": "/cmd_out",
+// Phát một gói /cmd_in
+{ "op": "publish", "topic": "/cmd_in",
   "msg": { "data": "{\"target\":null,\"mode\":\"manual\",\"velocity\":{\"linear\":0.3,\"angular\":0}}" } }
 ```
 
@@ -273,7 +273,7 @@ Tin rosbridge gửi về backend:
 
 ```jsonc
 { "op": "publish", "topic": "/odom", "msg": { "header": { "frame_id": "odom" }, "pose": { "pose": { "...": "..." } } } }
-{ "op": "publish", "topic": "/cmd_in", "msg": { "linear": { "x": 0.2 }, "angular": { "z": 0.1 } } }
+{ "op": "publish", "topic": "/cmd_out", "msg": { "linear": { "x": 0.2 }, "angular": { "z": 0.1 } } }
 ```
 
 `throttle_rate: 50` nghĩa là rosbridge gửi tối đa 20 message mỗi giây cho mỗi topic. `queue_length: 1` nghĩa là chỉ giữ message mới nhất.
@@ -283,9 +283,9 @@ Tin rosbridge gửi về backend:
 | Luồng | Nhịp | Khi mất dữ liệu |
 | --- | --- | --- |
 | `/odom` → backend | Tối đa 20 Hz (`throttle_ms: 50`) | Quá 1500 ms: `rosConnected=false`, giữ pose cuối, tuổi pose tiếp tục tăng |
-| `/cmd_in` → backend | Tối đa 20 Hz | Quá 1500 ms: vận tốc về `(0; 0)`, vẫn online nếu `/odom` còn |
+| `/cmd_out` → backend | Tối đa 20 Hz | Quá 1500 ms: vận tốc về `(0; 0)`, vẫn online nếu `/odom` còn |
 | backend → frontend (`robot.state`) | 10 Hz cố định (`publish_rate_hz`), kiêm heartbeat | Frontend tự báo dữ liệu cũ |
-| backend → `/cmd_out` | Chỉ khi có lệnh; khoảng 20 Hz khi giữ joystick (frontend gửi mỗi 50 ms) | Không phát định kỳ; khi không ai điều khiển, topic im lặng |
+| backend → `/cmd_in` | Chỉ khi có lệnh; khoảng 20 Hz khi giữ joystick (frontend gửi mỗi 50 ms) | Không phát định kỳ; khi không ai điều khiển, topic im lặng |
 
 Robot nên tự dừng nếu không nhận được gói `manual` mới sau một khoảng thời gian, vì HMI không phát lặp lại.
 
@@ -293,8 +293,8 @@ Robot nên tự dừng nếu không nhận được gói `manual` mới sau mộ
 
 - Client thử nối lại sau `bridge.reconnect_ms` (2000 ms) cho tới khi được.
 - Sau mỗi lần nối, client gửi lại toàn bộ `subscribe` và `advertise`.
-- Gói `/cmd_out` phát trong lúc mất kết nối bị bỏ, không xếp hàng.
-- Khi nối lại, backend phát lại gói `/cmd_out` mới nhất nhưng với vận tốc `(0; 0)`, để robot không nhận lại một lệnh chạy đã cũ.
+- Gói `/cmd_in` phát trong lúc mất kết nối bị bỏ, không xếp hàng.
+- Khi nối lại, backend phát lại gói `/cmd_in` mới nhất nhưng với vận tốc `(0; 0)`, để robot không nhận lại một lệnh chạy đã cũ.
 
 ### 5.4 Frontend ↔ backend
 
@@ -336,11 +336,11 @@ Trong `backend/.env`:
 ROSBRIDGE_URL=ws://127.0.0.1:9090
 ```
 
-- Biến này bật cả việc đọc `/odom`, `/cmd_in` lẫn phát `/cmd_out`, trên cùng một kết nối.
+- Biến này bật cả việc đọc `/odom`, `/cmd_out` lẫn phát `/cmd_in`, trên cùng một kết nối.
 - Để trống thì backend không nối ROS và giữ hành vi mô phỏng.
 - Chỉ nhận `ws://` hoặc `wss://`; giá trị khác làm backend báo `CONFIG_VALIDATION_FAILED` khi khởi động.
 
-Muốn đổi tên topic, nhịp hoặc thời gian quá hạn của `/odom` và `/cmd_in`, sửa `backend/config/ros_status.yaml` (sai cấu trúc thì backend báo `ROS_STATUS_SPEC_INVALID` khi khởi động). Tên, kiểu và schema của `/cmd_out` nằm trong `packages/contracts/src/cmdOut.js`.
+Muốn đổi tên topic, nhịp hoặc thời gian quá hạn của `/odom` và `/cmd_out`, sửa `backend/config/ros_status.yaml` (sai cấu trúc thì backend báo `ROS_STATUS_SPEC_INVALID` khi khởi động). Tên, kiểu và schema của `/cmd_in` nằm trong `packages/contracts/src/cmdIn.js`.
 
 ### 6.3 Phía frontend
 
@@ -359,15 +359,15 @@ Xem `tools/ros-camera/README.md`. Tóm tắt: chạy MediaMTX, chạy `ros_camer
 
 | Việc | Lệnh |
 | --- | --- |
-| Xem robot có phát trạng thái không | `ros2 topic echo /odom --once`, `ros2 topic hz /cmd_in` |
-| Xem HMI phát gì | `ros2 topic echo /cmd_out std_msgs/msg/String` |
+| Xem robot có phát trạng thái không | `ros2 topic echo /odom --once`, `ros2 topic hz /cmd_out` |
+| Xem HMI phát gì | `ros2 topic echo /cmd_in std_msgs/msg/String` |
 | Giả lập robot phát `/odom` | `ros2 topic pub -r 10 /odom nav_msgs/msg/Odometry "{header: {frame_id: odom}, pose: {pose: {position: {x: 1.5, y: -0.8}, orientation: {z: 0.3827, w: 0.9239}}}}"` |
-| Giả lập robot phát `/cmd_in` | `ros2 topic pub -r 10 /cmd_in geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.1}}"` |
-| Phát thử chuỗi 9 gói `/cmd_out` (không cần backend) | `cd backend && node scripts/cmdout-demo.mjs ws://127.0.0.1:9090` |
+| Giả lập robot phát `/cmd_out` | `ros2 topic pub -r 10 /cmd_out geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.1}}"` |
+| Phát thử chuỗi 9 gói `/cmd_in` (không cần backend) | `cd backend && node scripts/cmdin-demo.mjs ws://127.0.0.1:9090` |
 | Test unit (rosbridge giả, không cần ROS) | `cd backend && npm run test:unit` |
 | Test với ROS 2 thật | `cd backend && ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live` |
 
-Script demo phát lần lượt, mỗi bước cách nhau 1 giây: joystick trái, phải, tiến, lùi, trả quyền lái, yêu cầu dừng, lệnh 0 sau dừng, bắt đầu và kết thúc đi đến đích. `ros2 topic echo /cmd_out` phải nhận đủ 9 gói:
+Script demo phát lần lượt, mỗi bước cách nhau 1 giây: joystick trái, phải, tiến, lùi, trả quyền lái, yêu cầu dừng, lệnh 0 sau dừng, bắt đầu và kết thúc đi đến đích. `ros2 topic echo /cmd_in` phải nhận đủ 9 gói:
 
 | # | `mode` | `linear` | `angular` |
 | --- | --- | --- | --- |
@@ -376,11 +376,11 @@ Script demo phát lần lượt, mỗi bước cách nhau 1 giây: joystick trá
 | 6–7 | emergency | 0 | 0 |
 | 8–9 | auto | 0 | 0 |
 
-Script gọi thẳng `cmdOutService` nên không đi qua kiểm tra quyền lái; nó chỉ dùng để kiểm nội dung gói và đường truyền tới ROS.
+Script gọi thẳng `cmdInService` nên không đi qua kiểm tra quyền lái; nó chỉ dùng để kiểm nội dung gói và đường truyền tới ROS.
 
 ---
 
-## 8. Ví dụ node robot nhận `/cmd_out` (ROS 2, Python)
+## 8. Ví dụ node robot nhận `/cmd_in` (ROS 2, Python)
 
 ```python
 import json
@@ -389,10 +389,10 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class CmdOutListener(Node):
+class CmdInListener(Node):
     def __init__(self):
-        super().__init__('cmd_out_listener')
-        self.create_subscription(String, '/cmd_out', self.on_cmd, 10)
+        super().__init__('cmd_in_listener')
+        self.create_subscription(String, '/cmd_in', self.on_cmd, 10)
 
     def on_cmd(self, msg):
         cmd = json.loads(msg.data)
@@ -404,7 +404,7 @@ class CmdOutListener(Node):
 
 def main():
     rclpy.init()
-    rclpy.spin(CmdOutListener())
+    rclpy.spin(CmdInListener())
 
 
 if __name__ == '__main__':
@@ -418,7 +418,7 @@ if __name__ == '__main__':
 - **Nhả joystick cũng phát `emergency`.** Frontend gọi `POST /api/control/stop` cả khi nhả joystick lẫn khi bấm "Yêu cầu dừng", nên backend coi cả hai là dừng khẩn cấp. Nếu robot khóa lại khi nhận `emergency`, cần sửa frontend để gửi kèm lý do dừng (mục 13.2).
 - **Ở `auto`, vận tốc luôn là `(0; 0)` và `target` là `null`.** Nhiệm vụ trong backend hiện là mô phỏng; vận tốc mô phỏng không được đưa xuống robot.
 - **Chưa lái được từ giao diện khi nối ROS thật.** `/odom` làm `rosConnected=true`, nhưng `motionInhibited` vẫn là `true` và `physicalEstopActive` vẫn là `null` vì chưa có topic nào cung cấp. Nhận quyền lái và tạo nhiệm vụ vì vậy bị từ chối; chỉ đường dừng (`emergency`) hoạt động (mục 13.1).
-- **Định dạng `/cmd_out` chưa được nhóm robot xác nhận** (mục 13.4).
+- **Định dạng `/cmd_in` chưa được nhóm robot xác nhận** (mục 13.4).
 
 ---
 
@@ -432,19 +432,19 @@ if __name__ == '__main__':
 | `backend/src/ros/rosStatusSpec.js` | Đọc và kiểm tra `config/ros_status.yaml`; sai cấu trúc thì dừng ngay lúc khởi động. |
 | `backend/src/ros/rosStatusMessages.js` | `odometryToPose()`, `twistToVelocity()`; message hỏng trả `null`. |
 | `backend/src/services/rosStatusService.js` | Giữ message mới nhất, ghi vào `sharedRobotState` theo `publish_rate_hz`, xử lý quá hạn. |
-| `backend/src/services/cmdOutService.js` | Chọn `mode` và dựng gói `/cmd_out`. |
-| `backend/src/ros/rosbridgeCmdOutPublisher.js` | Advertise `/cmd_out`, phát gói qua client dùng chung, phát lại gói cuối với vận tốc 0 khi nối lại. |
+| `backend/src/services/cmdInService.js` | Chọn `mode` và dựng gói `/cmd_in`. |
+| `backend/src/ros/rosbridgeCmdInPublisher.js` | Advertise `/cmd_in`, phát gói qua client dùng chung, phát lại gói cuối với vận tốc 0 khi nối lại. |
 | `backend/src/ros/mockRosAdapter.js` | Hook `onMotionCommand({ origin, velocity })` sau mỗi lệnh đã ghi. |
 | `packages/control-domain/src/controlAuthority.js` | Hook `onStopRequested()` ở đầu mỗi lần dừng. |
 | `backend/src/runtime.js` | Tạo một client rosbridge khi có `ROSBRIDGE_URL`, nối các phần trên với nhau. |
 | `backend/src/config.js` | Biến `ROSBRIDGE_URL`. |
-| `packages/contracts/src/cmdOut.js` | `CMD_OUT_TOPIC`, `CMD_OUT_ROS_TYPE`, `CmdOutMessageSchema`, `buildCmdOutMessage`. |
-| `packages/contracts/src/control.js` | `VelocitySchema`, kiểu vận tốc dùng chung cho `/cmd_in` và `/cmd_out`. |
+| `packages/contracts/src/cmdIn.js` | `CMD_IN_TOPIC`, `CMD_IN_ROS_TYPE`, `CmdInMessageSchema`, `buildCmdInMessage`. |
+| `packages/contracts/src/control.js` | `VelocitySchema`, kiểu vận tốc dùng chung cho `/cmd_out` và `/cmd_in`. |
 | `packages/contracts/src/robotState.js` | `RobotStateSchema`. |
 | `tools/ros-camera/ros_camera_gateway.py` | Node ROS 2 đọc ảnh camera, mã hóa VP8/RTP. |
-| `backend/test/cmdOut.test.mjs`, `backend/test/rosStatus.test.mjs` | Test unit (`npm run test:unit`). |
+| `backend/test/cmdIn.test.mjs`, `backend/test/rosStatus.test.mjs` | Test unit (`npm run test:unit`). |
 | `backend/test/rosStatus.live.test.mjs` | Test với ROS 2 thật (`npm run test:ros-live`). |
-| `backend/scripts/cmdout-demo.mjs` | Phát thử chuỗi gói `/cmd_out`. |
+| `backend/scripts/cmdin-demo.mjs` | Phát thử chuỗi gói `/cmd_in`. |
 
 ### 10.1 Sự kiện nào gọi hàm nào
 
@@ -464,19 +464,19 @@ Adapter gọi `onMotionCommand({ origin, velocity })` với `origin` là:
 - `mission`: từ `beginMission` và `writeMissionVelocity`.
 - `stop`: từ `ensureStopped`.
 
-`cmdOutService` có hai cửa vào, đều nối trong `runtime.js`: `onMotionCommand({ origin, velocity })` và `emergencyStop()`. Service nhận danh sách `publishers`, mỗi phần tử có `publish(message)` và tùy chọn `dispose()`. Muốn gửi gói qua đường khác (MQTT, UDP, serial…) thì viết publisher mới và thêm vào danh sách trong `runtime.js`; không cần sửa service.
+`cmdInService` có hai cửa vào, đều nối trong `runtime.js`: `onMotionCommand({ origin, velocity })` và `emergencyStop()`. Service nhận danh sách `publishers`, mỗi phần tử có `publish(message)` và tùy chọn `dispose()`. Muốn gửi gói qua đường khác (MQTT, UDP, serial…) thì viết publisher mới và thêm vào danh sách trong `runtime.js`; không cần sửa service.
 
 ## 11. Quyết định thiết kế và lý do
 
 Các quyết định dưới đây là có chủ ý. Nếu cần đổi, hãy đổi có lý do.
 
-- **Backend dựng gói, frontend không gửi `/cmd_out`.** Nếu trình duyệt tự gửi vận tốc xuống robot thì bỏ qua toàn bộ kiểm tra quyền lái, token và giới hạn vận tốc của backend.
+- **Backend dựng gói, frontend không gửi `/cmd_in`.** Nếu trình duyệt tự gửi vận tốc xuống robot thì bỏ qua toàn bộ kiểm tra quyền lái, token và giới hạn vận tốc của backend.
 - **Gói được dựng sau bước kiểm tra quyền.** Điểm móc nằm ở adapter, nơi mọi lệnh đã được chấp nhận đều đi qua.
 - **`emergency` được báo trước khi thu hồi quyền lái.** Nếu báo muộn hơn, lệnh 0 do việc thu hồi sinh ra sẽ đi ra với `mode` cũ trước gói `emergency`.
 - **`emergency` được giữ qua các lệnh vận tốc 0.** Nếu không, lệnh 0 ngay sau yêu cầu dừng sẽ đổi `mode` về `manual`.
 - **Ở `auto`, vận tốc luôn là 0.** `missionService` ghi vận tốc mô phỏng `(0.3; 0.05)` để giả lập chuyển động; đưa xuống robot thật sẽ làm robot chạy sai.
 - **Gói chỉ phát khi có lệnh.** Không có timer phát định kỳ; nhịp 50 ms của frontend đã tạo dòng gói đều khi giữ joystick.
-- **`/cmd_out` giữ kiểu String, dùng chung kiểu vận tốc với `/cmd_in`.** `Twist` không chứa được `mode` và `target`; dùng chung `VelocitySchema` và một hàm `buildCmdOutMessage` bảo đảm hai chiều khớp đơn vị và dấu.
+- **`/cmd_in` giữ kiểu String, dùng chung kiểu vận tốc với `/cmd_out`.** `Twist` không chứa được `mode` và `target`; dùng chung `VelocitySchema` và một hàm `buildCmdInMessage` bảo đảm hai chiều khớp đơn vị và dấu.
 - **Một kết nối rosbridge dùng chung.** Ít tài nguyên hơn, một biến cấu hình, một chỗ xử lý nối lại. Chọn rosbridge vì `rosbridge_server` có sẵn trên ROS 2 và không cần build module native như `rclnodejs`.
 - **Chỉ giữ gói mới nhất.** Khi mất kết nối, lệnh cũ bị bỏ chứ không xếp hàng; khi nối lại chỉ phát lại gói cuối với vận tốc 0.
 - **Tên trường và giá trị `mode` do người viết chọn**, chưa đối chiếu với nhóm robot.
@@ -499,11 +499,11 @@ Xếp theo mức ảnh hưởng tới việc dùng với robot thật.
 2. **Nhả joystick cũng phát `emergency`.** `frontend/src/utils/teleopHoldController.js` gọi `requestStop(reason)`, nhưng `MappingControlPanel.jsx` bỏ `reason`, và `controlStopAction.js` gửi `{ requestId }` giống hệt nút "Yêu cầu dừng". Hướng sửa nhỏ nhất:
    - Thêm trường tùy chọn `reason: 'release' | 'emergency'` vào `RequestStopRequestSchema` (`packages/contracts/src/control.js`).
    - Truyền `reason` từ `teleopHoldController` qua `MappingControlPanel` và `controlStopAction` tới client.
-   - Cho `performStop` chuyển `reason` vào `onStopRequested`, và chỉ gọi `cmdOutService.emergencyStop()` khi là dừng khẩn cấp.
+   - Cho `performStop` chuyển `reason` vào `onStopRequested`, và chỉ gọi `cmdInService.emergencyStop()` khi là dừng khẩn cấp.
    - Giữ mặc định an toàn: thiếu `reason` thì coi là `emergency`.
-3. **`target` luôn là `null`.** `missionService.createMission` có sẵn `dto.poses` (mỗi điểm gồm `x`, `y`, `yaw` trong frame `map`). Cần truyền đích qua `adapter.beginMission` và `onMotionCommand`, cho `cmdOutService` đưa vào gói, và đổi `target: z.null()` trong `cmdOut.js` thành schema cho phép object. Cấu trúc `target` cần thống nhất với nhóm robot trước.
-4. **Chưa thống nhất định dạng `/cmd_out` với nhóm robot:** tên trường, giá trị `mode`, cách robot xử lý `emergency` (có khóa lại không, mở khóa bằng gì).
-5. **Không phát định kỳ.** Nếu robot cần nhận gói đều đặn để biết HMI còn sống, thêm timer trong `cmdOutService` phát lại gói gần nhất; không được phát lại một vận tốc khác 0 đã cũ.
+3. **`target` luôn là `null`.** `missionService.createMission` có sẵn `dto.poses` (mỗi điểm gồm `x`, `y`, `yaw` trong frame `map`). Cần truyền đích qua `adapter.beginMission` và `onMotionCommand`, cho `cmdInService` đưa vào gói, và đổi `target: z.null()` trong `cmdIn.js` thành schema cho phép object. Cấu trúc `target` cần thống nhất với nhóm robot trước.
+4. **Chưa thống nhất định dạng `/cmd_in` với nhóm robot:** tên trường, giá trị `mode`, cách robot xử lý `emergency` (có khóa lại không, mở khóa bằng gì).
+5. **Không phát định kỳ.** Nếu robot cần nhận gói đều đặn để biết HMI còn sống, thêm timer trong `cmdInService` phát lại gói gần nhất; không được phát lại một vận tốc khác 0 đã cũ.
 6. **Quyền lái loại `manual` (không phải `mapping`) có giới hạn khác:** 0.2 m/s và 0.5 rad/s, không ép bốn hướng cố định. Giao diện hiện chỉ dùng loại `mapping`.
 7. **Phát hiện người và cử chỉ chưa có nguồn dữ liệu.** Giao diện đã có ô hiển thị trong khung camera ở `/navigation` (`NavigationCameraPanel.jsx`), nhưng chưa có topic nào cung cấp kết quả.
-8. **Chưa chạy end-to-end với backend đầy đủ** (cần PostgreSQL và `backend/.env`), nên đường từ giao diện web tới `/cmd_out` mới được kiểm gián tiếp qua test unit.
+8. **Chưa chạy end-to-end với backend đầy đủ** (cần PostgreSQL và `backend/.env`), nên đường từ giao diện web tới `/cmd_in` mới được kiểm gián tiếp qua test unit.

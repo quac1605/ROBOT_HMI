@@ -1,17 +1,17 @@
 /**
- * backend/scripts/cmdout-demo.mjs
+ * backend/scripts/cmdin-demo.mjs
  *
- * PHÁT THỬ MỘT CHUỖI GÓI /cmd_out LÊN rosbridge, KHÔNG CẦN BACKEND, DATABASE HAY FRONTEND.
+ * PHÁT THỬ MỘT CHUỖI GÓI /cmd_in LÊN rosbridge, KHÔNG CẦN BACKEND, DATABASE HAY FRONTEND.
  *
- * Cách dùng: node scripts/cmdout-demo.mjs [ws://127.0.0.1:9090]
- * Script gọi thẳng cmdOutService nên không đi qua kiểm tra quyền lái;
+ * Cách dùng: node scripts/cmdin-demo.mjs [ws://127.0.0.1:9090]
+ * Script gọi thẳng cmdInService nên không đi qua kiểm tra quyền lái;
  * chỉ dùng để kiểm tra nội dung gói và đường truyền tới ROS.
  */
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { MANUAL_DRIVE_SPEED } from '@robot-hmi/control-domain/controlPolicy';
-import { createCmdOutService } from '../src/services/cmdOutService.js';
-import { createRosbridgeCmdOutPublisher } from '../src/ros/rosbridgeCmdOutPublisher.js';
+import { createCmdInService } from '../src/services/cmdInService.js';
+import { createRosbridgeCmdInPublisher } from '../src/ros/rosbridgeCmdInPublisher.js';
 import { createRosbridgeClient } from '../src/ros/rosbridgeClient.js';
 
 const url = process.argv[2] ?? 'ws://127.0.0.1:9090';
@@ -19,8 +19,8 @@ const v = MANUAL_DRIVE_SPEED.linearX;
 const w = MANUAL_DRIVE_SPEED.angularZ;
 
 const client = createRosbridgeClient({ url, reconnectMs: 1000 });
-const publisher = createRosbridgeCmdOutPublisher({ client });
-const service = createCmdOutService({ publishers: [publisher], logger: console });
+const publisher = createRosbridgeCmdInPublisher({ client });
+const service = createCmdInService({ publishers: [publisher], logger: console });
 client.start();
 
 const steps = [

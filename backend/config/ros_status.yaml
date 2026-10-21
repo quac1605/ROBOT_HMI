@@ -1,11 +1,11 @@
 # backend/config/ros_status.yaml
 #
 # HỢP ĐỒNG TRẠNG THÁI ROBOT: ROS 2 -> BACKEND HMI -> FRONTEND (ô "Trạng thái robot" ở /navigation).
-# HMI SUBSCRIBE các topic dưới đây. Trên cùng kết nối rosbridge, HMI còn PUBLISH /cmd_out
-# (std_msgs/msg/String, xem readme_ros.md); vận tốc trong /cmd_out cùng kiểu và đơn vị với /cmd_in.
+# HMI SUBSCRIBE các topic dưới đây. Trên cùng kết nối rosbridge, HMI còn PUBLISH /cmd_in
+# (std_msgs/msg/String, xem readme_ros.md); vận tốc trong /cmd_in cùng kiểu và đơn vị với /cmd_out.
 # Các bên phía robot publish đúng topic/kiểu message này; kiểm tra bằng:
 #   ros2 topic echo /odom --once      ros2 topic hz /odom
-#   ros2 topic echo /cmd_in --once    ros2 topic hz /cmd_in
+#   ros2 topic echo /cmd_out --once    ros2 topic hz /cmd_out
 #
 # Backend chỉ bật nguồn ROS khi có biến môi trường ROSBRIDGE_URL (ví dụ ws://<robot-ip>:9090).
 # Phía robot chạy: ros2 launch rosbridge_server rosbridge_websocket_launch.xml
@@ -33,10 +33,10 @@ status:
 
   # Status 2: vận tốc dài và vận tốc góc
   velocity:
-    topic: /cmd_in
+    topic: /cmd_out
     type: geometry_msgs/msg/Twist
     throttle_ms: 50
-    timeout_ms: 1500          # quá hạn không có /cmd_in -> coi như vận tốc = 0
+    timeout_ms: 1500          # quá hạn không có /cmd_out -> coi như vận tốc = 0
     fields:
       linear_x: linear.x                  # m/s
       angular_z: angular.z                # rad/s
