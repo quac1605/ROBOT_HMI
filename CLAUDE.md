@@ -13,6 +13,27 @@ Máy dev: Ubuntu 24.04, repo tại `/home/it/Documents/ROBOT_HMI`.
 | `tools/ros-camera/` | Gateway camera ROS → GStreamer VP8/RTP → MediaMTX → WebRTC |
 | `readme_ros.md` | Topic ROS: vào `/odom`, `/cmd_out`, `/image_front`, `/image_rear`; ra `/cmd_in` |
 
+## Git và branch (cập nhật 2026-10-21)
+
+- Remote `origin`: `https://github.com/quac1605/ROBOT_HMI.git`. Branch: `main`, `combine`, `combinev2`, `hihi`, `codex/stage9-ubuntu`, `codex/combine-total`.
+- Branch đang làm: **`codex/combine-total`**, nhánh từ `combinev2`, gộp ROS bridge của `combinev2` với UI và camera của `combine`, có thêm `/map` (`backend/src/ros/rosMapService.js`, `occupancy_map_worker.py`).
+- Thấy branch trên GitHub mà local không có: chạy `git fetch --prune` (git không tự cập nhật danh sách branch remote).
+
+## Hợp đồng topic ROS (đổi tên 2026-10-21, commit `b0e2703`)
+
+Tên `/cmd_in` và `/cmd_out` đã được **đổi chéo** cho đúng góc nhìn của robot:
+
+| Topic | Chiều | Kiểu | Nội dung | Code |
+|---|---|---|---|---|
+| `/cmd_in` | HMI → robot (backend publish) | `std_msgs/msg/String`, `data` là JSON | `{ target: null, mode: 'emergency'\|'auto'\|'manual', velocity: { linear, angular } }` | `packages/contracts/src/cmdIn.js`, `backend/src/services/cmdInService.js`, `backend/src/ros/rosbridgeCmdInPublisher.js` |
+| `/cmd_out` | robot → HMI (backend subscribe) | `geometry_msgs/msg/Twist` | `linear.x` (m/s), `angular.z` (rad/s); quá 1500 ms thì vận tốc về 0 | `backend/config/ros_status.yaml`, `backend/src/services/rosStatusService.js` |
+| `/odom` | robot → HMI | `nav_msgs/msg/Odometry` | x, y, yaw; quyết định `rosConnected` | như trên |
+
+- Identifier cũng đổi theo: `cmdOut*` → `cmdIn*` (`CMD_IN_TOPIC`, `buildCmdInMessage`, `createCmdInService`, `runtime.cmdInService`, script `backend/scripts/cmdin-demo.mjs`, test `backend/test/cmdIn.test.mjs`).
+- `/cmd_in` chỉ phát khi có lệnh được chấp nhận (chưa có lệnh thì im lặng); `mission` luôn gửi vận tốc 0; nối lại rosbridge thì phát lại gói cuối với vận tốc 0.
+- Phía robot phải đổi theo (publish vận tốc lên `/cmd_out`, subscribe lệnh `/cmd_in`). Chưa xác nhận với nhóm robot.
+- Ý tưởng chưa làm: gộp x, y, yaw và vận tốc vào một message `/cmd_out` thay cho `/odom`.
+
 ## Môi trường đã setup (2026-10-19)
 
 - **Conda env `robot-hmi`**: chỉ chứa Node **22.23.3** (bản chính thức từ nodejs.org, giải nén vào `$CONDA_PREFIX`; conda-forge không có bản này). **Không có Python** → `python3` vẫn là `/usr/bin/python3`, nên ROS/rclpy chạy được khi env đang bật. Không cài thêm python vào env này.
