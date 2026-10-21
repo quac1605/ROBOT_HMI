@@ -23,6 +23,7 @@ import { createCmdOutService } from './services/cmdOutService.js';
 import { createRosbridgeCmdOutPublisher } from './ros/rosbridgeCmdOutPublisher.js';
 import { createRosStatusService } from './services/rosStatusService.js';
 import { createRosbridgeClient } from './ros/rosbridgeClient.js';
+import { createRosMapService } from './ros/rosMapService.js';
 import { loadRosStatusSpec } from './ros/rosStatusSpec.js';
 
 function createInitialRobotState() {
@@ -144,6 +145,11 @@ export function createRobotRuntime({
         registry: connectionRegistry,
         lifecycle,
     });
+    const rosMapService = createRosMapService({
+        enabled: config.ROS_MAP_ENABLED === 'true',
+        setupPath: config.ROS_MAP_SETUP,
+        logger,
+    });
 
     const jobService = createJobService({
         pool,
@@ -214,6 +220,7 @@ export function createRobotRuntime({
         rosbridge.start();
         rosStatusService.start();
     }
+    rosMapService.start();
 
     function publishMappingPose() {
         // Có /odom thật thì pose mock của mapping không được ghi đè lên.
@@ -246,6 +253,7 @@ export function createRobotRuntime({
         controlSubjectRegistry,
         robotStateService,
         mapGridService,
+        rosMapService,
         jobService,
         mappingService,
         mapActivationService: mapActivationServiceInstance,
@@ -262,6 +270,7 @@ export function createRobotRuntime({
             clearInterval(mappingAgeTimer);
             unsubscribeMappingPose();
             mapGridService.dispose();
+            rosMapService.dispose();
             missionServiceInstance.dispose();
             robotStateService.dispose();
             controlSubjectRegistry.dispose();

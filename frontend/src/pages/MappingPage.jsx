@@ -18,6 +18,7 @@ import { useRobotClient } from '../hooks/useRobotClient.js';
 import { useControlActions } from '../hooks/useControlActions.js';
 import { useControlStore } from '../state/controlStore.js';
 import { useMapGrid } from '../hooks/useMapGrid.js';
+import { useRosMap } from '../hooks/useRosMap.js';
 import { useOccupancyRaster } from '../hooks/useOccupancyRaster.js';
 import { useRobotFreshness } from '../hooks/useRobotFreshness.js';
 import { useRobotStore } from '../stores/robotStore.js';
@@ -89,6 +90,7 @@ export default function MappingPage() {
     expectedFrameId: 'map',
   });
   const { raster, rasterError } = useOccupancyRaster(normalizedGrid);
+  const { model: rosMapModel, metadata: rosMapMetadata, error: rosMapError } = useRosMap();
 
   // Context Guard: Chỉ tạo renderModel khi raster thực sự khớp với viewerContext
   const renderModel = useMemo(() => {
@@ -109,6 +111,15 @@ export default function MappingPage() {
       frameId: renderModel.geometry.frameId,
     });
   }, [snapshot, viewerContext, renderModel]);
+
+  // Bản đồ /map thật được ưu tiên cho màn hình live; xem bản đồ đã lưu vẫn giữ
+  // đúng context đã chọn. Pose chỉ phủ lên /map nếu đã ở cùng frame.
+  const showingRosMap = Boolean(rosMapModel && viewerContext?.kind !== 'saved');
+  const displayedModel = showingRosMap ? rosMapModel : renderModel;
+  const displayedPose = showingRosMap
+    ? (snapshot?.pose?.frameId === rosMapModel.geometry.frameId && !transportStale
+        ? snapshot.pose : null)
+    : visiblePose;
 
   const poseQuality = resolvePoseQuality(snapshot, { transportStale });
 
@@ -270,6 +281,8 @@ export default function MappingPage() {
         {lastError && <Alert severity="error">Lỗi quy trình: {lastError.message || String(lastError)}</Alert>}
         {gridError && <Alert severity="warning">Lỗi dữ liệu lưới: {gridError.message}</Alert>}
         {rasterError && <Alert severity="error">Lỗi render ảnh: {rasterError.message}</Alert>}
+        {rosMapError && viewerContext?.kind !== 'saved' &&
+          <Alert severity="warning">Không đọc được bản đồ ROS /map: {rosMapError.message}</Alert>}
 
         {/* Thanh trạng thái phiên */}
         <Card variant="outlined">
@@ -301,7 +314,11 @@ export default function MappingPage() {
                     color={trackedOperation.status === 'failed' ? 'error' : 'info'}
                   />
                 )}
-                {gridStatus?.sourceState && (
+                {showingRosMap && (
+                  <Chip label={`Nguồn: ROS /map · ${rosMapMetadata.geometry.width}×${rosMapMetadata.geometry.height} · ${rosMapMetadata.geometry.resolution.toFixed(3)} m/ô`}
+                    size="small" variant="outlined" color="success" />
+                )}
+                {!showingRosMap && gridStatus?.sourceState && (
                   <Chip
                     label={`Nguồn: ${gridStatus.sourceState}${gridStatus.lastSourceUpdateAgeMs != null ? ` (${Math.round(gridStatus.lastSourceUpdateAgeMs / 1000)}s)` : ''}`}
                     size="small"
@@ -336,10 +353,10 @@ export default function MappingPage() {
               p: 1, '&:last-child': { pb: 1 },
               flex: 1, display: 'flex', flexDirection: 'column',
             }}>
-              {renderModel ? (
+              {displayedModel ? (
                 <Map2D
-                  model={renderModel}
-                  pose={visiblePose}
+                  model={displayedModel}
+                  pose={displayedPose}
                   poseQuality={poseQuality}
                   showGrid={layers.grid}
                   showRobot={layers.robot}
@@ -360,11 +377,15 @@ export default function MappingPage() {
                       ? 'Đang khởi động SLAM…'
                       : isFinishing
                         ? 'Đang lưu bản đồ…'
+                        : rosMapMetadata?.status === 'waiting' && !viewerContext
+                          ? 'Đang chờ dữ liệu ROS /map…'
+                        : rosMapMetadata?.status === 'offline' && !viewerContext
+                          ? 'Nguồn ROS /map chưa sẵn sàng. Kiểm tra node map và backend.'
                         : session
                           ? 'Đang chờ OccupancyGrid của phiên mapping…'
-                          : isSavedView
-                            ? 'Đang nạp bản đồ đã lưu…'
-                            : 'Bắt đầu phiên mapping để xây dựng bản đồ.'}
+                        : isSavedView
+                          ? 'Đang nạp bản đồ đã lưu…'
+                          : 'Bắt đầu phiên mapping để xây dựng bản đồ.'}
                   </Typography>
                 </Box>
               )}

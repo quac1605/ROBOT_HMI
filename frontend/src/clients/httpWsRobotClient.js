@@ -66,6 +66,32 @@ const AuthUserSchema = z.object({
     username: z.string().trim().min(1).max(64),
 }).strict();
 const AuthSessionResponseSchema = z.object({ user: AuthUserSchema }).strict();
+const RosMapStampSchema = z.object({
+    sec: z.number().int(), nanosec: z.number().int().min(0).max(999999999),
+}).strict();
+const RosMapResponseSchema = z.discriminatedUnion('status', [
+    z.object({ status: z.enum(['disabled', 'waiting', 'offline']) }).strict(),
+    z.object({
+        status: z.literal('ready'),
+        topic: z.literal('/map'),
+        revision: z.string().regex(/^[a-f0-9]{32}$/),
+        geometry: z.object({
+            frameId: z.string().min(1),
+            width: z.number().int().positive(),
+            height: z.number().int().positive(),
+            resolution: z.number().positive(),
+            origin: z.object({ x: z.number(), y: z.number(), yaw: z.number() }).strict(),
+        }).strict(),
+        stamp: RosMapStampSchema,
+        mapLoadTime: RosMapStampSchema,
+        counts: z.object({
+            unknown: z.number().int().nonnegative(),
+            free: z.number().int().nonnegative(),
+            occupied: z.number().int().nonnegative(),
+            other: z.number().int().nonnegative(),
+        }).strict(),
+    }).strict(),
+]);
 
 export function createHttpWsRobotClient(options = {}) {
     const transport = createRemoteTransport(options);
@@ -230,6 +256,13 @@ export function createHttpWsRobotClient(options = {}) {
             const res = await transport.request(`/api/map-grid?${params.toString()}`, { method: 'GET' });
             preflightMapGrid(res);
             return MapGridSnapshotSchema.parse(res);
+        },
+
+        async getRosMap() {
+            requireAuthenticated();
+            return RosMapResponseSchema.parse(
+                await transport.request('/api/ros-map', { method: 'GET' })
+            );
         },
 
         subscribeMapGrid(context, listener, options = {}) {

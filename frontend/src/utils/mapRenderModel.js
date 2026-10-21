@@ -8,6 +8,7 @@ export function normalizeYaw(yaw) {
 
 export function mapContextKey(context) {
   if (!context) return '';
+  if (context.kind === 'ros') return '["ros","/map"]';
   return JSON.stringify(
     context.kind === 'saved'
       ? ['saved', context.mapId, context.mapRevision]

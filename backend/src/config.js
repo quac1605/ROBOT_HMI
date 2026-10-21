@@ -32,6 +32,10 @@ const ConfigShape = z.object({
         value => (value === '' ? undefined : value),
         z.string().regex(/^wss?:\/\/[^\s]+$/).optional(),
     ),
+    // /map dùng rclpy trực tiếp, độc lập với rosbridge và adapter điều khiển mock.
+    ROS_MAP_ENABLED: z.enum(['true', 'false']).default('false'),
+    ROS_MAP_SETUP: z.string().regex(/^\/opt\/ros\/[a-z0-9]+\/setup\.bash$/)
+        .default('/opt/ros/jazzy/setup.bash'),
 });
 
 // Chuỗi secret ví dụ đã xuất hiện trong tài liệu thiết kế (phải chặn)

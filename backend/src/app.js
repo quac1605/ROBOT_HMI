@@ -15,6 +15,7 @@ import connectPgSimple from 'connect-pg-simple';
 import { createAuthRouter } from './auth/authRouter.js';
 import { createControlRouter } from './control/controlRouter.js';
 import { createMapsRouter } from './routes/mapsRouter.js';
+import { createRosMapRouter } from './routes/rosMapRouter.js';
 import { createMappingRouter } from './routes/mappingRouter.js';
 
 /**
@@ -208,6 +209,11 @@ export function createApp({
                 mapGridService: robotRuntime.mapGridService,
             });
             app.use('/api', mapsRouter);
+        }
+        if (robotRuntime?.rosMapService) {
+            app.use('/api', createRosMapRouter({
+                lifecycle, rosMapService: robotRuntime.rosMapService,
+            }));
         }
 
         // 5. Mapping Workflow, Jobs & Activation Router - M8 Slice 3
