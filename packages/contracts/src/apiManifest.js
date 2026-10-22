@@ -187,6 +187,20 @@ export const API_MANIFEST = Object.freeze({
     successStatus: 200,
     description: 'Hủy nhiệm vụ điều hướng đang chạy.',
   }),
+  getOriginalPosition: Object.freeze({
+    type: 'http',
+    method: 'GET',
+    path: '/api/navigation/original-position',
+    successStatus: 200,
+    description: 'Vị trí ban đầu của robot (x, y, theta rad) dùng cho mode auto; null khi chưa nhập.',
+  }),
+  setOriginalPosition: Object.freeze({
+    type: 'http',
+    method: 'PUT',
+    path: '/api/navigation/original-position',
+    successStatus: 200,
+    description: 'Nhập vị trí ban đầu của robot một lần duy nhất; lần sau trả 409 ORIGINAL_POSITION_ALREADY_SET.',
+  }),
   subscribeMissions: Object.freeze({
     type: 'ws',
     channel: '/ws',

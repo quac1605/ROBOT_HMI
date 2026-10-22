@@ -61,6 +61,9 @@ export const ReleaseControlResponseSchema = z.object({
 // --- Stop (yêu cầu dừng) ---
 export const RequestStopRequestSchema = z.object({
     requestId: Id,
+    // true: dừng chuyển động nhưng giữ mode /cmd_in (nhả joystick, dừng trước khi lưu bản đồ).
+    // Thiếu hoặc false: người dùng chọn dừng, /cmd_in chuyển sang mode stop.
+    keepMode: z.boolean().optional(),
 }).strict();
 
 export const RequestStopResponseSchema = z.object({

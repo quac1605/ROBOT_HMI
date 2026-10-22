@@ -58,6 +58,9 @@ import {
     NavigationPathQuerySchema,
     preflightNavigationPath,
 } from '@robot-hmi/contracts/mission';
+import {
+    OriginalPositionResponseSchema, SetOriginalPositionRequestSchema,
+} from '@robot-hmi/contracts/cmdIn';
 import { createRemoteTransport } from './remoteTransport.js';
 import { createVelocitySender } from './remoteVelocitySender.js';
 
@@ -419,6 +422,23 @@ export function createHttpWsRobotClient(options = {}) {
                 body: JSON.stringify({ missionId, requestId }),
             });
             return CancelMissionResponseSchema.parse(res);
+        },
+
+        async getOriginalPosition() {
+            requireAuthenticated();
+            const res = await transport.request('/api/navigation/original-position', { method: 'GET' });
+            return OriginalPositionResponseSchema.parse(res);
+        },
+
+        async setOriginalPosition(args) {
+            requireAuthenticated();
+            args = SetOriginalPositionRequestSchema.parse(args);
+            const res = await transport.request('/api/navigation/original-position', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(args),
+            });
+            return OriginalPositionResponseSchema.parse(res);
         },
 
         subscribeMissions(listener) {

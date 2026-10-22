@@ -10,6 +10,7 @@ import { useTeleopHold } from '../../hooks/useTeleopHold.js';
 import { useControlStore } from '../../state/controlStore.js';
 import { useRobotStore } from '../../stores/robotStore.js';
 import { createPageLeaseIntent } from '../../utils/pageLeaseIntent.js';
+import { stopOptionsForReason } from '../../utils/controlStopAction.js';
 import { bindTeleopKeyboard } from '../../utils/teleopKeyboard.js';
 import { fixedVectorForDirection } from '../../utils/joystickVector.js';
 import {
@@ -130,11 +131,11 @@ export default function NavigationControlPanel() {
     };
   }, []);
   const sendVelocity = useCallback(message => client.sendVelocity(message), [client]);
-  const requestStop = useCallback(() => {
+  const requestStop = useCallback(reason => {
     intentRef.current?.invalidatePending();
     // requestStop đặt stopUnconfirmed đồng bộ trước khi release bất đồng bộ.
     // Không dùng release/ACK thay cho observation xác nhận robot đã đứng yên.
-    const pending = actions.requestStop();
+    const pending = actions.requestStop(stopOptionsForReason(reason));
     intentRef.current?.abandon();
     return pending;
   }, [actions]);

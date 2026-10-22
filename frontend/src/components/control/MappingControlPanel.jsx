@@ -11,6 +11,7 @@ import { useMappingWorkflowStore } from '../../state/mappingWorkflowStore.js';
 import { createPageLeaseIntent } from '../../utils/pageLeaseIntent.js';
 import { bindTeleopKeyboard } from '../../utils/teleopKeyboard.js';
 import { fixedVectorForDirection } from '../../utils/joystickVector.js';
+import { stopOptionsForReason } from '../../utils/controlStopAction.js';
 import {
   CONTROL_POLICY, MANUAL_DRIVE_SPEED, controlRobotReasons, selectCanDrive,
 } from '@robot-hmi/control-domain/controlPolicy';
@@ -122,7 +123,7 @@ export default function MappingControlPanel({ mappingSessionId, enabled }) {
   }, [context, enabled, mappingSessionId]);
 
   const sendVelocity = useCallback(message => client.sendVelocity(message), [client]);
-  const requestStop = useCallback(() => actions.requestStop(), [actions]);
+  const requestStop = useCallback(reason => actions.requestStop(stopOptionsForReason(reason)), [actions]);
   const { start, update, stop } = useTeleopHold({
     getLatest, sendVelocity, requestStop, onError: reportError,
   });

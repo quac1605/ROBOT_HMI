@@ -24,6 +24,8 @@ export function createMissionService({
     sharedRobotState,
     registry,
     lifecycle,
+    // Tùy chọn: có thì nhiệm vụ (mode auto) chỉ được tạo sau khi đã nhập vị trí ban đầu.
+    getOriginalPosition = null,
 }) {
     let missionSequence = 0;
     let pathSequence = 0;
@@ -95,6 +97,11 @@ export function createMissionService({
             }
             const dto = MissionRequestSchema.parse(rawDto);
             assertAdapterCapability(adapter, 'mission');
+            if (getOriginalPosition && !getOriginalPosition()) {
+                throw Object.assign(new Error('ORIGINAL_POSITION_REQUIRED'), {
+                    code: 'ORIGINAL_POSITION_REQUIRED', status: 409,
+                });
+            }
             // Replays are resolved by the ledger before new-operation guards.
             // Verify assets outside the DB transaction; never hold its lock
             // across filesystem I/O. A missing asset remains fail closed.
@@ -192,7 +199,7 @@ export function createMissionService({
                         code: 'MISSION_DISPATCH_SUPERSEDED', status: 409,
                     });
                 }
-                handle = adapter.beginMission(missionId);
+                handle = adapter.beginMission(missionId, dto.poses);
                 sharedRobotState.update({
                     mode: 'navigating',
                     activeMissionId: missionId,

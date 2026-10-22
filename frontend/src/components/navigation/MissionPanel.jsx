@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, CardContent, LinearProgress, Stack, Typography } from '@mui/material';
 import { useRobotClient } from '../../hooks/useRobotClient.js';
 import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
@@ -8,6 +8,9 @@ import { useMissionStore } from '../../state/missionStore.js';
 import { checkMissionPreconditions, checkMapActivationPreconditions, checkRouteBounds, checkSavedMap } from '../../utils/navigationGuards.js';
 import { isPending } from '../../utils/navigationPolicy.js';
 import { sendMissionIntent, cancelMissionIntent, sendJobIntent } from '../../utils/navigationCommands.js';
+import OriginalPositionDialog from './OriginalPositionDialog.jsx';
+
+const toDegrees = rad => (rad * 180 / Math.PI).toFixed(1);
 
 export default function MissionPanel({ selectedMap }) {
   const client = useRobotClient();
@@ -19,6 +22,10 @@ export default function MissionPanel({ selectedMap }) {
   const [busy, setBusy] = useState(false);
   const cancelLock = useRef(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  // undefined: đang tải; null: chưa nhập; object: đã nhập (một lần, không sửa).
+  const [originalPosition, setOriginalPosition] = useState(undefined);
+  const [originalPositionError, setOriginalPositionError] = useState(null);
+  const [askOriginalPosition, setAskOriginalPosition] = useState(false);
   const mission = missions.missionsById[missions.selectedMissionId];
   const active = missions.missionsById[missions.activeMissionId];
   const poses = nav.routeDraft.poses;
@@ -37,6 +44,16 @@ export default function MissionPanel({ selectedMap }) {
         : !poses.length ? 'Hãy thêm ít nhất một waypoint.'
           : !mapCheck.ok ? mapCheck.reason : !boundsCheck.ok ? boundsCheck.reason
             : !submitCheck.ok ? submitCheck.reason : null;
+
+  useEffect(() => {
+    let active = true;
+    client.getOriginalPosition().then(result => {
+      if (active) { setOriginalPosition(result.originalPosition); setOriginalPositionError(null); }
+    }).catch(cause => {
+      if (active) setOriginalPositionError(cause.message);
+    });
+    return () => { active = false; };
+  }, [client]);
 
   async function exclusive(work) {
     if (lock.current) return;
@@ -65,6 +82,25 @@ export default function MissionPanel({ selectedMap }) {
       requestId: crypto.randomUUID(), mapId: selectedMap.id, mapRevision: selectedMap.revision,
       ...(includePoses ? { poses: structuredClone(poses) } : {})
     };
+  }
+  function startMission() {
+    // Lần đầu vào mode auto phải nhập vị trí ban đầu của robot trước khi gửi đích.
+    if (!originalPosition) { setAskOriginalPosition(true); return; }
+    void exclusive(() => sendMissionIntent(client, missionRequest()));
+  }
+  async function submitOriginalPosition(position) {
+    let stored;
+    try {
+      stored = (await client.setOriginalPosition(position)).originalPosition;
+    } catch (cause) {
+      // Tab khác đã nhập trước: dùng giá trị đã lưu, không ghi đè.
+      if (cause.code !== 'ORIGINAL_POSITION_ALREADY_SET') throw cause;
+      stored = (await client.getOriginalPosition()).originalPosition;
+    }
+    setOriginalPosition(stored);
+    setOriginalPositionError(null);
+    setAskOriginalPosition(false);
+    await exclusive(() => sendMissionIntent(client, missionRequest()));
   }
   const errors = [
     missions.lastError, missions.missionRequest?.error, missions.cancelRequest?.error,
@@ -110,8 +146,8 @@ export default function MissionPanel({ selectedMap }) {
               Xem trước
             </Button>
             <Button data-testid="mission-submit" variant="contained"
-              disabled={busy || Boolean(submitReason) || Boolean(active)}
-              onClick={() => exclusive(() => sendMissionIntent(client, missionRequest()))}>
+              disabled={busy || Boolean(submitReason) || Boolean(active) || originalPosition === undefined}
+              onClick={startMission}>
               Bắt đầu
             </Button>
             {active && <Button data-testid="mission-cancel" color="error" variant="contained"
@@ -125,6 +161,12 @@ export default function MissionPanel({ selectedMap }) {
             </Button>}
           </Stack>
           {submitReason && <Typography data-testid="submit-block-reason" variant="caption">{submitReason}</Typography>}
+          <Typography variant="caption" data-testid="original-position">
+            {originalPosition
+              ? `Vị trí ban đầu: X = ${originalPosition.x.toFixed(2)} m, Y = ${originalPosition.y.toFixed(2)} m, góc = ${toDegrees(originalPosition.theta)}°.`
+              : originalPosition === null ? 'Chưa nhập vị trí ban đầu; sẽ được hỏi khi bấm Bắt đầu lần đầu.' : 'Đang tải vị trí ban đầu…'}
+          </Typography>
+          {originalPositionError && <Alert severity="error">{originalPositionError}</Alert>}
           {nav.preview && <Typography variant="caption">Preview: {nav.preview.status}</Typography>}
           {nav.preview?.status === 'uncertain' && <Button disabled={busy}
             onClick={() => exclusive(() => sendJobIntent(client, 'preview', nav.preview.request))}>
@@ -146,6 +188,8 @@ export default function MissionPanel({ selectedMap }) {
           </Button>
           {errors.map((error, index) => <Alert key={index} severity="error">{error.code}: {error.message}</Alert>)}
         </Stack>
+        <OriginalPositionDialog open={askOriginalPosition} map={selectedMap}
+          onCancel={() => setAskOriginalPosition(false)} onSubmit={submitOriginalPosition} />
       </CardContent>
     </Card>
   );

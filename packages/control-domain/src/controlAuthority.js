@@ -33,8 +33,10 @@ export function createControlAuthority({
     uuid = () => crypto.randomUUID(),
     policy = CONTROL_POLICY,
     requestLimit = 4096,
-    // Hook tùy chọn, gọi ở đầu mỗi lần dừng, trước khi thu hồi quyền lái.
+    // Hook tùy chọn, gọi ở đầu mỗi lần dừng (nhận request dừng), trước khi thu hồi quyền lái.
     onStopRequested = null,
+    // Hook tùy chọn, gọi khi một lease nhận quyền lái (nhận context: manual hoặc mapping).
+    onControlClaimed = null,
 }) {
     if (!motionGate || typeof motionGate.enter !== 'function' || typeof motionGate.assert !== 'function') {
         throw new TypeError('Shared motionGate is required in controlAuthority');
@@ -156,6 +158,7 @@ export function createControlAuthority({
             // Mode mapping thuộc vòng đời SLAM. Lease chỉ sở hữu motion.
             sharedRobotState.update(context.kind === 'mapping'
                 ? { velocity: ZERO } : { mode: 'teleop', velocity: ZERO });
+            try { onControlClaimed?.(context); } catch { /* cô lập lỗi hook */ }
         },
         releaseMode: (leaseId, context) => {
             if (claimedLeaseId !== leaseId) return;
@@ -299,7 +302,7 @@ export function createControlAuthority({
         stopping = true;
         // Báo trước khi thu hồi lease để lệnh 0 do revoke sinh ra đã mang ngữ cảnh dừng.
         // Lỗi của hook không được chặn đường dừng.
-        try { onStopRequested?.(); } catch { /* cô lập lỗi hook */ }
+        try { onStopRequested?.(req); } catch { /* cô lập lỗi hook */ }
 
         if (activeStopContext) {
             activeStopContext.active = false;

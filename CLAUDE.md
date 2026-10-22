@@ -25,12 +25,17 @@ Tên `/cmd_in` và `/cmd_out` đã được **đổi chéo** cho đúng góc nh�
 
 | Topic | Chiều | Kiểu | Nội dung | Code |
 |---|---|---|---|---|
-| `/cmd_in` | HMI → robot (backend publish) | `std_msgs/msg/String`, `data` là JSON | `{ target: null, mode: 'emergency'\|'auto'\|'manual', velocity: { linear, angular } }` | `packages/contracts/src/cmdIn.js`, `backend/src/services/cmdInService.js`, `backend/src/ros/rosbridgeCmdInPublisher.js` |
+| `/cmd_in` | HMI → robot (backend publish) | `robot_hmi_msgs/msg/CmdIn` (gói `ros2_ws/src/robot_hmi_msgs`) | `{ target: PoseStamped[]\|null, mode: 'slam'\|'manual'\|'auto'\|'stop', joystick: { linear, angular }, original_position: { x, y, theta }\|null }` | `packages/contracts/src/cmdIn.js`, `backend/src/services/cmdInService.js`, `backend/src/ros/rosbridgeCmdInPublisher.js` |
 | `/cmd_out` | robot → HMI (backend subscribe) | `geometry_msgs/msg/Twist` | `linear.x` (m/s), `angular.z` (rad/s); quá 1500 ms thì vận tốc về 0 | `backend/config/ros_status.yaml`, `backend/src/services/rosStatusService.js` |
 | `/odom` | robot → HMI | `nav_msgs/msg/Odometry` | x, y, yaw; quyết định `rosConnected` | như trên |
 
 - Identifier cũng đổi theo: `cmdOut*` → `cmdIn*` (`CMD_IN_TOPIC`, `buildCmdInMessage`, `createCmdInService`, `runtime.cmdInService`, script `backend/scripts/cmdin-demo.mjs`, test `backend/test/cmdIn.test.mjs`).
-- `/cmd_in` chỉ phát khi có lệnh được chấp nhận (chưa có lệnh thì im lặng); `mission` luôn gửi vận tốc 0; nối lại rosbridge thì phát lại gói cuối với vận tốc 0.
+- Từ 2026-10-22 `/cmd_in` là message riêng `robot_hmi_msgs/msg/CmdIn`; `target` là `geometry_msgs/PoseStamped[]` thật. ROS không có null nên `target` rỗng và `has_original_position=false` thay cho null; `toRosCmdIn()` đổi từ JSON nội bộ sang message. Build: `source /opt/ros/jazzy/setup.bash && cd ros2_ws && colcon build --packages-select robot_hmi_msgs`. rosbridge, `ros2 topic echo` và node robot đều phải `source ros2_ws/install/setup.bash`.
+- Cấu trúc gói đổi ngày 2026-10-22: `velocity` → `joystick`, `emergency` → `stop`, thêm `slam` và `original_position`, `target` là mảng PoseStamped (dựng bằng `poseToPoseStamped` trong `cmdIn.js`).
+- Mode chỉ đổi khi người dùng chọn mode khác: bắt đầu phiên tạo bản đồ hoặc nhận quyền lái ở trang Mapping → `slam`; bật manual/lái joystick ở trang Điều hướng → `manual`; "Bắt đầu" nhiệm vụ → `auto` (target = các waypoint, joystick 0); "Yêu cầu dừng"/Space/hủy nhiệm vụ → `stop` (target null, joystick 0). Chỉ `auto` có target.
+- Nhả joystick và dừng trước khi lưu bản đồ gửi `POST /api/control/stop` với `keepMode: true`: robot vẫn dừng nhưng mode giữ nguyên. Lệnh vận tốc 0 (trả/hết hạn quyền lái) không đổi mode.
+- `original_position` nhập một lần qua hộp thoại khi bấm "Bắt đầu" lần đầu (`GET`/`PUT /api/navigation/original-position`, theta rad); chỉ giữ trong bộ nhớ backend. Chưa nhập thì tạo nhiệm vụ trả `409 ORIGINAL_POSITION_REQUIRED`.
+- `/cmd_in` chỉ phát khi có lệnh được chấp nhận (chưa có lệnh thì im lặng); `auto` luôn gửi joystick 0; nối lại rosbridge thì phát lại gói cuối với joystick 0.
 - Phía robot phải đổi theo (publish vận tốc lên `/cmd_out`, subscribe lệnh `/cmd_in`). Chưa xác nhận với nhóm robot.
 - Ý tưởng chưa làm: gộp x, y, yaw và vận tốc vào một message `/cmd_out` thay cho `/odom`.
 
@@ -56,8 +61,8 @@ npm run dev            # frontend/.env.local đặt VITE_ROBOT_CLIENT=mock
 ## Luồng 2: Frontend + backend + ROS (mỗi lệnh một terminal)
 
 ```bash
-# T1: rosbridge (bỏ qua nếu ROSBRIDGE_URL để trống)
-source /opt/ros/jazzy/setup.bash
+# T1: rosbridge (bỏ qua nếu ROSBRIDGE_URL để trống); phải source ros2_ws để biết kiểu CmdIn
+cd /home/it/Documents/ROBOT_HMI && source /opt/ros/jazzy/setup.bash && source ros2_ws/install/setup.bash
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml      # :9090
 
 # T2: backend
@@ -109,7 +114,7 @@ npm ci --prefix packages/contracts && npm ci --prefix packages/control-domain \
 ## Test và lint
 
 ```bash
-cd backend && npm run test:unit                                          # 23 test, không cần ROS
+cd backend && npm run test:unit                                          # không cần ROS
 cd backend && ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live    # cần ROS publish /odom, /cmd_out
 cd frontend && npm run lint && npm run build
 ```

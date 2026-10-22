@@ -96,6 +96,8 @@ export function createRobotRuntime({
     }) : null;
     const cmdInPublishers = rosbridge ? [createRosbridgeCmdInPublisher({ client: rosbridge })] : [];
     const cmdInService = createCmdInService({ publishers: cmdInPublishers, logger });
+    // Vào phiên tạo bản đồ thì /cmd_in chuyển sang mode slam.
+    const unsubscribeCmdInRobotState = sharedRobotState.subscribe(state => cmdInService.onRobotState(state));
 
     const adapter = createMockRosAdapter({
         sourceHealthy: () => {
@@ -127,7 +129,10 @@ export function createRobotRuntime({
         motionGate,
         motionSource: adapter,
         mappingDriveGate,
-        onStopRequested: () => cmdInService.emergencyStop(),
+        // Chỉ dừng do người dùng chọn mới đổi /cmd_in sang stop; nhả joystick giữ nguyên mode.
+        onStopRequested: request => { if (!request?.keepMode) cmdInService.emergencyStop(); },
+        // Bật quyền lái là người dùng chọn mode: trang tạo bản đồ là slam, trang điều hướng là manual.
+        onControlClaimed: context => cmdInService.selectMode(context.kind === 'mapping' ? 'slam' : 'manual'),
     });
 
     const controlSubjectRegistry = createControlSubjectRegistry(controlAuthority);
@@ -198,6 +203,7 @@ export function createRobotRuntime({
         sharedRobotState,
         registry: connectionRegistry,
         lifecycle,
+        getOriginalPosition: () => cmdInService.getOriginalPosition(),
     });
 
     const cameraService = createCameraService({
@@ -276,6 +282,7 @@ export function createRobotRuntime({
             controlSubjectRegistry.dispose();
             controlAuthority.dispose();
             adapter.dispose();
+            unsubscribeCmdInRobotState();
             cmdInService.dispose();
             rosbridge?.dispose();
         },

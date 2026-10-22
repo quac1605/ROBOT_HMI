@@ -34,6 +34,9 @@ import {
   NavigationPathEnvelopeSchema, NavigationPathQuerySchema, preflightNavigationPath
 } from '../schemas/mission.js';
 import { ConnectionStatusSchema } from '@robot-hmi/contracts/transport';
+import {
+  OriginalPositionResponseSchema, SetOriginalPositionRequestSchema,
+} from '@robot-hmi/contracts/cmdIn';
 import { navigationError } from '../utils/navigationPolicy.js';
 import { createMotionAdmissionGate } from '../utils/motionAdmissionGate.js';
 import { createMappingDriveGate } from '@robot-hmi/control-domain/mappingDriveGate';
@@ -75,6 +78,7 @@ export function createMockRobotClient() {
   let lifecycleEpoch = 0;
   let loginSequence = 0;
   let controlSessionId = null; // Session nội bộ của client hiện tại
+  let originalPosition = null; // Vị trí ban đầu cho mode auto, chỉ nhập một lần
   const subscriptions = new Set();
   const connectionListeners = new Set();
   const sharedRobotState = createSharedRobotState(initialState());
@@ -293,6 +297,16 @@ export function createMockRobotClient() {
     getMission(id) { return validatedCall(GetMissionResponseSchema, () => missionService.getMission(id)); },
     getActiveMission() { return validatedCall(GetActiveMissionResponseSchema, () => missionService.getActiveMission()); },
     cancelMission(args) { return validatedCall(CancelMissionResponseSchema, principal => missionService.cancelMission(args, principal)); },
+    // Mock không phát /cmd_in; chỉ giữ vị trí ban đầu để luồng nhập một lần giống backend.
+    getOriginalPosition() { return validatedCall(OriginalPositionResponseSchema, () => ({ originalPosition })); },
+    setOriginalPosition(args) {
+      return validatedCall(OriginalPositionResponseSchema, () => {
+        const parsed = SetOriginalPositionRequestSchema.parse(args);
+        if (originalPosition) throw navigationError('ORIGINAL_POSITION_ALREADY_SET', 'Vị trí ban đầu đã được nhập.');
+        originalPosition = { ...parsed };
+        return { originalPosition };
+      });
+    },
     subscribeMissions(listener) {
       return register(active => missionService.subscribeMissions(raw => {
         if (active()) listener(MissionEventEnvelopeSchema.parse(raw));

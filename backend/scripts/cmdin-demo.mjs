@@ -23,16 +23,26 @@ const publisher = createRosbridgeCmdInPublisher({ client });
 const service = createCmdInService({ publishers: [publisher], logger: console });
 client.start();
 
+const ZERO = { linearX: 0, angularZ: 0 };
+const GOALS = [
+    { frameId: 'map', x: 2, y: 1, yaw: Math.PI / 2 },
+    { frameId: 'map', x: 3.5, y: -0.5, yaw: 0 },
+];
+
 const steps = [
+    ['vào trang tạo bản đồ', () => service.onRobotState({ mode: 'mapping' })],
+    ['joystick tiến khi tạo bản đồ', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: v, angularZ: 0 } })],
+    ['kết thúc tạo bản đồ', () => service.onRobotState({ mode: 'idle' })],
     ['joystick trái', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: w } })],
     ['joystick phải', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: -w } })],
-    ['joystick tiến', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: v, angularZ: 0 } })],
     ['joystick lùi', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: -v, angularZ: 0 } })],
-    ['trả quyền lái', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: 0 } })],
+    ['trả quyền lái', () => service.onMotionCommand({ origin: 'teleop', velocity: ZERO })],
     ['yêu cầu dừng', () => service.emergencyStop()],
-    ['lệnh 0 sau dừng', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: 0 } })],
-    ['bắt đầu đi đến đích', () => service.onMotionCommand({ origin: 'mission', velocity: { linearX: 0, angularZ: 0 } })],
-    ['kết thúc đi đến đích', () => service.onMotionCommand({ origin: 'stop', velocity: { linearX: 0, angularZ: 0 } })],
+    ['nhập vị trí ban đầu, bắt đầu đi đến 2 đích', () => {
+        service.setOriginalPosition({ x: 0, y: 0, theta: 0 });
+        service.onMotionCommand({ origin: 'mission', velocity: ZERO, poses: GOALS });
+    }],
+    ['hủy nhiệm vụ', () => service.onMotionCommand({ origin: 'cancel', velocity: ZERO })],
 ];
 
 // Chờ kết nối tối đa 5 giây trước khi phát.

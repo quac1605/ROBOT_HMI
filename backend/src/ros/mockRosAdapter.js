@@ -15,8 +15,9 @@ export function createMockRosAdapter({
     clearEvery = handle => clearInterval(handle),
     sourceHealthy = () => true,
     periodMs = 50,
-    // Hook tùy chọn ({ origin, velocity }), gọi sau mỗi lệnh đã ghi.
-    // origin: 'teleop' (đường quyền lái), 'mission' (đi đến đích), 'stop' (dừng nội bộ).
+    // Hook tùy chọn ({ origin, velocity, poses? }), gọi sau mỗi lệnh đã ghi.
+    // origin: 'teleop' (đường quyền lái), 'mission' (đi đến đích, lúc bắt đầu kèm poses),
+    // 'cancel' (hủy nhiệm vụ), 'stop' (dừng nội bộ).
     onMotionCommand = null,
 } = {}) {
     const source = createMockMotionSource({
@@ -37,10 +38,10 @@ export function createMockRosAdapter({
     const rawWriteCommand = source.writeCommand.bind(source);
     const rawEnsureStopped = source.ensureStopped.bind(source);
 
-    function notifyMotionCommand(origin) {
+    function notifyMotionCommand(origin, extra = {}) {
         if (!onMotionCommand) return;
         // Lỗi của listener không được làm hỏng đường ghi lệnh.
-        try { onMotionCommand({ origin, velocity: source.getCommand().velocity }); }
+        try { onMotionCommand({ ...extra, origin, velocity: source.getCommand().velocity }); }
         catch { /* cô lập lỗi listener */ }
     }
 
@@ -113,7 +114,7 @@ export function createMockRosAdapter({
             }
             return path;
         },
-        beginMission(missionId) {
+        beginMission(missionId, poses = []) {
             if (activeMission || typeof missionId !== 'string' || !missionId) {
                 throw Object.assign(new Error('MISSION_ACTIVE_OR_UNKNOWN'), {
                     code: 'MISSION_ACTIVE_OR_UNKNOWN', status: 409,
@@ -121,7 +122,7 @@ export function createMockRosAdapter({
             }
             rawEnsureStopped();
             activeMission = Object.freeze({ missionId, runId: uuid() });
-            notifyMotionCommand('mission');
+            notifyMotionCommand('mission', { poses: structuredClone(poses) });
             return activeMission;
         },
         writeMissionVelocity(handle, velocity) {
@@ -136,7 +137,8 @@ export function createMockRosAdapter({
         cancelMission(handle) {
             if (handle !== activeMission) return false;
             activeMission = null; // Late progress cannot write after stop.
-            ensureStopped();
+            rawEnsureStopped();
+            notifyMotionCommand('cancel');
             return true;
         },
         dispose() {

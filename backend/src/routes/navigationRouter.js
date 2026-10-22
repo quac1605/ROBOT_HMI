@@ -13,11 +13,13 @@ import {
     GetMissionResponseSchema,
     CancelMissionResponseSchema,
 } from '@robot-hmi/contracts/mission';
+import { OriginalPositionResponseSchema } from '@robot-hmi/contracts/cmdIn';
 
 export function createNavigationRouter({
     lifecycle,
     routeService,
     missionService,
+    cmdInService = null,
 }) {
     const router = express.Router();
 
@@ -100,6 +102,31 @@ export function createNavigationRouter({
             next(err);
         }
     });
+
+    // 8. Vị trí ban đầu của robot cho mode auto (/cmd_in original_position); chỉ đặt được một lần.
+    if (cmdInService) {
+        router.get('/navigation/original-position', lifecycle.requireAuth, (req, res, next) => {
+            try {
+                lifecycle.assertRequestSessionCurrent(req);
+                res.status(200).json(OriginalPositionResponseSchema.parse({
+                    originalPosition: cmdInService.getOriginalPosition(),
+                }));
+            } catch (err) {
+                next(err);
+            }
+        });
+
+        router.put('/navigation/original-position', lifecycle.requireAuth, lifecycle.requireCsrf, (req, res, next) => {
+            try {
+                lifecycle.assertRequestSessionCurrent(req);
+                const originalPosition = cmdInService.setOriginalPosition(req.body);
+                res.status(200).json(OriginalPositionResponseSchema.parse({ originalPosition }));
+            } catch (err) {
+                if (err.name === 'ZodError') Object.assign(err, { status: 400, code: 'VALIDATION_ERROR' });
+                next(err);
+            }
+        });
+    }
 
     return router;
 }
