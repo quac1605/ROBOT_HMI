@@ -4,16 +4,18 @@ Tài liệu này dành cho người mới tiếp quản repository tại
 `/home/vistar/projects/ROBOT_HMI`. Mục tiêu của lần chạy là: mở trang HMI từ
 một máy khác trong LAN, đăng nhập bằng tài khoản đã có, xem camera trước/sau
 và bản đồ ROS `/map` trên Navigation hoặc Mapping. Trang Navigation còn hiển thị
-tọa độ và hướng robot từ `/odom`. Các lệnh đã được đối chiếu với code ngày
-22/10/2026. Nếu mạng thay đổi, kiểm lại IP trước khi chạy.
+tọa độ và hướng robot từ `/odom`. Các lệnh dưới đây đã được đối chiếu với
+codebase sau merge commit `b816104` ngày 23/10/2026. Nếu mạng thay đổi, kiểm
+lại IP trước khi chạy.
 
 > **Phạm vi an toàn:** Camera `/image_front`, `/image_rear`, bản đồ `/map` và
 > vị trí `/odom` là dữ liệu ROS 2 thật khi các nguồn tương ứng hoạt động.
-> Backend điều khiển vẫn dùng `ROBOT_ADAPTER=mock`. Thấy video, bản đồ hoặc
-> vị trí **không** chứng minh motor hay teleop phần cứng đã sẵn sàng. Bản đồ
-> ROS trên Navigation chỉ để xem; muốn đặt đích/waypoint phải chọn bản đồ đã
-> lưu. Không dùng trang này để thử lái robot thật; `hardwareReady` vẫn là
-> `false`.
+> Backend điều khiển vẫn dùng `ROBOT_ADAPTER=mock`, nhưng khi có
+> `ROSBRIDGE_URL`, lệnh điều khiển được chấp nhận trên UI vẫn có thể được
+> publish lên `/cmd_in` thật. Thấy video, bản đồ hoặc vị trí **không** chứng
+> minh motor hay teleop phần cứng đã sẵn sàng. Bản đồ ROS trên Navigation chỉ
+> để xem; muốn đặt đích/waypoint phải chọn bản đồ đã lưu. Không dùng trang
+> này để thử lái robot thật; `hardwareReady` vẫn là `false`.
 
 ## 1. Hiểu các thành phần trước khi mở terminal
 
@@ -27,8 +29,9 @@ Máy xem web ── WebRTC UDP :8189 ──────────────�
                               └── API/WS loopback ──> Backend :3001 ── PostgreSQL dev
                                                         ▲
 Node ROS phát /map ── nav_msgs/msg/OccupancyGrid ──> worker rclpy ──> API bản đồ
-Node ROS phát /odom, /tf, /tf_static ──> rosbridge_server :9090
-                                             └── WebSocket loopback ──> Backend :3001
+Node ROS phát /odom, /cmd_out, /tf, /tf_static ──> rosbridge_server :9090
+                                                       ⇅ WebSocket loopback
+                                            Backend :3001 ── /cmd_in ──> robot
 ```
 
 | Thành phần | Chạy ở đâu | Vai trò |
@@ -36,7 +39,7 @@ Node ROS phát /odom, /tf, /tf_static ──> rosbridge_server :9090
 | Camera ROS node | Máy Ubuntu gắn camera | Publish hai topic ảnh. Chỉ chạy **một** node. |
 | ROS camera gateway | Cùng máy Ubuntu | Subscribe hai topic, kiểm metadata, mã hóa video. |
 | MediaMTX | Cùng máy Ubuntu | Nhận RTP trên loopback; cấp WebRTC video cho browser. |
-| Backend + worker `/map` | Cùng máy Ubuntu | Đăng nhập, API/WS, camera grant; subscribe `/map` liên tục khi backend chạy; lấy `/odom` và TF qua rosbridge khi `ROSBRIDGE_URL` được đặt; vẫn dùng mock robot. |
+| Backend + worker `/map` | Cùng máy Ubuntu | Đăng nhập, API/WS, camera grant; subscribe `/map` liên tục khi backend chạy; lấy `/odom`, `/cmd_out` và TF qua rosbridge khi `ROSBRIDGE_URL` được đặt. |
 | rosbridge_server | Cùng máy Ubuntu | Cầu WebSocket cục bộ cho backend đọc `/odom`, `/cmd_out`, `/tf`, `/tf_static` và phát lệnh `/cmd_in`. |
 | Vite | Cùng máy Ubuntu | Phục vụ frontend qua HTTPS; proxy API/WS vào backend và WHEP vào MediaMTX. |
 | Browser | Máy Ubuntu hoặc máy khác trong LAN | Mở HMI, nhận WebRTC và xem ảnh bản đồ qua cùng Origin `5173`. |
@@ -73,6 +76,10 @@ pg_isready -h 127.0.0.1 -p 5432
   browser không gọi trực tiếp cổng này. Backend `3001/tcp` và RTP
   `5004/5006/udp` chỉ cần loopback; không mở chúng ra LAN. Rosbridge `9090/tcp`
   cũng chỉ dành cho backend trên Ubuntu.
+- `ROS_DOMAIN_ID` (và cấu hình DDS nếu có) phải giống robot trong terminal
+  kiểm ROS, Terminal R, A và C. Worker `/map` thừa hưởng môi trường của Terminal
+  A; rosbridge thừa hưởng môi trường của Terminal R. Nếu robot dùng domain
+  khác mặc định, đặt biến này trong **từng terminal** trước các lệnh mục 4–5.
 
 Kiểm tra nhanh các thành phần đã cài, **không cài lại nếu chúng đang có**:
 
@@ -82,6 +89,10 @@ test -d backend/node_modules && echo 'Backend dependencies: có'
 test -x tools/ros-camera/.bin/mediamtx && echo 'MediaMTX: có'
 source /opt/ros/jazzy/setup.bash
 ros2 pkg prefix rosbridge_server >/dev/null 2>&1 && echo 'rosbridge_server: có'
+test -x tools/rosbridge/.local/opt/ros/jazzy/lib/rosbridge_server/rosbridge_websocket && \
+  echo 'rosbridge cục bộ: có (dùng khi chưa cài gói hệ thống)'
+python3 -c 'import rclpy, nav_msgs.msg' && echo 'ROS Python cho /map: có'
+test -f ros2_ws/install/setup.bash && echo 'Workspace robot_hmi_msgs đã build'
 for plugin in rawvideoparse videoconvert vp8enc rtpvp8pay; do
   if gst-inspect-1.0 "$plugin" >/dev/null 2>&1; then
     echo "$plugin: có"
@@ -92,9 +103,21 @@ done
 test -f backend/.env && echo 'Backend dev env: có'
 ```
 
-Thiếu một mục thì xử lý theo **mục 3**, rồi quay lại đây. Nếu mọi mục đã có,
-đi thẳng **mục 4**. Đừng gửi nội dung `backend/.env`, mật khẩu, cookie, CSRF,
-camera grant hoặc SDP vào chat/ticket.
+Chỉ cần **một** trong hai lựa chọn rosbridge (package hệ thống hoặc bản cục bộ)
+để chạy HMI. Có thể cài cả hai trên đĩa trong lúc chuyển đổi, nhưng chỉ chạy
+**một** tiến trình lắng nghe `127.0.0.1:9090`. Cách cài/chuyển đổi ở mục 3.2.
+Thiếu mục khác thì xử lý theo **mục 3**, rồi quay lại đây. Nếu mọi mục
+đã có,
+kiểm thêm interface ROS bằng
+`source ros2_ws/install/setup.bash && ros2 interface show robot_hmi_msgs/msg/CmdIn`;
+nếu lệnh này lỗi thì build lại như mục 3.1. Sau đó đi thẳng **mục 4**. Đừng
+gửi nội dung `backend/.env`, mật khẩu, cookie, CSRF, camera grant hoặc SDP vào
+chat/ticket.
+
+Khi kiểm ngày 23/10/2026, máy này chưa cài package `rosbridge_server` vào
+`/opt/ros/jazzy`; bản cục bộ trong `tools/rosbridge/.local/` đang giữ
+`127.0.0.1:9090`. Interface `robot_hmi_msgs` đã được build. Sau khi cài APT,
+kiểm lại trạng thái thực tế thay vì khởi động thêm rosbridge ngay; xem mục 3.2.
 
 ## 3. Chuẩn bị một lần, chỉ cho phần còn thiếu
 
@@ -126,16 +149,12 @@ GStreamer hoặc package ROS, dừng ở đây và đối chiếu với
 [`ros2_ws/src/camera/README.md`](/home/vistar/projects/ros2_ws/src/camera/README.md);
 không sửa gateway để nhận một định dạng ảnh khác mà chưa kiểm camera node.
 
-Nếu thiếu `rosbridge_server`, cài package ROS 2 Jazzy một lần trên máy Ubuntu:
-
-```bash
-sudo apt update
-sudo apt install ros-jazzy-rosbridge-suite
-```
-
-Backend dùng rosbridge để đọc `/odom` và các transform TF; worker `/map` dùng
-`rclpy` riêng. Chỉ cần rosbridge trên máy Ubuntu chạy backend; browser không
-kết nối trực tiếp tới cổng `9090`.
+Nếu lệnh kiểm Python ROS ở mục 2 thất bại, cài bằng
+`sudo apt install ros-jazzy-rclpy ros-jazzy-nav-msgs` rồi kiểm lại sau khi
+source Jazzy. Backend dùng
+rosbridge để đọc `/odom`, `/cmd_out` và TF, đồng thời phát `/cmd_in`; worker
+`/map` dùng `rclpy` riêng. Chỉ cần rosbridge trên máy Ubuntu chạy backend;
+browser không kết nối trực tiếp tới cổng `9090`.
 
 Lệnh `/cmd_in` dùng interface ROS riêng của repository. Build một lần (và sau
 mỗi lần đổi các file `.msg`) trước khi mở rosbridge:
@@ -144,12 +163,118 @@ mỗi lần đổi các file `.msg`) trước khi mở rosbridge:
 source /opt/ros/jazzy/setup.bash
 cd /home/vistar/projects/ROBOT_HMI/ros2_ws
 colcon build --packages-select robot_hmi_msgs
+source install/setup.bash
+ros2 interface show robot_hmi_msgs/msg/CmdIn
 ```
 
 Workspace này chứa `robot_hmi_msgs`; package camera nằm ở workspace khác là
-`/home/vistar/projects/ros2_ws`.
+`/home/vistar/projects/ros2_ws`. Nếu thiếu `colcon`, cài
+`python3-colcon-common-extensions` trong môi trường ROS Jazzy.
 
-### 3.2. Backend development và tài khoản
+### 3.2. Cài rosbridge từ đầu và chuyển từ bản cục bộ sang APT
+
+`rosbridge_server` là package ROS; `9090` chỉ là cổng WebSocket lúc **chạy**.
+Cài package APT không tự thay tiến trình đang chạy và không đổi
+`ROSBRIDGE_URL=ws://127.0.0.1:9090` của backend. Trên máy này, bản cục bộ
+`tools/rosbridge/.local/` đang phục vụ HMI; giữ nó chạy trong lúc cài và kiểm
+package mới. Không dừng backend, camera node, gateway hoặc MediaMTX để cài
+rosbridge.
+
+**Bước 1 — kiểm ROS Jazzy, interface HMI và tiến trình hiện tại:**
+
+```bash
+cd /home/vistar/projects/ROBOT_HMI
+source /opt/ros/jazzy/setup.bash
+source ros2_ws/install/setup.bash
+echo "ROS_DISTRO=${ROS_DISTRO} ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}"
+ros2 interface show robot_hmi_msgs/msg/CmdIn
+ss -ltnp 'sport = :9090'
+apt-cache policy ros-jazzy-rosbridge-suite
+```
+
+Nếu interface chưa có, build theo mục 3.1 trước. `ROS_DOMAIN_ID` hiển thị phải
+trùng với robot; nếu có `RMW_IMPLEMENTATION` hoặc cấu hình DDS riêng, giữ cùng
+giá trị ở Terminal R. Ghi lại PID và đường dẫn executable do `ss` hiển thị.
+Nếu là `tools/rosbridge/.local/.../rosbridge_websocket`, đó là bản cục bộ;
+nếu là tiến trình khác, xác minh chủ sở hữu trước khi chuyển đổi. Không dùng
+`fuser -k`, `pkill` hoặc xóa `.local/` để giải phóng cổng.
+
+**Bước 2 — cài gói hệ thống trong khi bản cục bộ vẫn hoạt động:**
+
+```bash
+sudo apt update
+apt-get -s install ros-jazzy-rosbridge-suite
+sudo apt install ros-jazzy-rosbridge-suite
+source /opt/ros/jazzy/setup.bash
+ros2 pkg prefix rosbridge_server
+```
+
+Lệnh `apt-get -s` chỉ mô phỏng để xem các package sẽ thay đổi; đọc danh sách
+trước khi cài. Kỳ vọng `ros2 pkg prefix` in `/opt/ros/jazzy`. Nếu không có
+package candidate, kiểm ROS 2 Jazzy APT repository và phiên bản Ubuntu trước;
+không tải `.deb` tùy ý từ trang khác. Lúc này `9090` **vẫn do bản cũ giữ**;
+chưa chạy lệnh Terminal R lần hai. Package chính thức gồm server WebSocket và
+`rosapi`; HMI hiện chỉ cần WebSocket.
+
+**Bước 3 — thử bản hệ thống trên cổng tạm `9091`, không đụng `9090`:**
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml \
+  address:=127.0.0.1 port:=9091 namespace:=rosbridge_check
+```
+
+Giữ terminal thử này mở; ở terminal khác chạy
+`ss -ltnp 'sport = :9091'` và kiểm log không có lỗi khởi động. Interface HMI
+đã được kiểm ở bước 1; khả năng backend dùng nó được xác nhận ở bước 4.
+`namespace:=rosbridge_check` tránh trùng tên node ROS với bản đang chạy ở
+`9090`. Xong thì `Ctrl+C` terminal thử và xác nhận `9091` đã đóng. Backend
+vẫn dùng `9090`, vì vậy giao diện đang chạy không đổi trong bước này.
+
+**Bước 4 — chuyển cổng `9090` có khả năng quay lại ngay:** Nếu bản cũ do bạn
+chạy ở Terminal R, nhấn `Ctrl+C` **chỉ tại terminal đó**. Nếu bản cũ chạy nền,
+đọc PID bằng `ss -ltnp 'sport = :9090'`, đối chiếu bằng
+`ps -p PID_THUC_TE -o pid=,args=`, rồi chỉ gửi `kill -INT PID_THUC_TE` khi
+đường dẫn đúng là `tools/rosbridge/.local/.../rosbridge_websocket`. Thay
+`PID_THUC_TE` bằng số PID vừa kiểm; không dùng PID ghi trong tài liệu cũ.
+Đợi `ss -ltnp 'sport = :9090'` không còn listener rồi ở Terminal R chạy:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml \
+  address:=127.0.0.1 port:=9090
+```
+
+Kiểm `ss -ltnp 'sport = :9090'` chỉ còn **một** listener ở `127.0.0.1`.
+Backend tự kết nối lại WebSocket; xác nhận `ros2 topic info /odom -v` có
+subscriber `rosbridge_websocket` và X/Y/góc trên Navigation cập nhật trở lại.
+Đồng thời xem `ros2 topic info /cmd_in -v`: khi backend kết nối, rosbridge
+advertise kiểu `robot_hmi_msgs/msg/CmdIn`. Nếu launch mới lỗi, dừng nó, kiểm
+cổng đã trống rồi chạy lại
+`bash /home/vistar/projects/ROBOT_HMI/tools/rosbridge/run_local.sh`; không đổi
+`backend/.env` hoặc xóa bản cục bộ khi chưa xác nhận bản mới hoạt động. Chỉ
+sau khi chuyển đổi thành công mới dùng block **package hệ thống** ở Terminal R
+cho các lần khởi động sau. Cài bằng APT không tự tạo dịch vụ khởi động cùng
+máy; Terminal R vẫn cần chạy, trừ khi sau này cấu hình riêng một dịch vụ quản
+lý tiến trình và bỏ cách chạy tay để tránh hai instance cùng chiếm `9090`.
+
+**Máy chưa có quyền sudo:** có thể dùng bản cục bộ hiện tại. Nếu clone sang
+máy mới hoặc thiếu `.local/`, cài một lần bằng:
+
+```bash
+cd /home/vistar/projects/ROBOT_HMI
+bash tools/rosbridge/install_local.sh
+```
+
+Script tải payload `.deb` từ APT repository ROS vào thư mục Git bỏ qua, không
+ghi `/opt/ros`. Sau đó dùng `bash tools/rosbridge/run_local.sh` ở Terminal R
+**chỉ khi cổng `9090` còn trống**. Bản cục bộ
+không nhận cập nhật tự động từ APT và chỉ khởi chạy WebSocket, không khởi chạy
+`rosapi` vì HMI hiện không gọi dịch vụ này.
+
+### 3.3. Backend development và tài khoản
 
 Chỉ nếu `backend/.env` chưa tồn tại:
 
@@ -212,7 +337,7 @@ user cũ. Username phải có 3–64 ký tự chữ/số/`_`/`-`; mật khẩu d
 byte UTF-8. Nhập mật khẩu trong terminal riêng, không đưa lên command line,
 log chia sẻ hay tài liệu.
 
-### 3.3. Chứng chỉ HTTPS theo IP hiện tại
+### 3.4. Chứng chỉ HTTPS theo IP hiện tại
 
 Trên máy Ubuntu, từ repository root:
 
@@ -291,6 +416,19 @@ mở thiết bị camera; chỉ chạy một instance. Gateway HMI hiện yêu c
 `camera_rear_link`, với QoS `BEST_EFFORT`. Nếu node đã đổi dữ liệu, gateway sẽ
 từ chối ảnh thay vì hiển thị nhầm camera.
 
+Publisher hiện trên ROS graph **không** chứng minh có frame mới. Khi camera bị
+đứng, thử từng topic với QoS của cảm biến:
+
+```bash
+ros2 topic echo /image_front --once --timeout 5 --field header --qos-profile sensor_data
+ros2 topic echo /image_rear --once --timeout 5 --field header --qos-profile sensor_data
+```
+
+Node camera trong workspace `/home/vistar/projects/ros2_ws` hiện phát hiện
+pipeline không có frame quá 3 giây và thử khởi tạo lại từng camera. Nếu log
+liên tục báo `No color frames for 3 seconds`, kiểm USB/cáp/nguồn và log node;
+gateway và MediaMTX không thể tạo ảnh khi hai topic không phát frame.
+
 ### 4.2. Bản đồ `/map`
 
 Trong Terminal ROS đã source Jazzy ở trên, chạy:
@@ -340,7 +478,28 @@ vào lưới `/map` bằng tọa độ odom**. Khi frame giống nhau, HMI dùng
 tiếp. Pose cũ hoặc nằm ngoài vùng lưới cũng không được vẽ. Lần kiểm trên máy
 ngày 22/10/2026 thấy `/odom` ở frame `odom`, `/map` ở frame `map` và node SLAM
 có transform động `map ← odom`; `/tf_static` không có publisher vẫn hợp lệ nếu
-transform cần thiết đã đến từ `/tf`.
+transform cần thiết đã đến từ `/tf`. Backend subscribe `/tf_static` với QoS
+`RELIABLE`/`TRANSIENT_LOCAL` để nhận transform tĩnh đã phát trước lúc nối;
+transform động từ `/tf` phải còn mới trong 1500 ms.
+
+### 4.4. Vận tốc thực tế `/cmd_out` và chiều điều khiển `/cmd_in`
+
+Phiên bản code hiện tại subscribe `/cmd_out` với kiểu
+`geometry_msgs/msg/Twist`. Giá trị `linear.x` (m/s) và `angular.z` (rad/s)
+được đưa vào `robot.state.velocity`; sau 1500 ms không có message mới, backend
+đưa vận tốc hiển thị về 0. Trong terminal ROS có cùng domain với robot:
+
+```bash
+ros2 topic info /cmd_out -v
+ros2 topic echo /cmd_out --once  # chỉ chạy khi có publisher; lệnh đợi message
+```
+
+`/cmd_out` cần publisher từ robot để ô vận tốc trên Navigation phản ánh dữ
+liệu thật. Sau khi Terminal R và A đã chạy, kiểm thêm
+`ros2 topic info /cmd_in -v`: rosbridge sẽ advertise topic kiểu
+`robot_hmi_msgs/msg/CmdIn`. Backend chỉ publish message `/cmd_in` khi có lệnh
+được chấp nhận; việc chưa thấy message trên topic lúc chỉ xem bản đồ/camera là
+bình thường. Không gửi lệnh thử tới robot chỉ để kiểm việc khởi động web.
 
 ## 5. Khởi động Web Application: bốn terminal
 
@@ -358,20 +517,32 @@ khi chạy lại. **Terminal A sẽ tự mở cả cổng 3001 và 5173**; khôn
 backend hay Vite trong terminal khác. `curl` lỗi kết nối hoặc `HTTP 000` chỉ
 cho biết backend chưa trả lời, không phải lý do để dừng một tiến trình khác.
 
-### Terminal R — rosbridge cho `/odom` (mở trước Terminal A)
+### Terminal R — rosbridge cho trạng thái ROS và `/cmd_in` (mở trước Terminal A)
+
+Trước tiên chạy `ss -ltnp 'sport = :9090'`. Nếu `127.0.0.1:9090` đã có
+listener, kiểm PID và executable theo mục 3.2 rồi **dùng tiến trình đó**; đừng
+mở bản thứ hai. Nếu cổng trống và đã cài package hệ thống:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml address:=127.0.0.1
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml \
+  address:=127.0.0.1 port:=9090
+```
+
+Nếu cổng trống và đang dùng bản cục bộ, chạy **thay cho** block trên:
+
+```bash
+cd /home/vistar/projects/ROBOT_HMI
+bash tools/rosbridge/run_local.sh
 ```
 
 Kỳ vọng log báo WebSocket server chạy ở cổng `9090`; `ss -lnt | grep :9090`
 phải cho thấy địa chỉ `127.0.0.1:9090`. Dùng cùng `ROS_DOMAIN_ID` và môi
 trường DDS với node phát `/odom`, `/map`, `/tf` và `/cmd_out`. Workspace interface
 phải được source để rosbridge nhận kiểu `robot_hmi_msgs/msg/CmdIn` của `/cmd_in`.
-Nếu cổng đã được rosbridge
-chiếm, dùng instance đó sau khi kiểm đúng môi trường ROS thay vì chạy thêm.
+Nếu `source .../ros2_ws/install/setup.bash` báo thiếu file, quay lại build ở
+mục 3.1. Cách chuyển bản cục bộ đang chạy sang package hệ thống nằm ở mục 3.2.
 Giữ terminal này mở trong suốt thời gian xem vị trí robot.
 
 ### Terminal A — Backend và frontend HTTPS
@@ -392,7 +563,7 @@ gán, chứng chỉ còn hạn/có SAN đúng IP và `backend/.env` tồn tại.
 Vite dev server. Vite proxy API/WS vào backend loopback và WHEP
 `/front/whep`, `/rear/whep` vào MediaMTX `https://<IP>:8889` bằng chứng chỉ
 đã kiểm. Với `ROSBRIDGE_URL` trong `backend/.env`, backend duy trì kết nối tới
-Terminal R, subscribe `/odom`, `/tf`, `/tf_static` và gửi trạng thái mới nhất
+Terminal R, subscribe `/odom`, `/cmd_out`, `/tf`, `/tf_static` và gửi trạng thái mới nhất
 qua WebSocket `/ws`. Một lần `Ctrl+C` dừng cả backend lẫn Vite.
 
 Vite dev server phục vụ code hiện tại và hot reload; **không cần build trước
@@ -464,19 +635,37 @@ Kiểm tra ROS sau khi backend đã chạy:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
+source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash
 ros2 topic info /map -v
 ros2 topic info /odom -v
+ros2 topic info /cmd_out -v
+ros2 topic info /cmd_in -v
 ros2 topic info /tf -v
+ros2 topic info /tf_static -v
 ```
 
-Kỳ vọng ít nhất hai subscription, trong đó có hai dòng của
-`robot_hmi_map_raster`. Để có ảnh bản đồ
+Kỳ vọng `/map` có hai subscription của `robot_hmi_map_raster`. Để có ảnh bản đồ
 thật, còn cần `Publisher count: 1` trở lên. Nếu publisher bằng `0`, HMI sẽ báo
 đang chờ dữ liệu `/map`; đừng thử khởi động worker thứ hai.
-`/odom` phải có publisher và subscription từ `rosbridge_websocket`. Khi map
-và odom khác frame, `/tf` hoặc `/tf_static` phải cung cấp transform `map ←
-odom` như mục 4.3. Nếu rosbridge chưa hiện trong ROS graph, kiểm Terminal R và
-`ROS_DOMAIN_ID`/DDS trước khi xem Navigation.
+`/odom` và `/cmd_out` phải có publisher từ robot và subscription từ
+`rosbridge_websocket`. `/cmd_in` có publisher từ rosbridge; không cần message
+điều khiển khi chỉ xem. Khi map và odom khác frame, `/tf` hoặc `/tf_static`
+phải cung cấp transform `map ← odom` như mục 4.3. Nếu rosbridge chưa hiện
+trong ROS graph, kiểm Terminal R và `ROS_DOMAIN_ID`/DDS trước khi xem Navigation.
+
+Nếu vừa pull code mới và muốn kiểm phần ROS HMI trước khi mở browser, từ repo
+root với Node theo `.nvmrc` có thể chạy bộ test hiện tại:
+
+```bash
+cd /home/vistar/projects/ROBOT_HMI
+source /home/vistar/.nvm/nvm.sh
+nvm use
+(cd backend && npm run test:unit)
+(cd frontend && node --test test/rosMapPose.test.mjs && npm run lint && npm run build)
+```
+
+Các lệnh này kiểm logic `/cmd_in`, `/cmd_out`, `/map`, `/odom`, TF và frontend
+theo code; chúng không thay thế kiểm tra nguồn ROS và camera thật ở mục 4–7.
 
 ## 7. Mở và kiểm tra trên máy xem web
 
@@ -485,7 +674,7 @@ odom` như mục 4.3. Nếu rosbridge chưa hiện trong ROS graph, kiểm Termi
    `https://10.1.10.32:5173/login`. Không dùng `localhost`, `127.0.0.1` hoặc
    IP cũ: backend kiểm `APP_ORIGIN` chính xác.
 2. Browser sẽ cảnh báo chứng chỉ development tự ký. Tự so SHA-256 fingerprint
-   với kết quả ở mục 3.3 rồi mới chấp nhận cho Origin `5173`. WHEP đi qua
+   với kết quả ở mục 3.4 rồi mới chấp nhận cho Origin `5173`. WHEP đi qua
    cùng Origin nên không cần mở `https://<IP-UBUNTU>:8889/` trong browser.
 3. Đăng nhập bằng **tài khoản HMI dev đã có**. Mở Navigation; ô camera ở bên
    phải map. Chọn **Cam trước**, nhìn ảnh có thay đổi; chọn **Cam sau** và
@@ -501,7 +690,10 @@ odom` như mục 4.3. Nếu rosbridge chưa hiện trong ROS graph, kiểm Termi
    ngoài vùng bản đồ thì marker không hiện; không nên sửa tọa độ thủ công để
    buộc hiển thị.
    Muốn đặt đích, thêm waypoint hoặc tạo nhiệm vụ trên Navigation, chọn một
-   **bản đồ đã lưu** trong menu: chế độ `/map` trực tiếp chỉ để quan sát.
+   **bản đồ đã lưu** trong menu: chế độ `/map` trực tiếp chỉ để quan sát. Ở
+   bản đồ đã lưu, khi bắt đầu nhiệm vụ auto lần đầu, UI sẽ hỏi vị trí ban đầu
+   X/Y/góc trong hộp thoại; backend chỉ cho nhập một lần. Không bấm các nút
+   điều khiển hoặc bắt đầu nhiệm vụ trong lần kiểm tra chỉ xem này.
 5. Nếu cần kiểm kỹ, trong DevTools Network: request
    `GET /api/cameras/front/stream` hoặc rear phải trả descriptor `kind=webrtc`;
    `POST https://<IP>:5173/front/whep` hoặc rear phải trả `201`. Khi có
@@ -526,12 +718,15 @@ odom` như mục 4.3. Nếu rosbridge chưa hiện trong ROS graph, kiểm Termi
 | Browser báo lỗi chứng chỉ hoặc camera `NetworkError` | Kiểm chứng chỉ còn hạn/SAN đúng IP và đã tin cậy Origin `5173`. Xem DevTools: WHEP phải gọi `https://<IP>:5173/front/whep` hoặc rear; nếu vẫn gọi `:8889`, backend/Vite đang chạy cấu hình cũ. | Trước WHEP. |
 | Chỉ thấy video MP4 mẫu | Có chạy đúng `tools/run_hmi_lan.sh` với `VITE_ROBOT_CLIENT=remote` không; backend `.env` có `CAMERA_MEDIA_MODE=ros` không. | Descriptor camera. |
 | Camera WHEP `401` | Đã đăng nhập? Backend và callback media còn chạy? Grant còn hạn và đúng camera? | WHEP auth. |
-| `CAMERA_WHEP_SIGNALING: CAMERA_WHEP_HTTP_404` | Xem log MediaMTX LAN: `no stream is available` cùng `bind: address already in use` ở `5004/5006` nghĩa là MediaMTX thứ hai đang chiếm RTP. Dùng `ss -ltnup` xác định bản chạy trùng, dừng đúng bản đó, chờ front/rear báo `stream is available and online`, rồi tải lại UI. | Nguồn RTP/MediaMTX; không sửa UI. |
+| `CAMERA_WHEP_SIGNALING: CAMERA_WHEP_HTTP_404` | Log `no stream is available on path 'front'` hoặc `rear` nghĩa là MediaMTX chưa nhận luồng RTP. Nếu cùng lúc có `i/o timeout` ở `5004/5006`, kiểm hai topic ảnh có frame mới bằng lệnh mục 4.1 và bộ đếm `sent frames` của gateway; nguồn camera đứng là nguyên nhân đã gặp trên máy này. Nếu có `bind: address already in use`, dùng `ss -ltnup` tìm MediaMTX trùng và dừng đúng bản đó. Sau khi log báo stream online, tải lại UI. | Node camera → gateway → RTP/MediaMTX. |
 | WHEP `201` nhưng ICE failed/ô đen | Candidate MediaMTX có IP LAN mới? Máy xem tới được `8189/udp`? Firewall/client isolation? | Đường video, sau signaling. |
 | Front/rear không online | ROS publisher có hai topic? Gateway counter tăng? Metadata ảnh có đúng `bgr8`/640×360/frame ID? | ROS → gateway → RTP. |
+| Có publisher ảnh nhưng MediaMTX vẫn `i/o timeout` | Chạy hai lệnh `ros2 topic echo ... --once --timeout 5` ở mục 4.1. Nếu không có frame, xem log `intel_camera_node` và thiết bị USB; publisher tồn tại không đủ. Gateway `sent frames` đứng yên nghĩa là không có RTP mới cho MediaMTX. | Node camera → gateway. |
 | Navigation/Mapping báo chờ `/map` | Chạy `ros2 topic info /map -v`: phải có publisher `nav_msgs/msg/OccupancyGrid` và hai subscriber `robot_hmi_map_raster`; kiểm `ROS_DOMAIN_ID`/DDS và `ROS_MAP_ENABLED=true` nếu không thấy subscriber. | Nguồn ROS → backend. |
 | Bản đồ cũ hoặc PNG lỗi | Kiểm log backend `ROS /map received`, trạng thái `GET /api/ros-map`, request PNG; web kiểm revision mỗi giây và tự thử tải lại. Nếu publisher biến mất, backend xóa ảnh cache và chuyển về chờ. | ROS worker → API → browser. |
 | X/Y/góc quay trống hoặc `/odom` báo cũ | Kiểm publisher `/odom`, Terminal R ở cổng `9090`, `ROSBRIDGE_URL` trong `backend/.env`, `ROS_DOMAIN_ID`/DDS và log kết nối rosbridge. `/odom` phải tới đều trước khi hết hạn 1500 ms. | ROS `/odom` → rosbridge → backend `/ws`. |
+| Ô vận tốc luôn 0 | Kiểm robot publish `/cmd_out` kiểu `geometry_msgs/msg/Twist`, rosbridge subscribe đúng topic và message tới trong 1500 ms. | ROS `/cmd_out` → rosbridge → backend. |
+| Rosbridge báo không biết kiểu `/cmd_in` | Build `robot_hmi_msgs` ở mục 3.1 rồi source `ROBOT_HMI/ros2_ws/install/setup.bash` trong Terminal R. Script `run_local.sh` tự source workspace này. | ROS interface → rosbridge. |
 | Có X/Y/góc quay nhưng không thấy marker trên `/map` | So `header.frame_id` của `/odom` với frame của `/map`; nếu khác, kiểm TF `map ← odom` bằng `tf2_echo`. Pose cũ hoặc nằm ngoài lưới cũng không vẽ. | TF/định vị và phạm vi bản đồ. |
 | Robot báo `Stale` hoặc health ready `503` | Đây là robot mock/chưa xác minh source; không suy ra camera hỏng nếu video vẫn chạy. | Không dùng để cho phép motor thật. |
 
