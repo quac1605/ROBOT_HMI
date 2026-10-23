@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, Chip, CircularProgress, Grid, MenuItem, Select, Stack, Typography } from '@mui/material';
+import { Alert, Chip, CircularProgress, Grid, MenuItem, Select, Stack, Typography } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import NavigationWorkspace from '../components/navigation/NavigationWorkspace.jsx';
 import RosNavigationWorkspace from '../components/navigation/RosNavigationWorkspace.jsx';
 import NavigationDriveCamera from '../components/navigation/NavigationDriveCamera.jsx';
-import NavigationControlPanel from '../components/control/NavigationControlPanel.jsx';
+import NavigationControlPanel, {
+  NavigationControlProvider, NavigationControlToolbar,
+} from '../components/control/NavigationControlPanel.jsx';
 import MissionPanel from '../components/navigation/MissionPanel.jsx';
 import WaypointEditor from '../components/navigation/WaypointEditor.jsx';
 import RobotStatusCard from '../components/status/RobotStatusCard.jsx';
@@ -79,35 +81,36 @@ export default function NavigationPage() {
         {showRosSource && rosMapError && <Alert severity="warning">Không đọc được ROS /map: {rosMapError.message}</Alert>}
         {/* Camera và lease owner giữ cùng vị trí qua loading/chọn map.
             Chỉ vùng bản đồ thay đổi; không dựng lại video khi catalog cập nhật. */}
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 8 }}>
-            <Stack spacing={1.5}>
-              {showRosSource
-                ? rosMapModel
-                  ? <RosNavigationWorkspace model={rosMapModel} />
-                  : <Typography>{rosMapMetadata?.status === 'waiting'
-                    ? 'Đang chờ dữ liệu ROS /map…'
-                    : 'Nguồn ROS /map chưa sẵn sàng. Kiểm tra node map và backend.'}</Typography>
-                : showSavedMap
-                  ? <NavigationWorkspace currentMap={selectedMap} />
-                  : loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
-              {showRosSource && <Alert severity="info">
-                Bản đồ ROS /map dùng để quan sát. Chọn bản đồ đã lưu để đặt đích, thêm waypoint và điều khiển nhiệm vụ.
-              </Alert>}
-              <NavigationControlPanel />
-            </Stack>
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Stack spacing={2}>
-              <Box sx={{ position: { md: 'sticky' }, top: 16, zIndex: 1, bgcolor: 'background.paper', borderRadius: 2 }}>
+        <NavigationControlProvider>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <Stack spacing={1.5}>
+                <NavigationControlToolbar />
+                {showRosSource
+                  ? rosMapModel
+                    ? <RosNavigationWorkspace model={rosMapModel} />
+                    : <Typography>{rosMapMetadata?.status === 'waiting'
+                      ? 'Đang chờ dữ liệu ROS /map…'
+                      : 'Nguồn ROS /map chưa sẵn sàng. Kiểm tra node map và backend.'}</Typography>
+                  : showSavedMap
+                    ? <NavigationWorkspace currentMap={selectedMap} />
+                    : loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
+                {showRosSource && <Alert severity="info">
+                  Bản đồ ROS /map dùng để quan sát. Chọn bản đồ đã lưu để đặt đích, thêm waypoint và điều khiển nhiệm vụ.
+                </Alert>}
+              </Stack>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Stack spacing={2}>
                 <NavigationDriveCamera />
-              </Box>
-              <RobotStatusCard />
-              {showSavedMap && <MissionPanel selectedMap={selectedMap} />}
-              {showSavedMap && <WaypointEditor currentMap={selectedMap} />}
-            </Stack>
+                <NavigationControlPanel />
+                <RobotStatusCard />
+                {showSavedMap && <MissionPanel selectedMap={selectedMap} />}
+                {showSavedMap && <WaypointEditor currentMap={selectedMap} />}
+              </Stack>
+            </Grid>
           </Grid>
-        </Grid>
+        </NavigationControlProvider>
       </Stack>
     </PageFrame>
   );

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Button, FormControlLabel, Paper, Stack, Switch, Tooltip, Typography,
+  Alert, Box, Button, FormControlLabel, Paper, Stack, Switch, Tooltip, Typography,
 } from '@mui/material';
 import { useShallow } from 'zustand/react/shallow';
 import VirtualJoystick from './VirtualJoystick.jsx';
@@ -18,6 +18,7 @@ import {
 } from '@robot-hmi/control-domain/controlPolicy';
 
 const CONTEXT = Object.freeze({ kind: 'manual' });
+const NavigationControlContext = createContext(null);
 const REASON_MESSAGES = {
   ROBOT_UNKNOWN: 'Chưa có trạng thái robot.',
   TRANSPORT_UNHEALTHY: 'Trạng thái robot đã cũ hoặc mất kết nối.',
@@ -54,7 +55,7 @@ function cameraOf(control) {
 
 // Bật manual là một ý định nhận lease mới của chính trang này. Lease ở store
 // hoặc một response cũ không được tự bật công tắc/khởi động joystick.
-export default function NavigationControlPanel() {
+export function NavigationControlProvider({ children }) {
   const client = useRobotClient();
   const actions = useControlActions();
   // Camera ghi timestamp mỗi frame; UI lấy timestamp mới ở tick hiển thị 250 ms.
@@ -184,40 +185,54 @@ export default function NavigationControlPanel() {
             : !cameraFresh ? 'Chờ hình mới từ camera đang chọn.'
               : '';
 
+  // Thanh công cụ và joystick dùng chung một lease, keyboard binding và hold.
+  // Giữ provider ổn định khi đổi bản đồ để không gián đoạn camera/điều khiển.
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, width: '100%', maxWidth: 360, boxSizing: 'border-box' }} data-testid="navigation-control-panel">
+    <NavigationControlContext.Provider value={{
+      control, acquiring, manualEnabled, canAcquire, joystickEnabled, blocker,
+      intentRef, joystickFocusRef, manualStop, start, update, stop, actions, reportError,
+    }}>
+      {children}
+    </NavigationControlContext.Provider>
+  );
+}
+
+export function NavigationControlToolbar() {
+  const {
+    control, acquiring, manualEnabled, canAcquire, joystickEnabled, blocker,
+    intentRef, joystickFocusRef, manualStop, actions, reportError,
+  } = useContext(NavigationControlContext);
+
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="navigation-control-toolbar">
       <Stack spacing={1}>
-        <Typography variant="subtitle2">Điều khiển thủ công</Typography>
-        <Tooltip title={!manualEnabled ? blocker : 'Tắt manual để dừng và trả quyền lái'}>
-          <span>
-            <FormControlLabel sx={{ m: 0 }}
-              control={<Switch checked={manualEnabled} disabled={!manualEnabled && !canAcquire}
-                slotProps={{ input: { 'aria-label': 'Chế độ manual', 'data-testid': 'manual-mode-toggle' } }}
-                onChange={(_event, checked) => {
-                  if (checked) void intentRef.current?.acquire();
-                  else manualStop();
-                  // Chuyển focus khỏi input Switch để W/A/S/D điều khiển được.
-                  // Các ô nhập liệu khác vẫn giữ nguyên quy tắc không phát lệnh.
-                  joystickFocusRef.current?.focus({ preventScroll: true });
-                }} />}
-              label={acquiring ? 'Đang bật manual…' : manualEnabled ? 'Manual đang bật' : 'Bật chế độ manual'} />
-          </span>
-        </Tooltip>
-        <VirtualJoystick disabled={!joystickEnabled} start={start} update={update} stop={stop}
-          testId="navigation-joystick" focusRef={joystickFocusRef} />
-        <Typography variant="caption" align="center">
-          W/A/S/D hoặc mũi tên: giữ để lái. Space: dừng.
-        </Typography>
-        <Typography variant="caption" color="text.secondary" align="center">
-          Chọn camera tùy ý. Hướng lái theo robot.
-        </Typography>
-        <Button color="error" variant="contained" size="small" onClick={manualStop} data-testid="manual-stop">
-          Yêu cầu dừng
-        </Button>
-        <Typography variant="caption" align="center" data-testid="stop-status">
-          {control.stopUnconfirmed ? 'Đang chờ xác nhận dừng' :
-            control.stopState?.status === 'confirmed' ? 'Đã xác nhận robot dừng' : 'Chưa có yêu cầu dừng'}
-        </Typography>
+        <Stack direction="row" spacing={1.5} useFlexGap
+          sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <Tooltip title={!manualEnabled ? blocker : 'Tắt manual để dừng và trả quyền lái'}>
+            <span>
+              <FormControlLabel sx={{ m: 0 }}
+                control={<Switch checked={manualEnabled} disabled={!manualEnabled && !canAcquire}
+                  slotProps={{ input: { 'aria-label': 'Chế độ manual', 'data-testid': 'manual-mode-toggle' } }}
+                  onChange={(_event, checked) => {
+                    if (checked) void intentRef.current?.acquire();
+                    else manualStop();
+                    // Chuyển focus khỏi input Switch để W/A/S/D điều khiển được.
+                    // Các ô nhập liệu khác vẫn giữ nguyên quy tắc không phát lệnh.
+                    joystickFocusRef.current?.focus({ preventScroll: true });
+                  }} />}
+                label={acquiring ? 'Đang bật manual…' : manualEnabled ? 'Manual đang bật' : 'Bật chế độ manual'} />
+            </span>
+          </Tooltip>
+          <Stack spacing={0.5} sx={{ minWidth: 180 }}>
+            <Button color="error" variant="contained" size="small" onClick={manualStop} data-testid="manual-stop">
+              Yêu cầu dừng
+            </Button>
+            <Typography variant="caption" align="center" data-testid="stop-status">
+              {control.stopUnconfirmed ? 'Đang chờ xác nhận dừng' :
+                control.stopState?.status === 'confirmed' ? 'Đã xác nhận robot dừng' : 'Chưa có yêu cầu dừng'}
+            </Typography>
+          </Stack>
+        </Stack>
         {blocker && (!manualEnabled || !joystickEnabled) &&
           <Alert severity="info" data-testid="manual-blocker">{blocker}</Alert>}
         {control.lease && !fixedSpeedFits(control.lease) &&
@@ -227,6 +242,31 @@ export default function NavigationControlPanel() {
           <Button size="small" data-testid="retry-stop" onClick={() => {
             void actions.requestStop({ retry: true }).catch(reportError);
           }}>Thử lại cùng yêu cầu dừng</Button>}
+      </Stack>
+    </Paper>
+  );
+}
+
+export default function NavigationControlPanel() {
+  const { joystickEnabled, start, update, stop, joystickFocusRef } = useContext(NavigationControlContext);
+
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, width: '100%', boxSizing: 'border-box' }}
+      data-testid="navigation-control-panel">
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">Điều khiển thủ công</Typography>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Box sx={{ flexShrink: 0 }}>
+            <VirtualJoystick disabled={!joystickEnabled} start={start} update={update} stop={stop}
+              testId="navigation-joystick" focusRef={joystickFocusRef} />
+          </Box>
+          <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+            <Typography variant="caption">W/A/S/D hoặc mũi tên: giữ để lái. Space: dừng.</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Chọn camera tùy ý. Hướng lái theo robot.
+            </Typography>
+          </Stack>
+        </Stack>
       </Stack>
     </Paper>
   );
