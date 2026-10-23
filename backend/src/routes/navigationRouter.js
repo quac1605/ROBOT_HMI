@@ -103,7 +103,7 @@ export function createNavigationRouter({
         }
     });
 
-    // 8. Vị trí ban đầu của robot cho mode auto (/cmd_in original_position); chỉ đặt được một lần.
+    // 8. Ước lượng vị trí robot trước nhiệm vụ auto (/cmd_in original_position).
     if (cmdInService) {
         router.get('/navigation/original-position', lifecycle.requireAuth, (req, res, next) => {
             try {

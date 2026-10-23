@@ -289,7 +289,7 @@ export function createApp({
             'PATH_TOO_LARGE', 'MAP_ASSET_UNAVAILABLE', 'MAP_ASSETS_INCOMPLETE',
             'MAPPING_GRID_UNAVAILABLE',
             'READY_MAP_IMMUTABLE', 'IDEMPOTENCY_CONFLICT',
-            'ORIGINAL_POSITION_REQUIRED', 'ORIGINAL_POSITION_ALREADY_SET',
+            'ORIGINAL_POSITION_REQUIRED', 'ORIGINAL_POSITION_DURING_MISSION',
         ]);
         const code = status === 503 && req.originalUrl.startsWith('/api/auth/') ? 'AUTH_UNAVAILABLE'
             : publicCodes.has(err.code) ? err.code

@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   Alert, Box, Button, FormControlLabel, Paper, Stack, Switch, Tooltip, Typography,
 } from '@mui/material';
 import { useShallow } from 'zustand/react/shallow';
 import VirtualJoystick from './VirtualJoystick.jsx';
+import { NavigationControlContext } from './NavigationControlContext.js';
 import { useRobotClient } from '../../hooks/useRobotClient.js';
 import { useControlActions } from '../../hooks/useControlActions.js';
 import { useTeleopHold } from '../../hooks/useTeleopHold.js';
@@ -18,7 +19,6 @@ import {
 } from '@robot-hmi/control-domain/controlPolicy';
 
 const CONTEXT = Object.freeze({ kind: 'manual' });
-const NavigationControlContext = createContext(null);
 const REASON_MESSAGES = {
   ROBOT_UNKNOWN: 'Chưa có trạng thái robot.',
   TRANSPORT_UNHEALTHY: 'Trạng thái robot đã cũ hoặc mất kết nối.',
@@ -197,14 +197,14 @@ export function NavigationControlProvider({ children }) {
   );
 }
 
-export function NavigationControlToolbar() {
+export function NavigationControlToolbar({ selectionMode, onSelectMode, canSelectInitial, canSelectGoal, selectionStatus }) {
   const {
     control, acquiring, manualEnabled, canAcquire, joystickEnabled, blocker,
     intentRef, joystickFocusRef, manualStop, actions, reportError,
   } = useContext(NavigationControlContext);
 
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="navigation-control-toolbar">
+    <Box data-testid="navigation-control-toolbar">
       <Stack spacing={1}>
         <Stack direction="row" spacing={1.5} useFlexGap
           sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -214,7 +214,10 @@ export function NavigationControlToolbar() {
                 control={<Switch checked={manualEnabled} disabled={!manualEnabled && !canAcquire}
                   slotProps={{ input: { 'aria-label': 'Chế độ manual', 'data-testid': 'manual-mode-toggle' } }}
                   onChange={(_event, checked) => {
-                    if (checked) void intentRef.current?.acquire();
+                    if (checked) {
+                      onSelectMode(null);
+                      void intentRef.current?.acquire();
+                    }
                     else manualStop();
                     // Chuyển focus khỏi input Switch để W/A/S/D điều khiển được.
                     // Các ô nhập liệu khác vẫn giữ nguyên quy tắc không phát lệnh.
@@ -223,6 +226,20 @@ export function NavigationControlToolbar() {
                 label={acquiring ? 'Đang bật manual…' : manualEnabled ? 'Manual đang bật' : 'Bật chế độ manual'} />
             </span>
           </Tooltip>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            <Button size="small" variant={selectionMode === 'initial' ? 'contained' : 'outlined'}
+              disabled={manualEnabled || !canSelectInitial} aria-pressed={selectionMode === 'initial'}
+              data-testid="select-initial-pose"
+              onClick={() => onSelectMode(selectionMode === 'initial' ? null : 'initial')}>
+              Chọn điểm hiện tại
+            </Button>
+            <Button size="small" variant={selectionMode === 'goal' ? 'contained' : 'outlined'}
+              disabled={manualEnabled || !canSelectGoal} aria-pressed={selectionMode === 'goal'}
+              data-testid="select-goal-pose"
+              onClick={() => onSelectMode(selectionMode === 'goal' ? null : 'goal')}>
+              Chọn điểm đích
+            </Button>
+          </Stack>
           <Stack spacing={0.5} sx={{ minWidth: 180 }}>
             <Button color="error" variant="contained" size="small" onClick={manualStop} data-testid="manual-stop">
               Yêu cầu dừng
@@ -233,6 +250,7 @@ export function NavigationControlToolbar() {
             </Typography>
           </Stack>
         </Stack>
+        {selectionStatus && <Typography variant="caption" data-testid="pose-selection-status">{selectionStatus}</Typography>}
         {blocker && (!manualEnabled || !joystickEnabled) &&
           <Alert severity="info" data-testid="manual-blocker">{blocker}</Alert>}
         {control.lease && !fixedSpeedFits(control.lease) &&
@@ -243,7 +261,7 @@ export function NavigationControlToolbar() {
             void actions.requestStop({ retry: true }).catch(reportError);
           }}>Thử lại cùng yêu cầu dừng</Button>}
       </Stack>
-    </Paper>
+    </Box>
   );
 }
 

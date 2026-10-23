@@ -25,6 +25,7 @@ function getInitialView(geo) {
 export default function Map2D({
   model, // Nhận renderModel nguyên tử: { context, gridRevision, geometry, objectUrl, token, onLoad, onError }
   pose,
+  initialPose = null,
   poseQuality = 'reliable',
   goal,
   path = null,
@@ -39,6 +40,7 @@ export default function Map2D({
   viewportMaxHeight = '56vh',
   onGoalChange,
   onWaypointAdd,
+  onInitialPoseSelect,
 }) {
   const svgRef = useRef(null);
   const drag = useRef(null);
@@ -109,7 +111,7 @@ export default function Map2D({
 
   function pointerMove(event) {
     const start = drag.current;
-    if (!start || event.pointerId !== start.pointerId || start.viewportKey !== viewportKey) {
+    if (!start || event.pointerId !== start.pointerId || start.viewportKey !== viewportKey || start.tool !== tool) {
       if (start && start.viewportKey !== viewportKey) drag.current = null;
       return;
     }
@@ -121,7 +123,7 @@ export default function Map2D({
       const a = new DOMPoint(start.clientX, start.clientY).matrixTransform(inverse);
       const b = new DOMPoint(event.clientX, event.clientY).matrixTransform(inverse);
       setView({ ...start.view, x: start.view.x - (b.x - a.x), y: start.view.y - (b.y - a.y) });
-    } else if (start.tool === 'goal') {
+    } else if (start.tool === 'goal' || start.tool === 'initial') {
       const currentPoint = toSvg(event.clientX, event.clientY);
       if (currentPoint) {
         const moved = Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) >= 5;
@@ -136,7 +138,7 @@ export default function Map2D({
 
   function pointerUp(event) {
     const start = drag.current;
-    if (!start || event.pointerId !== start.pointerId || start.viewportKey !== viewportKey) {
+    if (!start || event.pointerId !== start.pointerId || start.viewportKey !== viewportKey || start.tool !== tool) {
       drag.current = null;
       setDragPreview(null);
       return;
@@ -165,15 +167,18 @@ export default function Map2D({
       return;
     }
     // B. Nếu là chế độ Goal: Chọn 1 đích và kéo để chỉnh góc quay Yaw
-    if (start.tool === 'goal') {
+    if (start.tool === 'goal' || start.tool === 'initial') {
       const end = toSvg(event.clientX, event.clientY);
       if (!end) return;
       const position = svgToWorld(start.point, geometry);
       if (!isInsideMap(position, geometry)) return;
       const target = svgToWorld(end, geometry);
       const moved = Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) >= 5;
-      const yaw = moved ? Math.atan2(target.y - position.y, target.x - position.x) : (goal?.yaw ?? 0);
-      onGoalChange?.({ frameId: geometry.frameId || 'map', ...position, yaw });
+      const yaw = moved ? Math.atan2(target.y - position.y, target.x - position.x) :
+        (start.tool === 'goal' ? (goal?.yaw ?? 0) : 0);
+      const selectedPose = { frameId: geometry.frameId || 'map', ...position, yaw };
+      if (start.tool === 'initial') onInitialPoseSelect?.(selectedPose);
+      else onGoalChange?.(selectedPose);
     }
   }
 
@@ -214,6 +219,8 @@ export default function Map2D({
   const robotPoint = pose && pose.frameId === geometry.frameId
     ? worldToSvg(pose, geometry)
     : null;
+  const initialPoint = initialPose && isInsideMap(initialPose, geometry)
+    ? worldToSvg(initialPose, geometry) : null;
   const goalPoint = goal && (!goal.frameId || goal.frameId === geometry.frameId)
     ? worldToSvg(goal, geometry)
     : null;
@@ -455,6 +462,14 @@ export default function Map2D({
           )}
 
           {/* Marker Mục tiêu Điều hướng */}
+          {initialPoint && (
+            <g data-testid="map2d-initial-pose" transform={`translate(${initialPoint.x} ${initialPoint.y}) rotate(${worldYawToSvgDegrees(initialPose.theta, geometry.origin?.yaw ?? 0)})`}
+              pointerEvents="none">
+              <circle r={4} fill="#7b1fa2" stroke="#fff" strokeWidth={1} />
+              <path d="M 0 0 L 13 0 M 13 0 L 8 -3 M 13 0 L 8 3" fill="none" stroke="#7b1fa2"
+                strokeWidth={2} strokeLinecap="round" />
+            </g>
+          )}
           {goalPoint && (
             <g data-testid="map2d-goal" transform={`translate(${goalPoint.x} ${goalPoint.y})`}>
               <circle cx={0} cy={0} r={3.5} fill="#d32f2f" stroke="#ffffff" strokeWidth={1} />

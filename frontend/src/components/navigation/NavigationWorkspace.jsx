@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Alert, Box, CircularProgress, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import Map2D from '../map/Map2D.jsx';
 import { useMapGrid } from '../../hooks/useMapGrid.js';
@@ -11,9 +11,11 @@ import { resolvePoseQuality } from '../../utils/poseQuality.js';
 import { resolveVisiblePose } from '../../utils/mapCoordinates.js';
 import { sameMapContext, sameGeometry } from '../../utils/mapRenderModel.js';
 import { savedContext, matchesMap } from '../../utils/navigationPolicy.js';
+import { useNavigationManualState } from '../control/NavigationControlContext.js';
 
-export default function NavigationWorkspace({ currentMap }) {
-    const [tool, setTool] = useState('goal');
+export default function NavigationWorkspace({ currentMap, selectionMode, initialPosition, onSelectMode, onInitialPoseSelect, onGoalSelected }) {
+    const manualEnabled = useNavigationManualState();
+    const activeTool = manualEnabled ? 'pan' : selectionMode || 'pan';
     const snapshot = useRobotStore(state => state.snapshot);
     const { stale } = useRobotFreshness(2000);
     const nav = useNavigationWorkflowStore();
@@ -45,18 +47,19 @@ export default function NavigationWorkspace({ currentMap }) {
                 Robot thật có thể lập đường khác giữa các waypoint.
             </Alert>
             <Stack spacing={1}>
-                <ToggleButtonGroup value={tool} exclusive size="small"
-                    onChange={(_, value) => { if (value) setTool(value); }}>
+                <ToggleButtonGroup value={activeTool} exclusive size="small"
+                    onChange={(_, value) => { if (value) onSelectMode(value === 'pan' ? null : value); }}>
                     <ToggleButton value="pan" aria-label="Kéo xem bản đồ">Kéo xem</ToggleButton>
-                    <ToggleButton value="goal" aria-label="Đặt đích">Đặt một đích</ToggleButton>
-                    <ToggleButton value="waypoint" aria-label="Tạo tuyến đường">Thêm waypoint</ToggleButton>
+                    <ToggleButton value="goal" disabled={manualEnabled} aria-label="Đặt đích">Đặt một đích</ToggleButton>
+                    <ToggleButton value="waypoint" disabled={manualEnabled} aria-label="Tạo tuyến đường">Thêm waypoint</ToggleButton>
                 </ToggleButtonGroup>
                 {!model ? <Box sx={{ p: 4 }}><CircularProgress /></Box> : (
-                    <Map2D model={model} pose={pose} poseQuality={poseQuality}
+                    <Map2D model={model} pose={pose} poseQuality={poseQuality} initialPose={initialPosition}
                         goal={selected || nav.routeDraft.poses[0] || null}
                         routeDraft={nav.routeDraft} previewPath={preview} plannedPath={planned} trajectory={trajectory}
-                        tool={tool}
-                        onGoalChange={goal => nav.setRouteDraft(goal ? [goal] : [])}
+                        tool={activeTool}
+                        onGoalChange={goal => { nav.setRouteDraft(goal ? [goal] : []); onGoalSelected(); }}
+                        onInitialPoseSelect={onInitialPoseSelect}
                         onWaypointAdd={nav.appendWaypoint} />
                 )}
             </Stack>

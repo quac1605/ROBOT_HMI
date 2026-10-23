@@ -118,7 +118,7 @@ test('vào phiên tạo bản đồ phát slam; joystick trong phiên là slam, 
     ]);
 });
 
-test('vị trí ban đầu chỉ nhập một lần và đi kèm mọi gói sau đó', () => {
+test('vị trí ban đầu có thể cập nhật trước AUTO, không đổi khi nhiệm vụ đang chạy', () => {
     const { sent, publisher } = recorder();
     const service = serviceWith(publisher);
     assert.equal(service.getOriginalPosition(), null);
@@ -126,15 +126,20 @@ test('vị trí ban đầu chỉ nhập một lần và đi kèm mọi gói sau 
     assert.throws(() => service.setOriginalPosition({ x: 1, y: 2, theta: Number.NaN }));
     const original = { x: 0.5, y: -1, theta: 0.25 };
     assert.deepEqual(service.setOriginalPosition(original), original);
-    assert.throws(() => service.setOriginalPosition({ x: 9, y: 9, theta: 0 }),
-        error => error.code === 'ORIGINAL_POSITION_ALREADY_SET' && error.status === 409);
-    assert.deepEqual(service.getOriginalPosition(), original);
+    const revised = { x: 0.6, y: -0.9, theta: 0.5 };
+    assert.deepEqual(service.setOriginalPosition(revised), revised);
+    assert.deepEqual(service.getOriginalPosition(), revised);
+
+    service.onRobotState({ mode: 'navigating', activeMissionId: 'mission-1' });
+    assert.throws(() => service.setOriginalPosition(original),
+        error => error.code === 'ORIGINAL_POSITION_DURING_MISSION' && error.status === 409);
+    service.onRobotState({ mode: 'idle', activeMissionId: null });
 
     service.onMotionCommand({ origin: 'mission', velocity: ZERO, poses: POSES.slice(0, 1) });
     service.emergencyStop();
     assert.deepEqual(sent, [
-        packet('auto', 0, 0, { target: targetsOf(POSES.slice(0, 1)), original }),
-        packet('stop', 0, 0, { original }),
+        packet('auto', 0, 0, { target: targetsOf(POSES.slice(0, 1)), original: revised }),
+        packet('stop', 0, 0, { original: revised }),
     ]);
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Chip, CircularProgress, Grid, MenuItem, Select, Stack, Typography } from '@mui/material';
 import PageFrame from '../components/layout/PageFrame.jsx';
 import NavigationWorkspace from '../components/navigation/NavigationWorkspace.jsx';
@@ -14,6 +14,8 @@ import { useRobotClient } from '../hooks/useRobotClient.js';
 import { useRosMap } from '../hooks/useRosMap.js';
 import { useNavigationWorkflowStore } from '../state/navigationWorkflowStore.js';
 import { useMappingWorkflowStore } from '../state/mappingWorkflowStore.js';
+import { useControlStore } from '../state/controlStore.js';
+import { useMissionStore } from '../state/missionStore.js';
 
 const keyOf = map => JSON.stringify([map.id, map.revision]);
 export default function NavigationPage() {
@@ -24,14 +26,48 @@ export default function NavigationPage() {
   const [refresh, setRefresh] = useState(0);
   const [mapSource, setMapSource] = useState(() =>
     typeof client.getRosMap === 'function' ? 'ros' : 'saved');
+  const [selectionMode, setSelectionMode] = useState(null);
+  const [selectionStatus, setSelectionStatus] = useState('');
+  const [originalPosition, setOriginalPosition] = useState(undefined);
+  const [poseBusy, setPoseBusy] = useState(false);
+  const poseLock = useRef(false);
   const catalogRevision = useMappingWorkflowStore(state => state.catalogRefreshRevision);
   const selectedMap = useNavigationWorkflowStore(state => state.selectedMap);
+  const activeMissionId = useMissionStore(state => state.activeMissionId);
   const { model: rosMapModel, metadata: rosMapMetadata, error: rosMapError } = useRosMap();
   const supportsRosMap = typeof client.getRosMap === 'function';
   const showRosSource = mapSource === 'ros';
   const savedMapKey = selectedMap && maps.some(map => keyOf(map) === keyOf(selectedMap))
     ? keyOf(selectedMap) : '';
   const showSavedMap = !showRosSource && Boolean(selectedMap) && !loading;
+
+  useEffect(() => {
+    let active = true;
+    client.getOriginalPosition().then(result => {
+      if (active) setOriginalPosition(result.originalPosition);
+    }).catch(cause => {
+      if (active) setSelectionStatus(`Không đọc được vị trí ban đầu: ${cause.message}`);
+    });
+    return () => { active = false; };
+  }, [client]);
+
+  async function selectInitialPose(pose) {
+    if (poseLock.current || originalPosition === undefined || activeMissionId ||
+        useControlStore.getState().lease || useControlStore.getState().phase === 'acquiring') return;
+    poseLock.current = true;
+    setPoseBusy(true);
+    try {
+      const result = await client.setOriginalPosition({ x: pose.x, y: pose.y, theta: pose.yaw });
+      setOriginalPosition(result.originalPosition);
+      setSelectionStatus('Đã lưu vị trí và hướng ban đầu của robot.');
+      setSelectionMode(null);
+    } catch (cause) {
+      setSelectionStatus(`Không lưu được vị trí ban đầu: ${cause.message}`);
+    } finally {
+      poseLock.current = false;
+      setPoseBusy(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -59,11 +95,13 @@ export default function NavigationPage() {
             onOpen={() => setRefresh(value => value + 1)}
             onChange={event => {
               if (event.target.value === 'ros') {
+                setSelectionMode(null);
                 setMapSource('ros');
                 return;
               }
               const selected = maps.find(map => keyOf(map) === event.target.value);
               if (selected) {
+                setSelectionMode(null);
                 setMapSource('saved');
                 useNavigationWorkflowStore.getState().setSelectedMap(selected);
               }
@@ -85,15 +123,34 @@ export default function NavigationPage() {
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 8 }}>
               <Stack spacing={1.5}>
-                <NavigationControlToolbar />
+                <NavigationControlToolbar selectionMode={selectionMode}
+                  onSelectMode={mode => {
+                    setSelectionMode(mode);
+                    setSelectionStatus(mode === 'initial'
+                      ? 'Nhấn vào vị trí robot trên bản đồ rồi kéo theo hướng robot đang quay.'
+                      : mode === 'goal'
+                        ? 'Nhấn vào điểm đích trên bản đồ rồi kéo theo hướng robot cần quay.' : '');
+                  }}
+                  canSelectInitial={!poseBusy && originalPosition !== undefined && !activeMissionId &&
+                    (showRosSource ? Boolean(rosMapModel) : showSavedMap)}
+                  canSelectGoal={!poseBusy && !activeMissionId && showSavedMap}
+                  selectionStatus={selectionStatus} />
                 {showRosSource
                   ? rosMapModel
-                    ? <RosNavigationWorkspace model={rosMapModel} />
+                    ? <RosNavigationWorkspace model={rosMapModel} selectionMode={selectionMode}
+                      initialPosition={originalPosition}
+                      onInitialPoseSelect={selectInitialPose} />
                     : <Typography>{rosMapMetadata?.status === 'waiting'
                       ? 'Đang chờ dữ liệu ROS /map…'
                       : 'Nguồn ROS /map chưa sẵn sàng. Kiểm tra node map và backend.'}</Typography>
                   : showSavedMap
-                    ? <NavigationWorkspace currentMap={selectedMap} />
+                    ? <NavigationWorkspace currentMap={selectedMap} selectionMode={selectionMode}
+                      initialPosition={originalPosition}
+                      onSelectMode={setSelectionMode} onInitialPoseSelect={selectInitialPose}
+                      onGoalSelected={() => {
+                        setSelectionMode(null);
+                        setSelectionStatus('Đã chọn điểm đích và hướng. Bấm “Bắt đầu” trong Điều khiển nhiệm vụ để gửi robot.');
+                      }} />
                     : loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
                 {showRosSource && <Alert severity="info">
                   Bản đồ ROS /map dùng để quan sát. Chọn bản đồ đã lưu để đặt đích, thêm waypoint và điều khiển nhiệm vụ.
@@ -105,7 +162,8 @@ export default function NavigationPage() {
                 <NavigationDriveCamera />
                 <NavigationControlPanel />
                 <RobotStatusCard />
-                {showSavedMap && <MissionPanel selectedMap={selectedMap} />}
+                {showSavedMap && <MissionPanel selectedMap={selectedMap}
+                  originalPosition={originalPosition} onOriginalPositionChange={setOriginalPosition} />}
                 {showSavedMap && <WaypointEditor currentMap={selectedMap} />}
               </Stack>
             </Grid>

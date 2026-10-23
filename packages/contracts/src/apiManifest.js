@@ -199,7 +199,7 @@ export const API_MANIFEST = Object.freeze({
     method: 'PUT',
     path: '/api/navigation/original-position',
     successStatus: 200,
-    description: 'Nhập vị trí ban đầu của robot một lần duy nhất; lần sau trả 409 ORIGINAL_POSITION_ALREADY_SET.',
+    description: 'Đặt hoặc cập nhật ước lượng vị trí robot trước nhiệm vụ AUTO; trả 409 ORIGINAL_POSITION_DURING_MISSION khi đang chạy nhiệm vụ.',
   }),
   subscribeMissions: Object.freeze({
     type: 'ws',

@@ -19,8 +19,8 @@ function readPosition(x, y, degrees, map) {
 }
 
 /**
- * Hỏi vị trí ban đầu của robot trước nhiệm vụ auto đầu tiên.
- * Vị trí này chỉ nhập một lần; sau đó mọi gói /cmd_in mang nó trong original_position.
+ * Hỏi vị trí ước lượng của robot trước nhiệm vụ auto.
+ * Vị trí này được gửi trong original_position của các gói /cmd_in tiếp theo.
  */
 export default function OriginalPositionDialog({ open, map, onCancel, onSubmit }) {
   const [x, setX] = useState('');
@@ -49,7 +49,7 @@ export default function OriginalPositionDialog({ open, map, onCancel, onSubmit }
           <Stack spacing={1.5} sx={{ pt: 1 }}>
             <Typography variant="body2">
               Nhập vị trí hiện tại của robot trên bản đồ trước khi chạy tự động.
-              Vị trí này chỉ nhập một lần và không sửa được sau khi xác nhận.
+              Có thể chọn lại vị trí trên bản đồ trước nhiệm vụ AUTO tiếp theo.
             </Typography>
             <TextField label="X (m)" size="small" value={x} autoFocus onChange={event => setX(event.target.value)} />
             <TextField label="Y (m)" size="small" value={y} onChange={event => setY(event.target.value)} />

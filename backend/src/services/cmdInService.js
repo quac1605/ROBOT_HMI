@@ -29,6 +29,7 @@ export function createCmdInService({ publishers = [], logger = null, now = () =>
     let target = null;
     let originalPosition = null;
     let mappingActive = false;
+    let navigationActive = false;
     let disposed = false;
 
     function publish(velocity) {
@@ -81,6 +82,7 @@ export function createCmdInService({ publishers = [], logger = null, now = () =>
         },
         // Gọi mỗi lần trạng thái robot đổi; chỉ lúc mới vào phiên tạo bản đồ mới phát slam.
         onRobotState(state) {
+            navigationActive = Boolean(state?.activeMissionId) || state?.mode === 'navigating';
             const active = state?.mode === 'mapping';
             if (active && !mappingActive) {
                 mappingActive = true;
@@ -100,11 +102,11 @@ export function createCmdInService({ publishers = [], logger = null, now = () =>
             enter(nextMode);
             publish(ZERO);
         },
-        // Vị trí ban đầu chỉ nhập một lần; theta tính bằng rad.
+        // Cho phép chỉnh ước lượng trước nhiệm vụ auto tiếp theo; không đổi giữa nhiệm vụ.
         setOriginalPosition(raw) {
             if (disposed) throw Object.assign(new Error('SERVICE_DISPOSED'), { code: 'SERVICE_DISPOSED', status: 503 });
             const parsed = OriginalPositionSchema.parse(raw);
-            if (originalPosition) throw conflict('ORIGINAL_POSITION_ALREADY_SET');
+            if (navigationActive) throw conflict('ORIGINAL_POSITION_DURING_MISSION');
             originalPosition = Object.freeze({ ...parsed });
             return { ...originalPosition };
         },

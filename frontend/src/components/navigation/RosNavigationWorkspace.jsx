@@ -3,8 +3,10 @@ import { useRobotFreshness } from '../../hooks/useRobotFreshness.js';
 import { useRobotStore } from '../../stores/robotStore.js';
 import { resolveRosMapPose } from '../../utils/rosMapPose.js';
 import Map2D from '../map/Map2D.jsx';
+import { useNavigationManualState } from '../control/NavigationControlContext.js';
 
-export default function RosNavigationWorkspace({ model }) {
+export default function RosNavigationWorkspace({ model, selectionMode, initialPosition, onInitialPoseSelect }) {
+  const manualEnabled = useNavigationManualState();
   const snapshot = useRobotStore(state => state.snapshot);
   const { stale } = useRobotFreshness(2000);
   const { pose, reason } = resolveRosMapPose(snapshot, model.geometry, { transportStale: stale });
@@ -18,7 +20,9 @@ export default function RosNavigationWorkspace({ model }) {
   }[reason];
 
   return <Stack spacing={1}>
-    <Map2D model={model} pose={pose} poseQuality={poseQuality} tool="pan" />
+    <Map2D model={model} pose={pose} poseQuality={poseQuality} initialPose={initialPosition}
+      tool={!manualEnabled && selectionMode === 'initial' ? 'initial' : 'pan'}
+      onInitialPoseSelect={onInitialPoseSelect} />
     {message && <Alert severity="info" sx={{ py: 0 }}>{message}</Alert>}
   </Stack>;
 }

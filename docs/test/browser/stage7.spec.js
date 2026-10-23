@@ -38,6 +38,11 @@ test.describe('Chặng 7 — remediation acceptance', () => {
         page.on('pageerror', error => failures.push(error.message));
         page.on('console', message => { if (message.type() === 'error') failures.push(message.text()); });
         await login(page);
+        // AUTO hiện cần ước lượng pose ban đầu trước khi gửi nhiệm vụ.
+        await page.getByTestId('select-initial-pose').click();
+        const map = await page.getByTestId('map2d-svg').boundingBox();
+        await page.mouse.click(map.x + map.width / 2, map.y + map.height / 2);
+        await expect(page.getByTestId('original-position')).toContainText('Vị trí ban đầu:');
     });
     test.afterEach(async ({ page }) => { expect(errors.get(page)).toEqual([]); });
 
