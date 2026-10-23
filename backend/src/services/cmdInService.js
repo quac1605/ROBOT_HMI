@@ -7,7 +7,9 @@ import { ZERO } from '@robot-hmi/control-domain/controlPolicy';
 
 const conflict = code => Object.assign(new Error(code), { code, status: 409 });
 
-export function createCmdInService({ publishers = [], logger = null, now = () => Date.now() } = {}) {
+export function createCmdInService({
+    publishers = [], logger = null, now = () => Date.now(), getSafetyState = () => null,
+} = {}) {
     let mode = 'STOP';
     let target = [];
     let originalPlanar = null;
@@ -32,9 +34,17 @@ export function createCmdInService({ publishers = [], logger = null, now = () =>
         publish(ZERO);
     }
 
+    function assertAutoSafe() {
+        const state = getSafetyState();
+        if (state?.physicalEstopActive !== false) throw conflict('ESTOP_ACTIVE_OR_UNKNOWN');
+        if (state.motionInhibited !== false) throw conflict('MOTION_INHIBITED_OR_UNKNOWN');
+        if (state.rosConnected !== true) throw conflict('ROS_UNAVAILABLE');
+    }
+
     function setTarget(raw) {
         if (disposed) throw conflict('SERVICE_DISPOSED');
         if (navigationActive || mappingActive) throw conflict('TARGET_DURING_MISSION');
+        assertAutoSafe();
         const stamp = now();
         target = Array.isArray(raw) && raw.length > 0 && raw.every(pose => pose?.header)
             ? raw.map(pose => PoseStampedSchema.parse(pose))
@@ -47,6 +57,7 @@ export function createCmdInService({ publishers = [], logger = null, now = () =>
     function setOriginalPose(raw) {
         if (disposed) throw conflict('SERVICE_DISPOSED');
         if (navigationActive || mappingActive) throw conflict('ORIGINAL_POSITION_DURING_MISSION');
+        assertAutoSafe();
         if (raw?.header) {
             originalPosition = PoseStampedSchema.parse(raw);
             const q = originalPosition.pose.orientation;

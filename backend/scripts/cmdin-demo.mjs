@@ -3,9 +3,9 @@
  *
  * PHÁT THỬ MỘT CHUỖI GÓI /cmd_in LÊN rosbridge, KHÔNG CẦN BACKEND, DATABASE HAY FRONTEND.
  *
- * Cách dùng: node scripts/cmdin-demo.mjs [ws://127.0.0.1:9090]
- * Script gọi thẳng cmdInService nên không đi qua kiểm tra quyền lái;
- * chỉ dùng để kiểm tra nội dung gói và đường truyền tới ROS.
+ * Chỉ chạy trong ROS domain thử nghiệm cô lập:
+ * HMI_CMDIN_DEMO_ACK=isolated-test-robot node scripts/cmdin-demo.mjs [ws://127.0.0.1:9090]
+ * Script gọi thẳng cmdInService nên không đi qua kiểm tra quyền lái.
  */
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -14,13 +14,22 @@ import { createCmdInService } from '../src/services/cmdInService.js';
 import { createRosbridgeCmdInPublisher } from '../src/ros/rosbridgeCmdInPublisher.js';
 import { createRosbridgeClient } from '../src/ros/rosbridgeClient.js';
 
+if (process.env.HMI_CMDIN_DEMO_ACK !== 'isolated-test-robot') {
+    console.error('Chỉ chạy trong ROS domain thử nghiệm cô lập. Đặt HMI_CMDIN_DEMO_ACK=isolated-test-robot để xác nhận.');
+    process.exit(2);
+}
+
 const url = process.argv[2] ?? 'ws://127.0.0.1:9090';
 const v = MANUAL_DRIVE_SPEED.linearX;
 const w = MANUAL_DRIVE_SPEED.angularZ;
 
 const client = createRosbridgeClient({ url, reconnectMs: 1000 });
 const publisher = createRosbridgeCmdInPublisher({ client });
-const service = createCmdInService({ publishers: [publisher], logger: console });
+// Chỉ chạy trên ROS domain thử nghiệm cô lập: script bỏ qua trạng thái an toàn robot thật.
+const service = createCmdInService({
+    publishers: [publisher], logger: console,
+    getSafetyState: () => ({ physicalEstopActive: false, motionInhibited: false, rosConnected: true }),
+});
 client.start();
 
 const ZERO = { linearX: 0, angularZ: 0 };
@@ -32,11 +41,14 @@ const GOALS = [
 const steps = [
     ['vào trang tạo bản đồ', () => service.onRobotState({ mode: 'mapping' })],
     ['joystick tiến khi tạo bản đồ', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: v, angularZ: 0 } })],
+    ['nhả joystick khi tạo bản đồ', () => service.onMotionCommand({ origin: 'teleop', velocity: ZERO })],
     ['kết thúc tạo bản đồ', () => service.onRobotState({ mode: 'idle' })],
     ['bật manual', () => service.setMode('MANUAL')],
+    ['joystick tiến', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: v, angularZ: 0 } })],
     ['joystick trái', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: w } })],
     ['joystick phải', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: -w } })],
     ['joystick lùi', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: -v, angularZ: 0 } })],
+    ['nhả joystick', () => service.onMotionCommand({ origin: 'teleop', velocity: ZERO })],
     ['trả quyền lái', () => service.setMode('AUTO')],
     ['yêu cầu dừng', () => service.emergencyStop()],
     ['nhập vị trí ban đầu, bắt đầu đi đến 2 đích', () => {

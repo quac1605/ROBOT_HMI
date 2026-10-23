@@ -23,7 +23,7 @@ const REASON_MESSAGES = {
   ROBOT_UNKNOWN: 'Chưa có trạng thái robot.',
   TRANSPORT_UNHEALTHY: 'Trạng thái robot đã cũ hoặc mất kết nối.',
   ROS_UNAVAILABLE: 'Nguồn trạng thái robot chưa sẵn sàng.',
-  ESTOP_ACTIVE_OR_UNKNOWN: 'E-stop đang bật hoặc chưa xác định trạng thái.',
+  ESTOP_ACTIVE_OR_UNKNOWN: 'Chưa có tín hiệu xác nhận robot sẵn sàng điều khiển.',
   MOTION_INHIBITED_OR_UNKNOWN: 'Robot đang khóa chuyển động hoặc chưa rõ trạng thái khóa.',
   MISSION_ACTIVE_OR_UNKNOWN: 'Robot đang có nhiệm vụ. Dừng nhiệm vụ trước khi bật manual.',
   MAPPING_ACTIVE_OR_UNKNOWN: 'Đang có phiên mapping. Hoàn tất và lưu phiên trước khi bật manual.',
@@ -71,7 +71,7 @@ export function NavigationControlProvider({ children }) {
 
   const reportError = useCallback(error => {
     if (!['UNAUTHENTICATED', 'OPERATION_SUPERSEDED', 'LEASE_NOT_OWNED'].includes(error.code)) {
-      useControlStore.getState().setControlState({ controlError: error.message });
+      useControlStore.getState().setControlState({ controlError: REASON_MESSAGES[error.code] || error.message });
     }
   }, []);
 

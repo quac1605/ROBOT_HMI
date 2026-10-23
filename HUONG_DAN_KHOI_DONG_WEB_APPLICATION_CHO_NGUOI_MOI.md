@@ -13,8 +13,8 @@ thay đổi, kiểm lại IP trước khi chạy.
 > Backend điều khiển vẫn dùng `ROBOT_ADAPTER=mock`, nhưng khi có
 > `ROSBRIDGE_URL`, lệnh điều khiển được chấp nhận trên UI vẫn có thể được
 > publish lên `/cmd_in` thật. Thấy video, bản đồ hoặc vị trí **không** chứng
-> minh motor hay teleop phần cứng đã sẵn sàng. Bản đồ ROS trên Navigation chỉ
-> để xem; muốn đặt đích/waypoint phải chọn bản đồ đã lưu. Không dùng trang
+> minh motor hay teleop phần cứng đã sẵn sàng. Có thể chọn một đích trên bản
+> đồ ROS; chọn bản đồ đã lưu để tạo tuyến và quản lý mission. Không dùng trang
 > này để thử lái robot thật; `hardwareReady` vẫn là `false`.
 
 ## 1. Hiểu các thành phần trước khi mở terminal
@@ -472,9 +472,18 @@ liệu thật. Sau khi Terminal R và A đã chạy, kiểm thêm
 `robot_hmi_msgs/msg/CmdIn`. Backend chỉ publish message `/cmd_in` khi có lệnh
 được chấp nhận; việc chưa thấy message trên topic lúc chỉ xem bản đồ/camera là
 bình thường. Không gửi lệnh thử tới robot chỉ để kiểm việc khởi động web.
-Trên NavigationPage, bật manual phát `MANUAL`, tắt manual phát `AUTO`; chọn
-điểm hiện tại/điểm đích cập nhật `original_poss`/`target` ngay qua API. Dừng
-mapping, yêu cầu dừng hoặc hủy mission phát `STOP`.
+Khi có đủ xác nhận an toàn, trên NavigationPage bật manual phát `MANUAL`, tắt
+manual phát `AUTO`; chọn điểm hiện tại/điểm đích cập nhật
+`original_poss`/`target` ngay qua API. Dừng mapping, yêu cầu dừng hoặc hủy
+mission phát `STOP`.
+
+**Nếu switch manual báo “Chưa có tín hiệu xác nhận robot sẵn sàng điều khiển”:**
+backend hiện chưa subscribe nguồn E-stop và quyền chuyển động từ robot.
+`/odom` và `/cmd_out` không cung cấp hai xác nhận này; vì vậy manual, lệnh
+`AUTO` chứa đích và cập nhật vị trí ban đầu qua API phải bị chặn. Kiểm
+`ros2 topic list -t` để tìm topic an toàn do robot công bố, rồi tích hợp trạng
+thái đó vào backend. Không sửa giá trị
+`physicalEstopActive` hoặc `motionInhibited` thành `false` chỉ để mở nút.
 
 ## 5. Khởi động theo thứ tự: tối đa năm terminal
 

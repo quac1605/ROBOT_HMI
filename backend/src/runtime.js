@@ -96,7 +96,10 @@ export function createRobotRuntime({
         logger,
     }) : null;
     const cmdInPublishers = rosbridge ? [createRosbridgeCmdInPublisher({ client: rosbridge })] : [];
-    const cmdInService = createCmdInService({ publishers: cmdInPublishers, logger });
+    const cmdInService = createCmdInService({
+        publishers: cmdInPublishers, logger,
+        getSafetyState: () => sharedRobotState.getSnapshot(),
+    });
     // Vào phiên tạo bản đồ thì /cmd_in chuyển sang mode slam.
     const unsubscribeCmdInRobotState = sharedRobotState.subscribe(state => cmdInService.onRobotState(state));
 

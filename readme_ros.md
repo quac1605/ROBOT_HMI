@@ -417,13 +417,13 @@ Các lệnh `info`, `echo`, `hz` và `tf2_echo` chỉ đọc dữ liệu, phù h
 | Xem HMI phát gì (đã source workspace interface) | `ros2 topic echo /cmd_in robot_hmi_msgs/msg/CmdIn` |
 | Giả lập robot phát `/odom` | `ros2 topic pub -r 10 /odom nav_msgs/msg/Odometry "{header: {frame_id: odom}, pose: {pose: {position: {x: 1.5, y: -0.8}, orientation: {z: 0.3827, w: 0.9239}}}}"` |
 | Giả lập robot phát `/cmd_out` | `ros2 topic pub -r 10 /cmd_out geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.1}}"` |
-| Phát thử chuỗi 9 gói `/cmd_in` (không cần backend) | `cd backend && node scripts/cmdin-demo.mjs ws://127.0.0.1:9090` |
+| Phát thử chuỗi gói `/cmd_in` trên ROS domain thử nghiệm cô lập (không cần backend) | `cd backend && HMI_CMDIN_DEMO_ACK=isolated-test-robot node scripts/cmdin-demo.mjs ws://127.0.0.1:9090` |
 | Test unit (rosbridge giả, không cần ROS) | `cd backend && npm run test:unit` |
 | Test với ROS 2 thật | `cd backend && ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live` |
 
-Script demo phát từng bước cách nhau 1 giây: `SLAM` và joystick tiến, kết thúc mapping về `STOP`, bật `MANUAL` để lái, trả quyền về `AUTO`, yêu cầu `STOP`, đặt vị trí ban đầu và hai đích trong `AUTO`, rồi hủy nhiệm vụ về `STOP`. Kiểm tra bằng `ros2 topic echo /cmd_in`.
+Script demo phát từng bước cách nhau 1 giây: `SLAM` và joystick tiến/nhả, kết thúc mapping về `STOP`, bật `MANUAL` để lái tiến/trái/phải/lùi/nhả, trả quyền về `AUTO`, yêu cầu `STOP`, đặt vị trí ban đầu và hai đích trong `AUTO`, rồi hủy nhiệm vụ về `STOP`. Kiểm tra bằng `ros2 topic echo /cmd_in`.
 
-Script gọi thẳng `cmdInService` nên không đi qua kiểm tra quyền lái; nó chỉ dùng để kiểm nội dung gói và đường truyền tới ROS.
+Script gọi thẳng `cmdInService` và giả lập trạng thái an toàn nên không đi qua kiểm tra quyền lái. Chỉ chạy trên ROS domain thử nghiệm cô lập, không kết nối tới robot thật.
 
 ### 7.1 Xử lý sự cố `/cmd_in`
 
@@ -431,7 +431,7 @@ Script gọi thẳng `cmdInService` nên không đi qua kiểm tra quyền lái;
 | --- | --- | --- |
 | `ros2 topic echo /cmd_in robot_hmi_msgs/msg/CmdIn` báo `The passed message type is invalid` | Terminal chưa source workspace (chỉ source `/opt/ros/jazzy`) | `source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash` sau khi source ROS |
 | Echo chạy nhưng không nhận gói nào, `ros2 topic info /cmd_in` báo `Publisher count: 0` | rosbridge chạy trong terminal chưa source workspace nên từ chối advertise kiểu `CmdIn` | Tắt rosbridge, source cả `/opt/ros/jazzy/setup.bash` và `ros2_ws/install/setup.bash`, chạy lại rosbridge |
-| Vẫn không có gói dù rosbridge đã đúng | Chưa có thao tác nào: backend chỉ phát khi có lệnh (bấm dừng, nhận quyền lái, bắt đầu nhiệm vụ…) | Chạy `node scripts/cmdin-demo.mjs`, hoặc thao tác trên giao diện / gọi `POST /api/control/stop` |
+| Vẫn không có gói dù rosbridge đã đúng | Chưa có thao tác nào: backend chỉ phát khi có lệnh (bấm dừng, nhận quyền lái, bắt đầu nhiệm vụ…) | Chỉ trong ROS domain thử nghiệm cô lập, chạy `HMI_CMDIN_DEMO_ACK=isolated-test-robot node scripts/cmdin-demo.mjs`; hoặc thao tác trên giao diện / gọi `POST /api/control/stop` |
 | `Unable to start server: [Errno 98] Address already in use` khi mở rosbridge | Còn một rosbridge khác giữ cổng 9090 | `ss -ltnp \| grep 9090` để tìm PID, tắt tiến trình đó rồi chạy lại |
 | Sửa file `.msg` nhưng robot/echo vẫn thấy cấu trúc cũ | Chưa build lại | `colcon build --packages-select robot_hmi_msgs`, rồi khởi động lại rosbridge và node robot |
 
@@ -482,7 +482,7 @@ if __name__ == '__main__':
 
 - **Nhả joystick không đổi mode.** Frontend gọi `POST /api/control/stop` với `keepMode: true`, nên `/cmd_in` giữ `SLAM`/`MANUAL` với joystick `(0; 0)`. Nút "Yêu cầu dừng", phím Space, dừng mapping và hủy nhiệm vụ phát `STOP`.
 - **Ở `AUTO`, joystick luôn là `(0; 0)`; robot tự đi theo `target`.** Tiến trình nhiệm vụ trong backend hiện là mô phỏng; vận tốc mô phỏng không được đưa xuống robot.
-- **Chưa lái được từ giao diện khi nối ROS thật.** `/odom` làm `rosConnected=true`, nhưng `motionInhibited` vẫn là `true` và `physicalEstopActive` vẫn là `null` vì chưa có topic nào cung cấp. Nhận quyền lái và tạo nhiệm vụ vì vậy bị từ chối; chỉ đường dừng (`stop`) hoạt động (mục 13.1).
+- **Chưa lái được từ giao diện khi nối ROS thật.** `/odom` làm `rosConnected=true`, nhưng `motionInhibited` vẫn là `true` và `physicalEstopActive` vẫn là `null` vì chưa có topic nào cung cấp. Nhận quyền lái, tạo nhiệm vụ, chọn đích AUTO và cập nhật vị trí ban đầu qua API vì vậy bị từ chối; đường dừng (`stop`) vẫn hoạt động (mục 13.1). Cần tích hợp trạng thái an toàn từ robot, không ép hai cờ này thành `false`.
 - **Định dạng `/cmd_in` chưa được nhóm robot xác nhận** (mục 13.4).
 
 ---

@@ -26,7 +26,10 @@ const poses = [{ frameId: 'map', x: 1, y: 2, yaw: Math.PI / 2 }, { frameId: 'map
 const stamped = points => points.map(p => poseToPoseStamped({ x: p.x, y: p.y, theta: p.yaw }, { stamp: NOW }));
 function fixture() {
     const sent = [];
-    const service = createCmdInService({ publishers: [{ publish: message => sent.push(structuredClone(message)) }], now: () => NOW });
+    const service = createCmdInService({
+        publishers: [{ publish: message => sent.push(structuredClone(message)) }], now: () => NOW,
+        getSafetyState: () => ({ physicalEstopActive: false, motionInhibited: false, rosConnected: true }),
+    });
     return { service, sent };
 }
 
@@ -92,6 +95,17 @@ test('target and original pose cannot change during mission', () => {
     service.onRobotState({ mode: 'navigating', activeMissionId: 'mission-1' });
     assert.throws(() => service.setTarget([{ x: 1, y: 2, theta: 0 }]), error => error.code === 'TARGET_DURING_MISSION');
     assert.throws(() => service.setOriginalPose({ x: 1, y: 2, theta: 0 }), error => error.code === 'ORIGINAL_POSITION_DURING_MISSION');
+});
+
+test('unknown E-stop blocks AUTO target and initial pose without publishing', () => {
+    const sent = [];
+    const service = createCmdInService({ publishers: [{ publish: message => sent.push(message) }] });
+    assert.throws(() => service.setTarget([{ x: 1, y: 2, theta: 0 }]),
+        error => error.code === 'ESTOP_ACTIVE_OR_UNKNOWN');
+    assert.throws(() => service.setOriginalPose({ x: 0, y: 0, theta: 0 }),
+        error => error.code === 'ESTOP_ACTIVE_OR_UNKNOWN');
+    assert.deepEqual(sent, []);
+    assert.equal(service.getMode(), 'STOP');
 });
 
 test('mission cancellation sends STOP', () => {
@@ -192,6 +206,9 @@ test('runtime uses one rosbridge connection for /cmd_in, /cmd_out, /odom and TF'
         ['advertise', '/cmd_in'], ['subscribe', '/cmd_out'], ['subscribe', '/odom'],
         ['subscribe', '/tf'], ['subscribe', '/tf_static'],
     ]);
+    assert.throws(() => runtime.cmdInService.setTarget([{ x: 1, y: 2, theta: 0 }]),
+        error => error.code === 'ESTOP_ACTIVE_OR_UNKNOWN');
+    assert.equal(connections[0].some(op => op.op === 'publish'), false);
     runtime.cmdInService.emergencyStop();
     const published = await waitFor(() => connections[0].find(op => op.op === 'publish'), { label: '/cmd_in publish' });
     assert.deepEqual(published.msg, packet('STOP'));

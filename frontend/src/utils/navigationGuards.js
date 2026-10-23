@@ -9,7 +9,7 @@ export function checkRobotHealth(robotSnapshot, { transportStale = false } = {})
     if (!robotSnapshot.rosConnected) return denied('ROS_DISCONNECTED', 'ROS chưa kết nối.');
     if (robotSnapshot.mode === 'fault') return denied('ROBOT_FAULT', 'Robot đang fault.');
     if (robotSnapshot.physicalEstopActive !== false) {
-        return denied('ESTOP_NOT_CLEAR', 'E-stop đang bật hoặc chưa xác nhận đã nhả.');
+        return denied('ESTOP_NOT_CLEAR', 'Chưa có tín hiệu xác nhận robot sẵn sàng điều khiển.');
     }
     if (robotSnapshot.motionInhibited !== false) return denied('MOTION_INHIBITED', 'Chuyển động đang bị khóa hoặc chưa xác nhận quyền chạy.');
     return { ok: true };
