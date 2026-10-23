@@ -170,8 +170,8 @@ export default function MappingPage() {
     try {
       // Stop action ghi stopUnconfirmed đồng bộ: hook dừng publisher ngay.
       // Backend revoke lease và zero. Nếu đang có stop inFlight thì dùng cùng promise.
-      // Dừng để lưu bản đồ, không phải người dùng chọn mode stop.
-      const acceptedStop = await controlActions.requestStop({ keepMode: true });
+      // Kết thúc phiên mapping chuyển /cmd_in sang STOP trước khi lưu.
+      const acceptedStop = await controlActions.requestStop();
       await waitForMappingStop({
         requestId: acceptedStop.requestId,
         mappingSessionId: current.mappingSessionId,

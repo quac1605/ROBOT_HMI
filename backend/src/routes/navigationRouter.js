@@ -13,7 +13,10 @@ import {
     GetMissionResponseSchema,
     CancelMissionResponseSchema,
 } from '@robot-hmi/contracts/mission';
-import { OriginalPositionResponseSchema } from '@robot-hmi/contracts/cmdIn';
+import {
+    OriginalPositionResponseSchema, SetOriginalPositionRequestSchema,
+    SetTargetRequestSchema, TargetResponseSchema,
+} from '@robot-hmi/contracts/cmdIn';
 
 export function createNavigationRouter({
     lifecycle,
@@ -103,7 +106,7 @@ export function createNavigationRouter({
         }
     });
 
-    // 8. Ước lượng vị trí robot trước nhiệm vụ auto (/cmd_in original_position).
+    // 8. Ước lượng vị trí robot trước nhiệm vụ AUTO (/cmd_in original_poss).
     if (cmdInService) {
         router.get('/navigation/original-position', lifecycle.requireAuth, (req, res, next) => {
             try {
@@ -119,8 +122,20 @@ export function createNavigationRouter({
         router.put('/navigation/original-position', lifecycle.requireAuth, lifecycle.requireCsrf, (req, res, next) => {
             try {
                 lifecycle.assertRequestSessionCurrent(req);
-                const originalPosition = cmdInService.setOriginalPosition(req.body);
+                const { original_poss } = SetOriginalPositionRequestSchema.parse(req.body);
+                const originalPosition = cmdInService.setOriginalPose(original_poss);
                 res.status(200).json(OriginalPositionResponseSchema.parse({ originalPosition }));
+            } catch (err) {
+                if (err.name === 'ZodError') Object.assign(err, { status: 400, code: 'VALIDATION_ERROR' });
+                next(err);
+            }
+        });
+
+        router.put('/navigation/target', lifecycle.requireAuth, lifecycle.requireCsrf, (req, res, next) => {
+            try {
+                lifecycle.assertRequestSessionCurrent(req);
+                const { target } = SetTargetRequestSchema.parse(req.body);
+                res.status(200).json(TargetResponseSchema.parse({ target: cmdInService.setTarget(target) }));
             } catch (err) {
                 if (err.name === 'ZodError') Object.assign(err, { status: 400, code: 'VALIDATION_ERROR' });
                 next(err);

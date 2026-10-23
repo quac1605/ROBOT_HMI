@@ -69,6 +69,24 @@ export default function NavigationPage() {
     }
   }
 
+  async function selectGoalPose(goal) {
+    if (poseLock.current || activeMissionId || useControlStore.getState().lease) return;
+    poseLock.current = true;
+    setPoseBusy(true);
+    try {
+      const target = goal ? [{ x: goal.x, y: goal.y, theta: goal.yaw }] : [];
+      await client.setTarget({ target });
+      useNavigationWorkflowStore.getState().setRouteDraft(goal ? [goal] : []);
+      setSelectionMode(null);
+      setSelectionStatus(goal ? 'Đã gửi điểm đích và hướng tới robot qua /cmd_in.' : 'Đã xóa điểm đích.');
+    } catch (cause) {
+      setSelectionStatus(`Không gửi được điểm đích: ${cause.message}`);
+    } finally {
+      poseLock.current = false;
+      setPoseBusy(false);
+    }
+  }
+
   useEffect(() => {
     let active = true;
     client.listMaps().then(catalog => {
@@ -133,13 +151,13 @@ export default function NavigationPage() {
                   }}
                   canSelectInitial={!poseBusy && originalPosition !== undefined && !activeMissionId &&
                     (showRosSource ? Boolean(rosMapModel) : showSavedMap)}
-                  canSelectGoal={!poseBusy && !activeMissionId && showSavedMap}
+                  canSelectGoal={!poseBusy && !activeMissionId && (showRosSource ? Boolean(rosMapModel) : showSavedMap)}
                   selectionStatus={selectionStatus} />
                 {showRosSource
                   ? rosMapModel
                     ? <RosNavigationWorkspace model={rosMapModel} selectionMode={selectionMode}
                       initialPosition={originalPosition}
-                      onInitialPoseSelect={selectInitialPose} />
+                      onInitialPoseSelect={selectInitialPose} onGoalSelected={selectGoalPose} />
                     : <Typography>{rosMapMetadata?.status === 'waiting'
                       ? 'Đang chờ dữ liệu ROS /map…'
                       : 'Nguồn ROS /map chưa sẵn sàng. Kiểm tra node map và backend.'}</Typography>
@@ -147,13 +165,10 @@ export default function NavigationPage() {
                     ? <NavigationWorkspace currentMap={selectedMap} selectionMode={selectionMode}
                       initialPosition={originalPosition}
                       onSelectMode={setSelectionMode} onInitialPoseSelect={selectInitialPose}
-                      onGoalSelected={() => {
-                        setSelectionMode(null);
-                        setSelectionStatus('Đã chọn điểm đích và hướng. Bấm “Bắt đầu” trong Điều khiển nhiệm vụ để gửi robot.');
-                      }} />
+                      onGoalSelected={selectGoalPose} />
                     : loading ? <CircularProgress /> : <Typography>Không có bản đồ sẵn sàng.</Typography>}
                 {showRosSource && <Alert severity="info">
-                  Bản đồ ROS /map dùng để quan sát. Chọn bản đồ đã lưu để đặt đích, thêm waypoint và điều khiển nhiệm vụ.
+                  Có thể chọn điểm đích trên ROS /map để cập nhật /cmd_in. Chọn bản đồ đã lưu để tạo tuyến và quản lý nhiệm vụ.
                 </Alert>}
               </Stack>
             </Grid>

@@ -35,7 +35,8 @@ import {
 } from '../schemas/mission.js';
 import { ConnectionStatusSchema } from '@robot-hmi/contracts/transport';
 import {
-  OriginalPositionResponseSchema, SetOriginalPositionRequestSchema,
+  OriginalPositionResponseSchema, OriginalPositionSchema,
+  SetTargetRequestSchema, TargetResponseSchema, poseToPoseStamped,
 } from '@robot-hmi/contracts/cmdIn';
 import { navigationError } from '../utils/navigationPolicy.js';
 import { createMotionAdmissionGate } from '../utils/motionAdmissionGate.js';
@@ -301,7 +302,7 @@ export function createMockRobotClient() {
     getOriginalPosition() { return validatedCall(OriginalPositionResponseSchema, () => ({ originalPosition })); },
     setOriginalPosition(args) {
       return validatedCall(OriginalPositionResponseSchema, () => {
-        const parsed = SetOriginalPositionRequestSchema.parse(args);
+        const parsed = OriginalPositionSchema.parse(args);
         const state = sharedRobotState.getSnapshot();
         if (state.activeMissionId || state.mode === 'navigating') {
           throw navigationError('ORIGINAL_POSITION_DURING_MISSION', 'Không thể đổi vị trí khi robot đang chạy nhiệm vụ.');
@@ -309,6 +310,11 @@ export function createMockRobotClient() {
         originalPosition = { ...parsed };
         return { originalPosition };
       });
+    },
+    setTarget(args) {
+      return validatedCall(TargetResponseSchema, () => ({
+        target: SetTargetRequestSchema.parse(args).target.map(pose => poseToPoseStamped(pose)),
+      }));
     },
     subscribeMissions(listener) {
       return register(active => missionService.subscribeMissions(raw => {

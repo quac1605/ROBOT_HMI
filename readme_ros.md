@@ -30,7 +30,7 @@ File cấu hình liên quan:
 
 | Topic | Kiểu message ROS 2 | Thành phần HMI gửi | Dùng để |
 | --- | --- | --- | --- |
-| `/cmd_in` | `robot_hmi_msgs/msg/CmdIn` (message riêng, `ros2_ws/src/robot_hmi_msgs`) | backend `cmdInService` | Lệnh điều khiển: `target`, `mode`, `joystick`, `original_position` |
+| `/cmd_in` | `robot_hmi_msgs/msg/CmdIn` (message riêng, `ros2_ws/src/robot_hmi_msgs`) | backend `cmdInService` | Lệnh điều khiển: `target`, `mode`, `joystick`, `original_poss` |
 
 HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không publish.
 
@@ -107,7 +107,7 @@ Backend
 1. Frontend không gửi thẳng xuống ROS. Mọi lệnh đi qua backend.
 2. `controlAuthority` và `missionService` quyết định lệnh nào được chấp nhận, rồi ghi vào adapter.
 3. Adapter báo từng lệnh đã ghi cho `cmdInService` kèm nguồn gốc: `teleop` (joystick), `mission` (bắt đầu đi đến đích, kèm danh sách đích), `cancel` (hủy nhiệm vụ) hoặc `stop` (dừng nội bộ).
-4. Khi có yêu cầu dừng, `controlAuthority` báo `cmdInService` **trước** khi thu hồi quyền lái, nên gói đầu tiên sau nút dừng đã là `stop`. Yêu cầu có `keepMode: true` (nhả joystick) thì không đổi mode.
+4. Khi có yêu cầu dừng, `controlAuthority` báo `cmdInService` **trước** khi thu hồi quyền lái, nên gói đầu tiên sau nút dừng đã là `STOP`. Yêu cầu có `keepMode: true` (nhả joystick) thì không đổi mode.
 5. Nhận quyền lái (`onControlClaimed`) chọn `manual`/`slam`; robot vào phiên tạo bản đồ (`onRobotState`) chọn `slam`.
 6. `cmdInService` dựng gói bằng `buildCmdInMessage` (đích đổi sang PoseStamped bằng `poseToPoseStamped`) rồi chuyển cho publisher.
 7. Publisher đổi gói sang `robot_hmi_msgs/msg/CmdIn` bằng `toRosCmdIn` và gửi qua kết nối rosbridge dùng chung; rosbridge phát lên `/cmd_in`.
@@ -173,15 +173,14 @@ Một message gồm cả 4 thuộc tính, `target` là `geometry_msgs/PoseStampe
 
 ```
 # CmdIn.msg
-string MODE_SLAM="slam"
-string MODE_MANUAL="manual"
-string MODE_AUTO="auto"
-string MODE_STOP="stop"
+string MODE_SLAM="SLAM"
+string MODE_MANUAL="MANUAL"
+string MODE_AUTO="AUTO"
+string MODE_STOP="STOP"
 geometry_msgs/PoseStamped[] target
 string mode
-Joystick joystick                  # Joystick.msg: float64 linear, float64 angular
-bool has_original_position
-OriginalPosition original_position # OriginalPosition.msg: float64 x, float64 y, float64 theta
+Joystick joystick                  # Joystick.msg: float64 v_m, float64 v_rad
+geometry_msgs/PoseStamped original_poss
 ```
 
 Ví dụ `ros2 topic echo /cmd_in` khi bấm "Bắt đầu" nhiệm vụ:
@@ -189,24 +188,24 @@ Ví dụ `ros2 topic echo /cmd_in` khi bấm "Bắt đầu" nhiệm vụ:
 ```yaml
 target: [{header: {stamp: {sec: 1792640317, nanosec: 489000000}, frame_id: map},
           pose: {position: {x: 2.0, y: 1.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.7071, w: 0.7071}}}]
-mode: auto
-joystick: {linear: 0.0, angular: 0.0}
-has_original_position: true
-original_position: {x: 0.5, y: -1.0, theta: 0.25}
+mode: AUTO
+joystick: {v_m: 0.0, v_rad: 0.0}
+original_poss: {header: {stamp: {sec: 1792640317, nanosec: 489000000}, frame_id: map},
+                pose: {position: {x: 0.5, y: -1.0, z: 0.0},
+                       orientation: {x: 0.0, y: 0.0, z: 0.1247, w: 0.9922}}}
 ```
 
 | Trường | Kiểu | Ý nghĩa |
 | --- | --- | --- |
-| `target` | `geometry_msgs/PoseStamped[]` | Các đích theo thứ tự. Chỉ có phần tử ở `auto`; `slam`, `manual`, `stop` là mảng rỗng. |
-| `mode` | `string`: `slam` \| `manual` \| `auto` \| `stop` | Tạo bản đồ, lái tay, đi đến đích, dừng. So sánh với hằng `CmdIn.MODE_*`. |
-| `joystick.linear` | `float64`, m/s | Cùng nghĩa, đơn vị và chiều dấu với `linear.x` của `/cmd_out`. Dương là tiến. `auto`, `stop`: luôn 0. |
-| `joystick.angular` | `float64`, rad/s | Cùng nghĩa, đơn vị và chiều dấu với `angular.z` của `/cmd_out`. Dương là quay trái. `auto`, `stop`: luôn 0. |
-| `has_original_position` | `bool` | `false` khi chưa nhập vị trí ban đầu; khi đó `original_position` là 0 và phải bỏ qua. |
-| `original_position` | `x`, `y` (m), `theta` (rad) | Vị trí ban đầu của robot trong frame `map`. Nhập **một lần** trước nhiệm vụ auto đầu tiên, sau đó đi kèm mọi gói. |
+| `target` | `geometry_msgs/PoseStamped[]` | Các đích theo thứ tự; ở `SLAM`, `MANUAL`, `STOP` là mảng rỗng. |
+| `mode` | `string`: `SLAM` \| `MANUAL` \| `AUTO` \| `STOP` | Tạo bản đồ, lái tay, đi đến đích, dừng. So sánh với hằng `CmdIn.MODE_*`. |
+| `joystick.v_m` | `float64`, m/s | Cùng đơn vị và chiều dấu với `linear.x` của `/cmd_out`. `AUTO`, `STOP`: luôn 0. |
+| `joystick.v_rad` | `float64`, rad/s | Cùng đơn vị và chiều dấu với `angular.z` của `/cmd_out`. `AUTO`, `STOP`: luôn 0. |
+| `original_poss` | `geometry_msgs/PoseStamped` | Ước lượng pose ban đầu trong frame `map`; quaternion từ yaw. `header.stamp = 0` khi chưa chọn, cần bỏ qua pose mặc định này. |
 
 Mỗi phần tử `target` dựng bằng `poseToPoseStamped({ x, y, theta })` trong `packages/contracts/src/cmdIn.js`: `position.z = 0`, orientation là quaternion quay quanh trục z (`z = sin(θ/2)`, `w = cos(θ/2)`), `header.frame_id = "map"`, `header.stamp` là thời điểm bắt đầu nhiệm vụ.
 
-Trong backend, gói được giữ ở dạng JSON có `null` (`target: null`, `original_position: null`) và kiểm tra bằng `CmdInMessageSchema`; `toRosCmdIn()` đổi sang message ROS ngay trước khi phát (ROS không có `null`).
+Trong backend, `CmdInMessageSchema` kiểm tra đúng cấu trúc ROS; `target` luôn là mảng. Khi chưa chọn pose ban đầu, `original_poss` là pose gốc với timestamp 0. ROS `float64` không có `null`, nên `AUTO` gửi `v_m = v_rad = 0`.
 
 **Bắt buộc:** robot, rosbridge và `ros2 topic echo` đều phải biết kiểu `robot_hmi_msgs/msg/CmdIn`. Build một lần, rồi source ở mọi terminal cần nó (xem mục 6.1). rosbridge chưa source workspace sẽ từ chối advertise `/cmd_in`.
 
@@ -216,21 +215,21 @@ Người dùng không chọn `mode` trực tiếp. Backend suy ra `mode` từ đ
 
 | Người dùng làm gì trên UI | Backend nhận | `mode` | `target` | `joystick` |
 | --- | --- | --- | --- | --- |
-| Bắt đầu phiên tạo bản đồ (trang Mapping) | `POST /api/mapping/start` (robot vào mode `mapping`) | `slam` | `null` | `(0; 0)` |
-| Nhận quyền lái ở trang tạo bản đồ | `POST /api/control/lease` (context `mapping`) | `slam` | `null` | `(0; 0)` |
-| Bật "Chế độ manual" ở trang Điều hướng | `POST /api/control/lease` (context `manual`) | `manual` | `null` | `(0; 0)` |
-| Lái bằng joystick/W/A/S/D trong phiên tạo bản đồ | `teleop.velocity` qua WebSocket `/ws` | `slam` | `null` | Vận tốc của hướng đang giữ (mục 4.3) |
-| Lái bằng joystick/W/A/S/D ở trang Điều hướng | `teleop.velocity` qua WebSocket `/ws` | `manual` | `null` | Vận tốc của hướng đang giữ |
-| Nhả joystick/phím, hoặc dừng trước khi lưu bản đồ | `POST /api/control/stop` với `keepMode: true` | giữ nguyên | giữ nguyên | `(0; 0)` |
-| Bấm "Bắt đầu" ở trang Điều hướng | `POST /api/missions` | `auto` | Các waypoint đã chọn, dạng PoseStamped | `(0; 0)` |
-| Bấm "Yêu cầu dừng", phím Space, hoặc "Dừng lại" (hủy nhiệm vụ) | `POST /api/control/stop`, `POST /api/missions/:id/cancel` | `stop` | `null` | `(0; 0)` |
+| Bắt đầu phiên tạo bản đồ (trang Mapping) | `POST /api/mapping/start` | `SLAM` | `[]` | `(0; 0)` |
+| Bật switch manual ở trang Điều hướng | `POST /api/control/lease` | `MANUAL` | `[]` | `(0; 0)` |
+| Lái bằng joystick/W/A/S/D | `teleop.velocity` qua `/ws` | `MANUAL` hoặc `SLAM` | `[]` | Vận tốc đang giữ |
+| Nhả joystick/phím | Stop an toàn với `keepMode: true` | giữ mode | giữ target | `(0; 0)` |
+| Tắt switch manual | `POST /api/control/release` | `AUTO` | `[]` | `(0; 0)` |
+| Chọn điểm hiện tại | `PUT /api/navigation/original-position` | `AUTO` | giữ target | `(0; 0)` |
+| Chọn điểm đích | `PUT /api/navigation/target` | `AUTO` | PoseStamped đã chọn | `(0; 0)` |
+| Bắt đầu mission | `POST /api/missions` | `AUTO` | Các waypoint dạng PoseStamped | `(0; 0)` |
+| Dừng/lưu mapping, Yêu cầu dừng, hủy mission | Stop hoặc cancel | `STOP` | `[]` | `(0; 0)` |
 
 Quy tắc chuyển `mode`: **mode chỉ đổi khi người dùng chọn mode khác** (các dòng có mode cụ thể ở bảng trên). Mọi việc khác chỉ phát lại mode hiện tại với joystick `(0; 0)`.
 
-- Lần đầu bấm "Bắt đầu" ở trang Điều hướng, giao diện hỏi vị trí ban đầu của robot (X, Y, góc °) và gửi `PUT /api/navigation/original-position` (theta đổi sang rad). Chỉ nhập được một lần; lần sau backend trả `409 ORIGINAL_POSITION_ALREADY_SET`. Chưa nhập thì `POST /api/missions` trả `409 ORIGINAL_POSITION_REQUIRED`.
-- Lệnh vận tốc 0 không bao giờ đổi mode. `stop` được giữ cho tới khi người dùng nhận lại quyền lái hoặc lái joystick (về `slam`/`manual`), bắt đầu nhiệm vụ (về `auto`), hoặc bắt đầu phiên tạo bản đồ (về `slam`).
-- Nhả joystick, trả quyền lái, hết hạn quyền lái, mất tín hiệu joystick quá 300 ms: giữ mode hiện tại, joystick `(0; 0)`. Robot vẫn được dừng như trước, chỉ `mode` không đổi.
-- Kết thúc nhiệm vụ, kết thúc phiên tạo bản đồ, dừng nội bộ (tắt server): giữ nguyên gói hiện tại (`mode`, `target`), joystick `(0; 0)`.
+- Giao diện cho nhập/chọn lại vị trí ước lượng trước mission; `PUT /api/navigation/original-position` nhận `{ "original_poss": { "x": ..., "y": ..., "theta": ... } }` (theta rad), backend chuyển sang `PoseStamped` và phát ngay. Chưa nhập thì `POST /api/missions` trả `409 ORIGINAL_POSITION_REQUIRED`.
+- Lệnh vận tốc 0 giữ mode hiện tại. Trả quyền manual bằng switch thì backend chuyển `AUTO` sau khi ghi vận tốc 0. Hết hạn quyền lái ngoài ý định của người dùng giữ mode cùng vận tốc 0.
+- Kết thúc mapping chuyển `STOP`. Kết thúc mission bình thường giữ `AUTO` với joystick 0; hủy mission chuyển `STOP`.
 - `POST /api/control/stop` thiếu `keepMode` (hoặc `false`) luôn là người dùng chọn dừng → `stop`. Frontend chỉ gửi `keepMode: true` khi lý do dừng không phải nút dừng/phím Space (`stopOptionsForReason` trong `frontend/src/utils/controlStopAction.js`).
 - Từ lúc backend khởi động tới lệnh điều khiển đầu tiên, không có gói nào được phát.
 
@@ -244,7 +243,7 @@ Quy tắc chuyển `mode`: **mode chỉ đổi khi người dùng chọn mode kh
 | Lùi | -0.3 | 0 |
 | Dừng | 0 | 0 |
 
-Giá trị 0.3 lấy từ `MANUAL_DRIVE_SPEED` trong `packages/control-domain/src/controlPolicy.js`. Backend từ chối mọi vận tốc ngoài bảng trên (lỗi `VELOCITY_NOT_FIXED`), nên gói `slam`/`manual` chỉ mang các giá trị này. Ở `auto` và `stop`, joystick luôn là `(0; 0)`.
+Giá trị 0.3 lấy từ `MANUAL_DRIVE_SPEED` trong `packages/control-domain/src/controlPolicy.js`. Backend từ chối mọi vận tốc ngoài bảng trên (lỗi `VELOCITY_NOT_FIXED`), nên gói `SLAM`/`MANUAL` chỉ mang các giá trị này. Ở `AUTO` và `STOP`, joystick luôn là `(0; 0)`.
 
 ### 4.4 `robot.state`: dữ liệu backend đẩy lên frontend
 
@@ -300,8 +299,10 @@ Tin backend gửi tới rosbridge:
 
 // Phát một gói /cmd_in
 { "op": "publish", "topic": "/cmd_in",
-  "msg": { "target": [], "mode": "manual", "joystick": { "linear": 0.3, "angular": 0 },
-           "has_original_position": false, "original_position": { "x": 0, "y": 0, "theta": 0 } } }
+  "msg": { "target": [], "mode": "MANUAL", "joystick": { "v_m": 0.3, "v_rad": 0 },
+           "original_poss": { "header": { "stamp": { "sec": 0, "nanosec": 0 }, "frame_id": "map" },
+                              "pose": { "position": { "x": 0, "y": 0, "z": 0 },
+                                        "orientation": { "x": 0, "y": 0, "z": 0, "w": 1 } } } } }
 ```
 
 Tin rosbridge gửi về backend:
@@ -325,14 +326,14 @@ Tin rosbridge gửi về backend:
 | backend → frontend (`robot.state`) | 10 Hz cố định (`publish_rate_hz`), kiêm heartbeat | Frontend tự báo dữ liệu cũ |
 | backend → `/cmd_in` | Chỉ khi có lệnh; khoảng 20 Hz khi giữ joystick (frontend gửi mỗi 50 ms) | Không phát định kỳ; khi không ai điều khiển, topic im lặng |
 
-Robot nên tự dừng nếu không nhận được gói `manual` mới sau một khoảng thời gian, vì HMI không phát lặp lại.
+Robot nên tự dừng nếu không nhận được gói `MANUAL` mới sau một khoảng thời gian, vì HMI không phát lặp lại.
 
 ### 5.3 Mất và nối lại kết nối rosbridge
 
 - Client thử nối lại sau `bridge.reconnect_ms` (2000 ms) cho tới khi được.
 - Sau mỗi lần nối, client gửi lại toàn bộ `subscribe` và `advertise`, gồm `/odom`, `/cmd_out`, `/tf`, `/tf_static` và `/cmd_in`.
 - Gói `/cmd_in` phát trong lúc mất kết nối bị bỏ, không xếp hàng.
-- Khi nối lại, backend phát lại gói `/cmd_in` mới nhất nhưng với joystick `(0; 0)` (giữ nguyên `mode`, `target`, `original_position`), để robot không nhận lại một lệnh chạy đã cũ.
+- Khi nối lại, backend phát lại gói `/cmd_in` mới nhất nhưng với joystick `(0; 0)` (giữ nguyên `mode`, `target`, `original_poss`), để robot không nhận lại một lệnh chạy đã cũ.
 
 ### 5.4 Frontend ↔ backend
 
@@ -420,16 +421,7 @@ Các lệnh `info`, `echo`, `hz` và `tf2_echo` chỉ đọc dữ liệu, phù h
 | Test unit (rosbridge giả, không cần ROS) | `cd backend && npm run test:unit` |
 | Test với ROS 2 thật | `cd backend && ROSBRIDGE_URL=ws://127.0.0.1:9090 npm run test:ros-live` |
 
-Script demo phát lần lượt, mỗi bước cách nhau 1 giây: vào tạo bản đồ, joystick tiến khi tạo bản đồ, kết thúc tạo bản đồ (không phát), joystick trái, phải, lùi, trả quyền lái, yêu cầu dừng, nhập vị trí ban đầu rồi bắt đầu đi đến 2 đích, hủy nhiệm vụ. `ros2 topic echo /cmd_in` phải nhận đủ 9 gói:
-
-| # | `mode` | `linear` | `angular` | `target` | `has_original_position` / `original_position` |
-| --- | --- | --- | --- | --- | --- |
-| 1–2 | slam | 0 / 0.3 | 0 / 0 | `[]` | `false` / `{0, 0, 0}` |
-| 3–5 | manual | 0 / 0 / -0.3 | 0.3 / -0.3 / 0 | `[]` | `false` / `{0, 0, 0}` |
-| 6 | manual | 0 | 0 | `[]` | `false` / `{0, 0, 0}` |
-| 7 | stop | 0 | 0 | `[]` | `false` / `{0, 0, 0}` |
-| 8 | auto | 0 | 0 | 2 PoseStamped: (2, 1) 90°, (3.5, -0.5) 0° | `true` / `{0, 0, 0}` |
-| 9 | stop | 0 | 0 | `[]` | `true` / `{0, 0, 0}` |
+Script demo phát từng bước cách nhau 1 giây: `SLAM` và joystick tiến, kết thúc mapping về `STOP`, bật `MANUAL` để lái, trả quyền về `AUTO`, yêu cầu `STOP`, đặt vị trí ban đầu và hai đích trong `AUTO`, rồi hủy nhiệm vụ về `STOP`. Kiểm tra bằng `ros2 topic echo /cmd_in`.
 
 Script gọi thẳng `cmdInService` nên không đi qua kiểm tra quyền lái; nó chỉ dùng để kiểm nội dung gói và đường truyền tới ROS.
 
@@ -463,15 +455,15 @@ class CmdInListener(Node):
         self.create_subscription(CmdIn, '/cmd_in', self.on_cmd, 10)
 
     def on_cmd(self, msg):
-        v = msg.joystick.linear           # m/s, như linear.x của Twist
-        w = msg.joystick.angular          # rad/s, như angular.z của Twist
+        v = msg.joystick.v_m              # m/s, như linear.x của Twist
+        w = msg.joystick.v_rad            # rad/s, như angular.z của Twist
         if msg.mode == CmdIn.MODE_AUTO:
             for goal in msg.target:       # geometry_msgs/msg/PoseStamped
                 p = goal.pose.position
                 q = goal.pose.orientation
                 yaw = 2 * math.atan2(q.z, q.w)
                 self.get_logger().info(f'goal ({goal.header.frame_id}): x={p.x} y={p.y} yaw={yaw}')
-        origin = msg.original_position if msg.has_original_position else None
+        origin = msg.original_poss if msg.original_poss.header.stamp.sec or msg.original_poss.header.stamp.nanosec else None
         self.get_logger().info(f'{msg.mode}: v={v} w={w} origin={origin}')
 
 
@@ -488,8 +480,8 @@ if __name__ == '__main__':
 
 ## 9. Lưu ý khi dùng với robot thật
 
-- **Nhả joystick không đổi mode.** Frontend vẫn gọi `POST /api/control/stop` khi nhả joystick để backend dừng robot an toàn, nhưng gửi kèm `keepMode: true`, nên `/cmd_in` giữ `slam`/`manual` với joystick `(0; 0)`. Chỉ nút "Yêu cầu dừng", phím Space và "Dừng lại" nhiệm vụ mới phát `stop`.
-- **Ở `auto`, joystick luôn là `(0; 0)`; robot tự đi theo `target`.** Tiến trình nhiệm vụ trong backend hiện là mô phỏng; vận tốc mô phỏng không được đưa xuống robot.
+- **Nhả joystick không đổi mode.** Frontend gọi `POST /api/control/stop` với `keepMode: true`, nên `/cmd_in` giữ `SLAM`/`MANUAL` với joystick `(0; 0)`. Nút "Yêu cầu dừng", phím Space, dừng mapping và hủy nhiệm vụ phát `STOP`.
+- **Ở `AUTO`, joystick luôn là `(0; 0)`; robot tự đi theo `target`.** Tiến trình nhiệm vụ trong backend hiện là mô phỏng; vận tốc mô phỏng không được đưa xuống robot.
 - **Chưa lái được từ giao diện khi nối ROS thật.** `/odom` làm `rosConnected=true`, nhưng `motionInhibited` vẫn là `true` và `physicalEstopActive` vẫn là `null` vì chưa có topic nào cung cấp. Nhận quyền lái và tạo nhiệm vụ vì vậy bị từ chối; chỉ đường dừng (`stop`) hoạt động (mục 13.1).
 - **Định dạng `/cmd_in` chưa được nhóm robot xác nhận** (mục 13.4).
 
@@ -515,8 +507,8 @@ if __name__ == '__main__':
 | `backend/src/runtime.js` | Tạo một client rosbridge khi có `ROSBRIDGE_URL`, nối các phần trên với nhau. |
 | `backend/src/config.js` | Biến `ROSBRIDGE_URL`. |
 | `packages/contracts/src/cmdIn.js` | `CMD_IN_TOPIC`, `CMD_IN_ROS_TYPE`, `CmdInMessageSchema`, `buildCmdInMessage`, `poseToPoseStamped`, `yawToQuaternion`, `toRosCmdIn`. |
-| `ros2_ws/src/robot_hmi_msgs/` | Gói interface ROS 2: `CmdIn.msg`, `Joystick.msg`, `OriginalPosition.msg`. |
-| `backend/src/routes/navigationRouter.js` | `GET`/`PUT /api/navigation/original-position`. |
+| `ros2_ws/src/robot_hmi_msgs/` | Gói interface ROS 2: `CmdIn.msg`, `Joystick.msg`. |
+| `backend/src/routes/navigationRouter.js` | `GET`/`PUT /api/navigation/original-position`, `PUT /api/navigation/target`. |
 | `frontend/src/components/navigation/OriginalPositionDialog.jsx` | Hộp thoại nhập vị trí ban đầu, bật khi bấm "Bắt đầu" lần đầu. |
 | `packages/contracts/src/control.js` | `VelocitySchema`, kiểu vận tốc dùng chung cho `/cmd_out` và `/cmd_in`. |
 | `packages/contracts/src/robotState.js` | `RobotStateSchema`. |
@@ -536,7 +528,7 @@ if __name__ == '__main__':
 | Vào phiên tạo bản đồ | `sharedRobotState` đổi sang mode `mapping`, gọi `cmdInService.onRobotState` | `runtime.js` |
 | Mỗi bước nhiệm vụ mô phỏng | `adapter.writeMissionVelocity(handle, velocity)` | `missionService.js` |
 | Kết thúc nhiệm vụ | `adapter.finishMission(handle)` gọi `ensureStopped()` (origin `stop`) | `missionService.js` |
-| Hủy nhiệm vụ | `adapter.cancelMission(handle)` báo origin `cancel` → mode `stop` | `missionService.js` |
+| Hủy nhiệm vụ | `adapter.cancelMission(handle)` báo origin `cancel` → mode `STOP` | `missionService.js` |
 | Tắt server, lỗi database | `adapter.ensureStopped()` | `backend/src/server.js` |
 
 Adapter gọi `onMotionCommand({ origin, velocity })` với `origin` là:
@@ -545,7 +537,7 @@ Adapter gọi `onMotionCommand({ origin, velocity })` với `origin` là:
 - `mission`: từ `beginMission` và `writeMissionVelocity`.
 - `stop`: từ `ensureStopped`.
 
-`cmdInService` có hai cửa vào, đều nối trong `runtime.js`: `onMotionCommand({ origin, velocity, poses? })`, `onRobotState(state)` và `emergencyStop()`; thêm `setOriginalPosition()`/`getOriginalPosition()` cho API vị trí ban đầu. Service nhận danh sách `publishers`, mỗi phần tử có `publish(message)` và tùy chọn `dispose()`. Muốn gửi gói qua đường khác (MQTT, UDP, serial…) thì viết publisher mới và thêm vào danh sách trong `runtime.js`; không cần sửa service.
+`cmdInService` nhận `setMode()`, `setTarget()`, `setOriginalPose()`, `onMotionCommand()` và `onRobotState()`. Service nhận danh sách `publishers`, mỗi phần tử có `publish(message)` và tùy chọn `dispose()`.
 
 ## 11. Quyết định thiết kế và lý do
 
@@ -553,17 +545,17 @@ Các quyết định dưới đây là có chủ ý. Nếu cần đổi, hãy đ
 
 - **Backend dựng gói, frontend không gửi `/cmd_in`.** Nếu trình duyệt tự gửi vận tốc xuống robot thì bỏ qua toàn bộ kiểm tra quyền lái, token và giới hạn vận tốc của backend.
 - **Gói được dựng sau bước kiểm tra quyền.** Điểm móc nằm ở adapter, nơi mọi lệnh đã được chấp nhận đều đi qua.
-- **`stop` được báo trước khi thu hồi quyền lái.** Nếu báo muộn hơn, lệnh 0 do việc thu hồi sinh ra sẽ đi ra với `mode` cũ trước gói `stop`.
-- **`stop` được giữ qua các lệnh vận tốc 0.** Nếu không, lệnh 0 ngay sau yêu cầu dừng sẽ đổi `mode` về `manual`/`slam`.
-- **`slam` chỉ phát lúc robot mới vào mode `mapping`.** `robot.state` cập nhật liên tục trong phiên; nếu phát mỗi lần thì sẽ kéo `stop` về `slam`.
-- **Ở `auto`, vận tốc luôn là 0.** `missionService` ghi vận tốc mô phỏng `(0.3; 0.05)` để giả lập chuyển động; đưa xuống robot thật sẽ làm robot chạy sai.
+- **`STOP` được báo trước khi thu hồi quyền lái.** Nếu báo muộn hơn, lệnh 0 do việc thu hồi sinh ra sẽ đi ra với `mode` cũ trước gói `STOP`.
+- **`STOP` được giữ qua các lệnh vận tốc 0.** Lệnh 0 ngay sau yêu cầu dừng không đổi `mode` về `MANUAL`/`SLAM`.
+- **`SLAM` chỉ phát lúc robot mới vào mode `mapping`.** `robot.state` cập nhật liên tục trong phiên; nếu phát mỗi lần thì sẽ kéo `STOP` về `SLAM`.
+- **Ở `AUTO`, vận tốc luôn là 0.** `missionService` ghi vận tốc mô phỏng `(0.3; 0.05)` để giả lập chuyển động; đưa xuống robot thật sẽ làm robot chạy sai.
 - **Gói chỉ phát khi có lệnh.** Không có timer phát định kỳ; nhịp 50 ms của frontend đã tạo dòng gói đều khi giữ joystick.
-- **`/cmd_in` là message riêng `robot_hmi_msgs/msg/CmdIn`, không phải String chứa JSON.** Một gói chứa đủ `target`, `mode`, `joystick`, `original_position`, và `target` là `geometry_msgs/PoseStamped[]` thật, nên robot đọc trực tiếp không cần parse JSON. Đổi lại, robot và rosbridge phải build/source gói `robot_hmi_msgs`. ROS không có `null`, nên dùng `target` rỗng và cờ `has_original_position`.
+- **`/cmd_in` là message riêng `robot_hmi_msgs/msg/CmdIn`.** Một gói chứa `target`, `mode`, `joystick`, `original_poss`. Robot và rosbridge phải source cùng bản interface sau khi build.
 - **Dùng chung kiểu vận tốc với `/cmd_out`.** `joystick` được dựng từ `VelocitySchema` qua một hàm `buildCmdInMessage` duy nhất, bảo đảm hai chiều khớp đơn vị và dấu.
-- **Mode chỉ đổi khi người dùng chọn.** Lệnh vận tốc 0, nhả joystick (`keepMode`), trả/hết hạn quyền lái, kết thúc nhiệm vụ hay phiên bản đồ đều giữ mode; tránh việc robot nhận `stop` chỉ vì người dùng nhả tay.
+- **Mode đổi theo thao tác.** Nhả joystick giữ mode với vận tốc 0; tắt switch manual chuyển `AUTO`; kết thúc mapping chuyển `STOP`.
 - **Một kết nối rosbridge dùng chung.** Ít tài nguyên hơn, một biến cấu hình, một chỗ xử lý nối lại. Chọn rosbridge vì `rosbridge_server` có sẵn trên ROS 2 và không cần build module native như `rclnodejs`.
 - **Chỉ giữ gói mới nhất.** Khi mất kết nối, lệnh cũ bị bỏ chứ không xếp hàng; khi nối lại chỉ phát lại gói cuối với joystick 0.
-- **Tên trường và giá trị `mode` do người viết chọn**, chưa đối chiếu với nhóm robot.
+- **Hợp đồng mode và trường theo định nghĩa robot:** `MANUAL`, `AUTO`, `STOP`, `SLAM`; `v_m`, `v_rad`, `original_poss`.
 
 ## 12. Quy ước code
 
@@ -581,7 +573,7 @@ Xếp theo mức ảnh hưởng tới việc dùng với robot thật.
 
 1. **Thiếu trạng thái an toàn từ robot.** `rosStatusService` đã cập nhật `rosConnected`, `pose`, `velocity` từ ROS, nhưng `motionInhibited` (khởi động là `true`) và `physicalEstopActive` (khởi động là `null`) chưa có nguồn nào cập nhật. Hệ quả: nhận quyền lái và tạo nhiệm vụ bị từ chối. Cần thống nhất với nhóm robot một topic trạng thái an toàn (ví dụ nút dừng khẩn vật lý), rồi đọc nó trong `rosStatusService`. Lưu ý `ROBOT_ADAPTER` đang khóa cứng là `mock` trong `config.js`, và `telemetry.transportStale` trong `runtime.js` đang đặt cứng là `false`.
 2. **Đã xử lý: nhả joystick không còn phát `stop`.** `RequestStopRequestSchema` có trường tùy chọn `keepMode`; `controlAuthority` chuyển request vào `onStopRequested(request)`, và `runtime.js` chỉ gọi `cmdInService.emergencyStop()` khi không có `keepMode`. Nhận quyền lái gọi hook `onControlClaimed(context)` → `cmdInService.selectMode()`.
-3. **`target` đã có (mảng PoseStamped ở mode `auto`), nhưng nhiệm vụ trong backend vẫn mô phỏng.** Backend chưa đọc kết quả điều hướng thật từ robot; tiến trình, `pose` khi chạy nhiệm vụ và trạng thái `succeeded` vẫn do `missionService` tự sinh. Vị trí ban đầu (`original_position`) chỉ giữ trong bộ nhớ backend, khởi động lại thì phải nhập lại.
+3. **`target` đã có (mảng PoseStamped ở mode `AUTO`), nhưng nhiệm vụ trong backend vẫn mô phỏng.** Backend chưa đọc kết quả điều hướng thật từ robot; tiến trình, `pose` khi chạy nhiệm vụ và trạng thái `succeeded` vẫn do `missionService` tự sinh. Vị trí ban đầu (`original_poss`) chỉ giữ trong bộ nhớ backend, khởi động lại thì phải nhập lại.
 4. **Chưa thống nhất định dạng `/cmd_in` với nhóm robot:** kiểu `robot_hmi_msgs/msg/CmdIn`, tên trường, giá trị `mode`, cách robot xử lý `stop` (có khóa lại không, mở khóa bằng gì). Robot phải build cùng bản `robot_hmi_msgs`; lệch định nghĩa `.msg` thì rosbridge và robot không nói chuyện được với nhau.
 5. **Không phát định kỳ.** Nếu robot cần nhận gói đều đặn để biết HMI còn sống, thêm timer trong `cmdInService` phát lại gói gần nhất; không được phát lại một vận tốc khác 0 đã cũ.
 6. **Quyền lái loại `manual` (không phải `mapping`) có giới hạn khác:** 0.2 m/s và 0.5 rad/s, không ép bốn hướng cố định. Giao diện hiện chỉ dùng loại `mapping`.

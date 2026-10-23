@@ -58,7 +58,7 @@ export default function NavigationWorkspace({ currentMap, selectionMode, initial
                         goal={selected || nav.routeDraft.poses[0] || null}
                         routeDraft={nav.routeDraft} previewPath={preview} plannedPath={planned} trajectory={trajectory}
                         tool={activeTool}
-                        onGoalChange={goal => { nav.setRouteDraft(goal ? [goal] : []); onGoalSelected(); }}
+                        onGoalChange={goal => onGoalSelected(goal)}
                         onInitialPoseSelect={onInitialPoseSelect}
                         onWaypointAdd={nav.appendWaypoint} />
                 )}

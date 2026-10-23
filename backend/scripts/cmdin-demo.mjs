@@ -33,10 +33,11 @@ const steps = [
     ['vào trang tạo bản đồ', () => service.onRobotState({ mode: 'mapping' })],
     ['joystick tiến khi tạo bản đồ', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: v, angularZ: 0 } })],
     ['kết thúc tạo bản đồ', () => service.onRobotState({ mode: 'idle' })],
+    ['bật manual', () => service.setMode('MANUAL')],
     ['joystick trái', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: w } })],
     ['joystick phải', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: 0, angularZ: -w } })],
     ['joystick lùi', () => service.onMotionCommand({ origin: 'teleop', velocity: { linearX: -v, angularZ: 0 } })],
-    ['trả quyền lái', () => service.onMotionCommand({ origin: 'teleop', velocity: ZERO })],
+    ['trả quyền lái', () => service.setMode('AUTO')],
     ['yêu cầu dừng', () => service.emergencyStop()],
     ['nhập vị trí ban đầu, bắt đầu đi đến 2 đích', () => {
         service.setOriginalPosition({ x: 0, y: 0, theta: 0 });

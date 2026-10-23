@@ -59,7 +59,8 @@ import {
     preflightNavigationPath,
 } from '@robot-hmi/contracts/mission';
 import {
-    OriginalPositionResponseSchema, SetOriginalPositionRequestSchema,
+    OriginalPositionResponseSchema, OriginalPositionSchema, SetOriginalPositionRequestSchema,
+    SetTargetRequestSchema, TargetResponseSchema,
 } from '@robot-hmi/contracts/cmdIn';
 import { createRemoteTransport } from './remoteTransport.js';
 import { createVelocitySender } from './remoteVelocitySender.js';
@@ -432,13 +433,23 @@ export function createHttpWsRobotClient(options = {}) {
 
         async setOriginalPosition(args) {
             requireAuthenticated();
-            args = SetOriginalPositionRequestSchema.parse(args);
+            const original_poss = OriginalPositionSchema.parse(args);
+            const request = SetOriginalPositionRequestSchema.parse({ original_poss });
             const res = await transport.request('/api/navigation/original-position', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(args),
+                body: JSON.stringify(request),
             });
             return OriginalPositionResponseSchema.parse(res);
+        },
+
+        async setTarget(args) {
+            requireAuthenticated();
+            args = SetTargetRequestSchema.parse(args);
+            const res = await transport.request('/api/navigation/target', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args),
+            });
+            return TargetResponseSchema.parse(res);
         },
 
         subscribeMissions(listener) {

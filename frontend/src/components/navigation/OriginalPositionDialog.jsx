@@ -20,7 +20,7 @@ function readPosition(x, y, degrees, map) {
 
 /**
  * Hỏi vị trí ước lượng của robot trước nhiệm vụ auto.
- * Vị trí này được gửi trong original_position của các gói /cmd_in tiếp theo.
+ * Vị trí này được gửi trong original_poss của các gói /cmd_in tiếp theo.
  */
 export default function OriginalPositionDialog({ open, map, onCancel, onSubmit }) {
   const [x, setX] = useState('');

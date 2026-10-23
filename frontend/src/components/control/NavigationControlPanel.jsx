@@ -140,12 +140,17 @@ export function NavigationControlProvider({ children }) {
     intentRef.current?.abandon();
     return pending;
   }, [actions]);
-  const { start, update, stop } = useTeleopHold({
+  const { start, update, stop, cancel } = useTeleopHold({
     getLatest, sendVelocity, requestStop, onError: reportError,
   });
   const manualStop = useCallback(() => {
     if (!stop('MANUAL')) void requestStop().catch(reportError);
   }, [stop, requestStop, reportError]);
+  const disableManual = useCallback(() => {
+    // Fence local velocity timer first; releasing the exact lease zeros robot velocity.
+    cancel();
+    intentRef.current?.abandon();
+  }, [cancel]);
 
   useEffect(() => bindTeleopKeyboard({
     target: window, start, stop, manualStop, vectorFor: fixedVectorForDirection,
@@ -190,7 +195,7 @@ export function NavigationControlProvider({ children }) {
   return (
     <NavigationControlContext.Provider value={{
       control, acquiring, manualEnabled, canAcquire, joystickEnabled, blocker,
-      intentRef, joystickFocusRef, manualStop, start, update, stop, actions, reportError,
+      intentRef, joystickFocusRef, manualStop, disableManual, start, update, stop, actions, reportError,
     }}>
       {children}
     </NavigationControlContext.Provider>
@@ -200,7 +205,7 @@ export function NavigationControlProvider({ children }) {
 export function NavigationControlToolbar({ selectionMode, onSelectMode, canSelectInitial, canSelectGoal, selectionStatus }) {
   const {
     control, acquiring, manualEnabled, canAcquire, joystickEnabled, blocker,
-    intentRef, joystickFocusRef, manualStop, actions, reportError,
+    intentRef, joystickFocusRef, manualStop, disableManual, actions, reportError,
   } = useContext(NavigationControlContext);
 
   return (
@@ -218,7 +223,7 @@ export function NavigationControlToolbar({ selectionMode, onSelectMode, canSelec
                       onSelectMode(null);
                       void intentRef.current?.acquire();
                     }
-                    else manualStop();
+                    else disableManual();
                     // Chuyển focus khỏi input Switch để W/A/S/D điều khiển được.
                     // Các ô nhập liệu khác vẫn giữ nguyên quy tắc không phát lệnh.
                     joystickFocusRef.current?.focus({ preventScroll: true });

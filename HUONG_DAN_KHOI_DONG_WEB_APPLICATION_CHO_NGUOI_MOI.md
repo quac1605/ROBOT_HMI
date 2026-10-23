@@ -230,6 +230,10 @@ ros2 interface show robot_hmi_msgs/msg/CmdIn
 Build lại sau mỗi lần thay file `.msg`. Terminal R phải source cả ROS Jazzy
 và workspace này để rosbridge phát `/cmd_in` đúng kiểu. Đây là workspace HMI;
 camera nằm ở `/home/vistar/projects/ros2_ws` riêng.
+Sau lần đổi hợp đồng `/cmd_in` này, khởi động lại Terminal R và A sau build;
+node robot cũng phải build/source cùng phiên bản `robot_hmi_msgs`. Interface
+hiện dùng mode `MANUAL`, `AUTO`, `STOP`, `SLAM`, vận tốc `v_m`, `v_rad`,
+`original_poss` kiểu `PoseStamped` và `target` kiểu `PoseStamped[]`.
 
 **Bước 4 — kiểm package và cổng trước khi khởi động:**
 
@@ -468,6 +472,9 @@ liệu thật. Sau khi Terminal R và A đã chạy, kiểm thêm
 `robot_hmi_msgs/msg/CmdIn`. Backend chỉ publish message `/cmd_in` khi có lệnh
 được chấp nhận; việc chưa thấy message trên topic lúc chỉ xem bản đồ/camera là
 bình thường. Không gửi lệnh thử tới robot chỉ để kiểm việc khởi động web.
+Trên NavigationPage, bật manual phát `MANUAL`, tắt manual phát `AUTO`; chọn
+điểm hiện tại/điểm đích cập nhật `original_poss`/`target` ngay qua API. Dừng
+mapping, yêu cầu dừng hoặc hủy mission phát `STOP`.
 
 ## 5. Khởi động theo thứ tự: tối đa năm terminal
 

@@ -50,5 +50,7 @@ export function useTeleopHold({ getLatest, sendVelocity, requestStop, onError })
         [],
     );
 
-    return { start, update, stop };
+    const cancel = useCallback(() => controllerRef.current?.cancel(), []);
+
+    return { start, update, stop, cancel };
 }

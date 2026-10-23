@@ -8,7 +8,7 @@
  *
  * Chỉ giữ gói mới nhất: gói phát lúc mất kết nối bị bỏ, không xếp hàng.
  * Khi nối lại, phát lại gói mới nhất nhưng với joystick 0, để robot không nhận một lệnh chạy đã cũ
- * (target và original_position giữ nguyên).
+ * (target và original_poss giữ nguyên).
  * Phải tạo trước client.start() vì topic được advertise lúc mở kết nối.
  */
 import { CMD_IN_TOPIC, CMD_IN_ROS_TYPE, toRosCmdIn } from '@robot-hmi/contracts/cmdIn';
@@ -20,7 +20,7 @@ export function createRosbridgeCmdInPublisher({ client }) {
     client.advertise(CMD_IN_TOPIC, {
         type: CMD_IN_ROS_TYPE,
         onReconnect: () => (disposed || !latest ? null
-            : toRosCmdIn({ ...latest, joystick: { linear: 0, angular: 0 } })),
+            : toRosCmdIn({ ...latest, joystick: { v_m: 0, v_rad: 0 } })),
     });
 
     return {

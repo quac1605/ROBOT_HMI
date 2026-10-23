@@ -47,6 +47,14 @@ export function createTeleopHoldController({
     return true;
   }
 
+  function cancel() {
+    active = null;
+    if (timer !== null) {
+      clearEvery(timer);
+      timer = null;
+    }
+  }
+
   function send() {
     if (!active || disposed) return;
     const current = getLatest();
@@ -113,6 +121,7 @@ export function createTeleopHoldController({
     },
 
     stop,
+    cancel,
     isActive: () => active !== null,
     dispose() {
       stop('UNMOUNT');

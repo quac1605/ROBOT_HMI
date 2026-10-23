@@ -201,6 +201,10 @@ export const API_MANIFEST = Object.freeze({
     successStatus: 200,
     description: 'Đặt hoặc cập nhật ước lượng vị trí robot trước nhiệm vụ AUTO; trả 409 ORIGINAL_POSITION_DURING_MISSION khi đang chạy nhiệm vụ.',
   }),
+  setTarget: Object.freeze({
+    type: 'http', method: 'PUT', path: '/api/navigation/target', successStatus: 200,
+    description: 'Cập nhật ngay danh sách đích PoseStamped của /cmd_in trong mode AUTO.',
+  }),
   subscribeMissions: Object.freeze({
     type: 'ws',
     channel: '/ws',

@@ -133,7 +133,8 @@ export function createRobotRuntime({
         // Chỉ dừng do người dùng chọn mới đổi /cmd_in sang stop; nhả joystick giữ nguyên mode.
         onStopRequested: request => { if (!request?.keepMode) cmdInService.emergencyStop(); },
         // Bật quyền lái là người dùng chọn mode: trang tạo bản đồ là slam, trang điều hướng là manual.
-        onControlClaimed: context => cmdInService.selectMode(context.kind === 'mapping' ? 'slam' : 'manual'),
+        onControlClaimed: context => cmdInService.setMode(context.kind === 'mapping' ? 'SLAM' : 'MANUAL'),
+        onControlReleased: context => { if (context.kind === 'manual') cmdInService.setMode('AUTO'); },
     });
 
     const controlSubjectRegistry = createControlSubjectRegistry(controlAuthority);

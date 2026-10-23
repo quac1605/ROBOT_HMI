@@ -37,6 +37,7 @@ export function createControlAuthority({
     onStopRequested = null,
     // Hook tùy chọn, gọi khi một lease nhận quyền lái (nhận context: manual hoặc mapping).
     onControlClaimed = null,
+    onControlReleased = null,
 }) {
     if (!motionGate || typeof motionGate.enter !== 'function' || typeof motionGate.assert !== 'function') {
         throw new TypeError('Shared motionGate is required in controlAuthority');
@@ -449,7 +450,11 @@ export function createControlAuthority({
                 sessionId, operation: 'releaseControl',
                 requestId: req.requestId, payload: req,
             }, () => {
+                const context = core.view(sessionId).lease?.context;
                 core.release(sessionId, req.leaseId);
+                if (context?.kind === 'manual') {
+                    try { onControlReleased?.(context); } catch { /* cô lập lỗi hook */ }
+                }
                 drainRevocations();
                 const response = ReleaseControlResponseSchema.parse({
                     leaseId: req.leaseId, requestId: req.requestId, status: 'released',
