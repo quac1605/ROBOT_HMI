@@ -76,8 +76,6 @@ desktop.ini
 tools/ros-camera/.bin/
 tools/ros-camera/.local/
 tools/ros-camera/__pycache__/
-tools/rosbridge/.local/
-tools/rosbridge/.local.tmp.*/
 
 # ROS 2 workspace (colcon)
 ros2_ws/build/
