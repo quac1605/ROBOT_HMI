@@ -2,7 +2,8 @@
  * backend/src/ros/rosbridgeClient.js
  *
  * CLIENT TỐI GIẢN CHO GIAO THỨC ROSBRIDGE V2 (WebSocket + JSON) CỦA ROS 2.
- * Một kết nối dùng chung cho cả subscribe (/odom, /cmd_out) và publish (/cmd_in).
+ * Một kết nối dùng chung cho subscribe (/odom, /cmd_out, /tf, /tf_static)
+ * và publish (/cmd_in).
  * Tự kết nối lại khi mất kết nối; sau mỗi lần mở đăng ký lại toàn bộ topic.
  */
 import { WebSocket } from 'ws';
@@ -20,6 +21,7 @@ export function createRosbridgeClient({
     let socket = null;
     let reconnectTimer = null;
     let connected = false;
+    let connectionEpoch = 0;
     let started = false;
     let disposed = false;
 
@@ -31,6 +33,7 @@ export function createRosbridgeClient({
             type: sub.type,
             throttle_rate: sub.throttleMs,
             queue_length: 1,
+            ...(sub.qos ? { qos: sub.qos } : {}),
         };
     }
 
@@ -62,6 +65,7 @@ export function createRosbridgeClient({
         socket = ws;
         ws.on('open', () => {
             if (socket !== ws) return;
+            connectionEpoch++;
             setConnected(true);
             for (const [topic, sub] of subscriptions) sendOp(ws, subscribeOp(topic, sub));
             for (const [topic, adv] of advertisements) {
@@ -92,9 +96,9 @@ export function createRosbridgeClient({
     }
 
     return {
-        subscribe(topic, { type, throttleMs = 0 }, handler) {
+        subscribe(topic, { type, throttleMs = 0, qos = null }, handler) {
             if (started) throw new Error('ROSBRIDGE_SUBSCRIBE_AFTER_START');
-            subscriptions.set(topic, { type, throttleMs, handler });
+            subscriptions.set(topic, { type, throttleMs, qos, handler });
         },
         advertise(topic, { type, onReconnect = null }) {
             if (started) throw new Error('ROSBRIDGE_ADVERTISE_AFTER_START');
@@ -113,6 +117,7 @@ export function createRosbridgeClient({
             connect();
         },
         isConnected: () => connected,
+        getConnectionEpoch: () => connectionEpoch,
         dispose() {
             if (disposed) return;
             disposed = true;

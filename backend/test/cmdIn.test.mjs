@@ -377,7 +377,7 @@ test('publisher advertise khi nối, bỏ gói lúc mất kết nối, nối l�
     client.dispose();
 });
 
-// --- runtime: một kết nối rosbridge cho cả /cmd_in và /odom, /cmd_out ---
+// --- runtime: một kết nối rosbridge cho /cmd_in, /odom, /cmd_out và TF ---
 
 async function startFakeRosbridge() {
     const wss = new WebSocketServer({ host: '127.0.0.1', port: 0 });
@@ -398,7 +398,7 @@ async function startFakeRosbridge() {
     };
 }
 
-test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_out và advertise, publish /cmd_in', async t => {
+test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_out, TF và publish /cmd_in', async t => {
     const bridge = await startFakeRosbridge();
     const runtime = createRobotRuntime({
         pool: { query: async () => { throw new Error('DB không dùng trong test này'); } },
@@ -410,10 +410,11 @@ test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_out
     });
     t.after(async () => { runtime.dispose(); await bridge.close(); });
 
-    await waitFor(() => bridge.connections[0]?.length === 3, { label: 'subscribe + advertise' });
+    await waitFor(() => bridge.connections[0]?.length === 5, { label: 'subscribe + advertise' });
     const ops = bridge.connections[0];
     assert.deepEqual(ops.map(op => [op.op, op.topic]).sort(), [
         ['advertise', '/cmd_in'], ['subscribe', '/cmd_out'], ['subscribe', '/odom'],
+        ['subscribe', '/tf'], ['subscribe', '/tf_static'],
     ]);
 
     runtime.cmdInService.emergencyStop();

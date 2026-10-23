@@ -38,6 +38,7 @@ function createInitialRobotState() {
         motionInhibited: true,
         motionInhibitReason: 'STARTUP_UNINITIALIZED',
         pose: null,
+        mapPose: null,
         poseSourceUpdateAgeMs: null,
         velocity: { linearX: 0, angularZ: 0 },
         batteryPercent: null,
@@ -86,7 +87,7 @@ export function createRobotRuntime({
     const motionGate = createMotionAdmissionGate();
     const mappingDriveGate = createMappingDriveGate();
 
-    // Một kết nối rosbridge (ROS 2) dùng chung cho /cmd_in (publish) và /odom, /cmd_out (subscribe).
+    // Một rosbridge dùng chung: publish /cmd_in; subscribe /odom, /cmd_out và TF.
     // Không có ROSBRIDGE_URL thì backend không nối ROS, giữ hành vi mock cũ.
     const rosStatusSpec = config?.ROSBRIDGE_URL ? loadRosStatusSpec(rosStatusSpecPath) : null;
     const rosbridge = rosStatusSpec ? createRosbridgeClient({
@@ -220,9 +221,13 @@ export function createRobotRuntime({
             spec: rosStatusSpec,
             client: rosbridge,
             logger,
+            mapFrameId: () => {
+                const metadata = rosMapService.getMetadata();
+                return metadata.status === 'ready' ? metadata.geometry.frameId : null;
+            },
             ownsClient: false,
         });
-        // Mọi topic đã đăng ký xong (advertise /cmd_in, subscribe /odom, /cmd_out) mới mở kết nối.
+        // Đăng ký /cmd_in, /cmd_out, /odom và TF trước khi mở kết nối.
         rosbridge.start();
         rosStatusService.start();
     }

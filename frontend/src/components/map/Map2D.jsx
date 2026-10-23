@@ -6,6 +6,7 @@ import { mapContextKey, geometryKey } from '../../utils/mapRenderModel.js';
 const PADDING = 8;
 const POSE_PRESENTATION = Object.freeze({
   reliable: { body: '#4caf50', stroke: '#1b5e20', opacity: 1, label: null },
+  odom: { body: '#00acc1', stroke: '#006064', opacity: 1, label: 'Vị trí từ /odom' },
   stale: { body: '#ffb300', stroke: '#e65100', opacity: 0.6, label: 'Vị trí robot đã cũ' },
   lost: { body: '#ef5350', stroke: '#b71c1c', opacity: 0.5, label: 'Robot mất định vị' },
   offline: { body: '#9e9e9e', stroke: '#424242', opacity: 0.4, label: 'Robot ngoại tuyến' },
@@ -207,7 +208,7 @@ export default function Map2D({
     setView(getInitialView(geometry));
   }
 
-  const knownPoseQuality = ['reliable', 'stale', 'lost', 'offline'].includes(poseQuality)
+  const knownPoseQuality = ['reliable', 'odom', 'stale', 'lost', 'offline'].includes(poseQuality)
     ? poseQuality
     : 'lost';
   const robotPoint = pose && pose.frameId === geometry.frameId
@@ -230,7 +231,10 @@ export default function Map2D({
     ? worldYawToSvgDegrees(pose.yaw, geometry.origin?.yaw ?? 0)
     : 0;
   const robotPresentation = POSE_PRESENTATION[knownPoseQuality];
-  const robotIsDegraded = knownPoseQuality !== 'reliable';
+  const robotIsDegraded = !['reliable', 'odom'].includes(knownPoseQuality);
+  // Giữ vòng định vị và mũi hướng nhìn thấy được khi /map rất lớn (SVG thu nhỏ).
+  const locatorRadius = view.w * 0.015;
+  const locatorTip = view.w * 0.04;
 
   return (
     <Box sx={{ userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none' }} onDragStart={(e) => e.preventDefault()}>
@@ -388,6 +392,16 @@ export default function Map2D({
               aria-label={robotPresentation.label || 'Vị trí robot tin cậy'}
               opacity={robotPresentation.opacity}
             >
+              <g transform={`rotate(${robotRotation})`} aria-hidden="true">
+                <circle r={locatorRadius} fill="none" stroke={robotPresentation.stroke}
+                  strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                <path d={`M ${locatorRadius} 0 L ${locatorTip} 0`}
+                  fill="none" stroke={robotPresentation.stroke} strokeWidth={3}
+                  vectorEffect="non-scaling-stroke" />
+                <polygon points={`${locatorTip},0 ${locatorTip - locatorRadius * 0.45},${-locatorRadius * 0.35} ${locatorTip - locatorRadius * 0.45},${locatorRadius * 0.35}`}
+                  fill="#e65100" stroke="#ffffff" strokeWidth={1.5}
+                  vectorEffect="non-scaling-stroke" />
+              </g>
               <g transform={`rotate(${robotRotation}) scale(${metersToCells})`}>
                 {/* 2 Bánh xe chủ động hai bên (~150mm x 50mm -> 0.15m x 0.05m) */}
                 <rect x={-0.075} y={-0.285} width={0.15} height={0.05} rx={0.015} fill={robotPresentation.stroke} />

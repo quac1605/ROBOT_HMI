@@ -1,6 +1,6 @@
 # ROBOT_HMI ↔ ROS 2: đầu vào, đầu ra và giao tiếp
 
-Tài liệu này mô tả toàn bộ dữ liệu trao đổi giữa HMI (backend Node.js và web frontend) và robot chạy **ROS 2 Jazzy**: topic nào HMI nhận, topic nào HMI gửi, kiểu dữ liệu từng topic, sơ đồ hệ thống và phương thức truyền tin trên từng chặng.
+Tài liệu này mô tả dữ liệu trao đổi giữa HMI (backend Node.js và web frontend) và robot chạy **ROS 2 Jazzy**: topic nào HMI nhận, topic nào HMI gửi, kiểu dữ liệu từng topic, sơ đồ hệ thống và phương thức truyền tin trên từng chặng. NavigationPage hiển thị tọa độ/hướng từ `/odom` và đặt marker lên `/map` sau khi đổi hệ tọa độ bằng TF khi cần.
 
 Người đọc: nhóm làm phần robot ROS 2, và người phát triển backend/frontend của dự án. Phụ lục ở cuối (mục 10–13) dành riêng cho người viết tiếp code.
 
@@ -8,6 +8,7 @@ File cấu hình liên quan:
 
 - [`backend/config/ros_status.yaml`](backend/config/ros_status.yaml): topic, nhịp và thời gian quá hạn của `/odom`, `/cmd_out`.
 - [`packages/contracts/src/cmdIn.js`](packages/contracts/src/cmdIn.js): tên topic, kiểu và schema gói `/cmd_in`.
+- [`tools/ros-map/README.md`](tools/ros-map/README.md): luồng bản đồ `/map`.
 - [`tools/ros-camera/README.md`](tools/ros-camera/README.md): cách dựng đường camera.
 
 ---
@@ -18,7 +19,9 @@ File cấu hình liên quan:
 
 | Topic | Kiểu message ROS 2 | Thành phần HMI nhận | Dùng để |
 | --- | --- | --- | --- |
-| `/odom` | `nav_msgs/msg/Odometry` | backend `rosStatusService` | Vị trí `x`, `y` và góc quay `yaw` của robot |
+| `/odom` | `nav_msgs/msg/Odometry` | backend `rosStatusService` qua rosbridge | Position `x`, `y` và Orientation quaternion, đổi thành góc quay `yaw` của robot |
+| `/tf`, `/tf_static` | `tf2_msgs/msg/TFMessage` | backend qua rosbridge | Transform `map ← odom` để đặt pose `/odom` đúng vị trí trên `/map` |
+| `/map` | `nav_msgs/msg/OccupancyGrid` | worker `rclpy` trong backend | Lưới bản đồ ROS trên NavigationPage và MappingPage |
 | `/cmd_out` | `geometry_msgs/msg/Twist` | backend `rosStatusService` | Vận tốc dài và vận tốc góc hiện tại |
 | `/image_front` | `sensor_msgs/msg/Image` | `tools/ros-camera/ros_camera_gateway.py` | Ảnh camera trước |
 | `/image_rear` | `sensor_msgs/msg/Image` | `tools/ros-camera/ros_camera_gateway.py` | Ảnh camera sau |
@@ -35,7 +38,8 @@ HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không p
 
 | Kênh | Nội dung | Lấy từ |
 | --- | --- | --- |
-| WebSocket `/ws`, khung `robot.state` | `rosConnected`, `pose`, `poseSourceUpdateAgeMs`, `velocity` | `/odom`, `/cmd_out` |
+| WebSocket `/ws`, khung `robot.state` | `rosConnected`, `pose`, `mapPose`, `poseSourceUpdateAgeMs`, `velocity` | `/odom`, `/tf`, `/tf_static`, `/cmd_out` |
+| HTTP `/api/ros-map` và ảnh PNG | Metadata, kích thước, độ phân giải, gốc tọa độ và ảnh lưới | `/map` |
 | WebRTC (qua MediaMTX) | Video camera trước/sau | `/image_front`, `/image_rear` |
 
 ---
@@ -45,55 +49,35 @@ HMI không publish topic nào khác. Gateway camera chỉ đọc ảnh, không p
 ### 2.1 Sơ đồ tổng thể
 
 ```
-┌──────────────────────── Robot / máy ROS 2 Jazzy ────────────────────────┐
-│                                                                          │
-│  node robot ──► /odom, /cmd_out ─┐            ┌─► /cmd_in ──► node robot │
-│                                 ▼            │                           │
-│                       rosbridge_server (WebSocket :9090)                 │
-│                                 ▲            │                           │
-│  driver camera ──► /image_front, /image_rear │                           │
-│                         │                    │                           │
-│                         ▼                    │                           │
-│          ros_camera_gateway.py (rclpy)       │                           │
-│                         │ VP8/RTP UDP        │                           │
-│                         ▼ 127.0.0.1:5004/5006│                           │
-│                      MediaMTX                │                           │
-└─────────────────────────┼────────────────────┼───────────────────────────┘
-                          │ WHEP/WebRTC        │ WebSocket, JSON rosbridge v2
-                          │ (HTTPS :8889)      │ (một kết nối, hai chiều)
-                          │                    ▼
-                          │   ┌──────────── Backend HMI (Node.js) ─────────────┐
-                          │   │ rosbridgeClient ──► rosStatusService           │
-                          │   │        ▲                 │ sharedRobotState     │
-                          │   │        │                 ▼                     │
-                          │   │ rosbridgeCmdInPublisher ◄── cmdInService     │
-                          │   │                          ▲                     │
-                          │   │      controlAuthority / missionService         │
-                          │   └──────────────┬───────────┼─────────────────────┘
-                          │                  │ WebSocket /ws (robot.state)
-                          │                  │ HTTP /api, WS /ws (lệnh lái)
-                          ▼                  ▼
-                    ┌────────────── Trình duyệt (frontend React) ──────────────┐
-                    │ Camera quan sát   Ô "Trạng thái robot"   Joystick, nút dừng │
-                    └────────────────────────────────────────────────────────────┘
+ROS 2 Jazzy                       Backend HMI (cùng máy Ubuntu)          Browser LAN
+/odom, /tf, /tf_static, /cmd_out
+      └─► rosbridge_server :9090 ─► rosStatusService ── robot.state /ws ─► Navigation X/Y/yaw, marker
+                                        │
+                                        └─► sharedRobotState
+/map ─────────────────────────────► worker rclpy ── /api/ros-map + PNG ───► nền bản đồ Navigation/Mapping
+/image_front, /image_rear ────────► camera gateway ── RTP ── MediaMTX ───► WebRTC video
+/cmd_in ◄── rosbridge_server ◄──── cmdInService ◄── controlAuthority ◄── các thao tác được chấp nhận
 ```
 
-Backend làm việc với ba topic `/odom`, `/cmd_out`, `/cmd_in` qua **một kết nối rosbridge duy nhất**. Hai topic camera đi đường riêng: một node ROS 2 (`rclpy`) đọc ảnh rồi chuyển thành video WebRTC, không đi qua rosbridge.
+Backend làm việc với `/odom`, `/tf`, `/tf_static`, `/cmd_in` và `/cmd_out` qua **một kết nối rosbridge duy nhất**. Worker `rclpy` đọc `/map` trực tiếp qua ROS 2 DDS, còn hai topic camera đi đường riêng: node ROS 2 đọc ảnh rồi chuyển thành video WebRTC.
 
-### 2.2 Luồng đầu vào: `/odom`, `/cmd_out` → giao diện
+### 2.2 Luồng đầu vào: `/odom`, TF, `/map`, `/cmd_out` → giao diện
 
 ```
-/odom, /cmd_out ──► rosbridge_server ──(op: publish)──► rosbridgeClient
+/odom, /tf, /tf_static, /cmd_out ──► rosbridge_server ──(op: publish)──► rosbridgeClient
                                                           │ message JSON
                                                           ▼
                            rosStatusMessages: odometryToPose(), twistToVelocity()
                            (message hỏng → null → bị bỏ, đếm droppedMessages)
                                                           │
                                                           ▼
-                rosStatusService: giữ message mới nhất, mỗi 100 ms ghi vào sharedRobotState
+                rosStatusService: giữ message mới nhất, tính mapPose từ TF,
+                                  mỗi 100 ms ghi vào sharedRobotState
                                                           │
                                                           ▼
-                robotStateService ──(WS /ws, type 'robot.state')──► ô "Trạng thái robot" ở /navigation
+                robotStateService ──(WS /ws, type 'robot.state')──► ô trạng thái và marker trên Navigation
+
+/map ──(rclpy)──► occupancy_map_worker.py ──► /api/ros-map + PNG ──► nền bản đồ Navigation/Mapping
 ```
 
 ### 2.3 Luồng đầu ra: thao tác trên giao diện → `/cmd_in`
@@ -146,8 +130,15 @@ Vì gói được dựng **sau** bước kiểm tra quyền, lệnh bị từ ch
 - Các trường khác (`twist`, `covariance`, `child_frame_id`) được bỏ qua.
 - Quaternion được chuẩn hóa trước, rồi `yaw = atan2(2(wz + xy), 1 − 2(y² + z²))`. Frontend tự đổi sang độ.
 - Message thiếu trường, có số không hữu hạn hoặc quaternion bằng 0 bị bỏ và được đếm vào `droppedMessages`.
+- `pose` luôn giữ **tọa độ gốc của `/odom`**; ô trạng thái NavigationPage hiển thị X/Y (m), yaw (độ) và `frameId` này. Backend không gán nhầm x/y odom thành x/y của map.
 
-### 3.2 `/cmd_out`: `geometry_msgs/msg/Twist`
+### 3.2 `/tf`, `/tf_static`: `tf2_msgs/msg/TFMessage`
+
+Mỗi `TransformStamped` có `header.frame_id` (frame cha), `child_frame_id` (frame con), `transform.translation` (`x`, `y`, `z`) và `transform.rotation` quaternion (`x`, `y`, `z`, `w`). Khi frame của `/odom` khác frame của `/map`, backend cần transform hợp lệ `map ← odom` để tính `mapPose` từ `pose`. `mapPose` giữ `{ frameId, x, y, yaw }` trong frame của bản đồ hiện tại; nếu không có transform cần thiết hoặc pose quá hạn thì `mapPose=null`. Transform động chỉ dùng khi còn mới trong 1500 ms; transform tĩnh được giữ tới khi rosbridge ngắt/kết nối lại. Khi frame của `/odom` và `/map` giống nhau, có thể dùng pose trực tiếp. Marker chỉ được vẽ nếu pose đã chọn cùng frame với lưới bản đồ và nằm trong phạm vi lưới.
+
+ROS 2 thường có frame `/odom` là `odom` và `/map` là `map`. Kiểm thực tế bằng `ros2 topic echo /odom --once`, `ros2 topic echo /map --once --qos-durability transient_local --field header.frame_id` và `ros2 run tf2_ros tf2_echo map odom`; không thay frame bằng một giá trị đoán để ép marker lên bản đồ.
+
+### 3.3 `/cmd_out`: `geometry_msgs/msg/Twist`
 
 | Trường ROS 2 | Đơn vị | Ánh xạ sang `robot.state` |
 | --- | --- | --- |
@@ -156,7 +147,11 @@ Vì gói được dựng **sau** bước kiểm tra quyền, lệnh bị từ ch
 
 Các trường `linear.y`, `linear.z`, `angular.x`, `angular.y` được bỏ qua. Vận tốc được kiểm bằng `VelocitySchema` `{ linearX, angularZ }` (`packages/contracts/src/control.js`); giá trị không phải số hữu hạn bị bỏ.
 
-### 3.3 `/image_front`, `/image_rear`: `sensor_msgs/msg/Image`
+### 3.4 `/map`: `nav_msgs/msg/OccupancyGrid`
+
+`header.frame_id` xác định frame bản đồ; `info.width`, `info.height`, `info.resolution`, `info.origin.position` và `info.origin.orientation` xác định phép đổi giữa tọa độ mét và ô lưới; `data` là mức chiếm dụng của từng ô. Worker `rclpy` subscribe bản đồ, tạo PNG và API metadata cho frontend. NavigationPage dùng lưới ROS trực tiếp để xem; muốn đặt waypoint hoặc tạo nhiệm vụ, người dùng chọn bản đồ đã lưu.
+
+### 3.5 `/image_front`, `/image_rear`: `sensor_msgs/msg/Image`
 
 | Thuộc tính | Giá trị bắt buộc |
 | --- | --- |
@@ -271,7 +266,8 @@ Các trường trong `payload` (`packages/contracts/src/robotState.js`) liên qu
 | Trường | Kiểu | Nguồn |
 | --- | --- | --- |
 | `rosConnected` | boolean | `true` khi rosbridge đang mở **và** `/odom` cuối còn trong 1500 ms |
-| `pose` | `{ frameId, x, y, yaw }` hoặc `null` | `/odom`; `null` khi chưa từng nhận |
+| `pose` | `{ frameId, x, y, yaw }` hoặc `null` | `/odom` gốc; `null` khi chưa từng nhận |
+| `mapPose` | `{ frameId, x, y, yaw }` hoặc `null` | Pose đổi sang frame `map` bằng `/tf`/`/tf_static`; `null` khi chưa đủ dữ liệu hoặc pose quá hạn |
 | `poseSourceUpdateAgeMs` | số (ms) hoặc `null` | Thời gian kể từ `/odom` cuối |
 | `velocity` | `{ linearX, angularZ }` | `/cmd_out`; về `0` khi `/cmd_out` quá hạn |
 
@@ -281,15 +277,21 @@ Các trường trong `payload` (`packages/contracts/src/robotState.js`) liên qu
 
 ### 5.1 Backend ↔ rosbridge: rosbridge v2 trên WebSocket
 
-- **Kết nối:** một WebSocket tới `ROSBRIDGE_URL` (ví dụ `ws://127.0.0.1:9090`), dùng cho cả nhận lẫn gửi. Client: `backend/src/ros/rosbridgeClient.js`.
+- **Kết nối:** một WebSocket tới `ROSBRIDGE_URL` (ví dụ `ws://127.0.0.1:9090`), dùng cho cả nhận lẫn gửi. Client: `backend/src/ros/rosbridgeClient.js`. Browser nhận snapshot qua `/ws` của backend, không cần nối thẳng tới rosbridge.
 - **Định dạng:** mỗi tin là một object JSON có trường `op`.
 
 Tin backend gửi tới rosbridge:
 
 ```jsonc
-// Đăng ký nhận /odom và /cmd_out (gửi lại sau mỗi lần nối)
+// Đăng ký nhận /odom, TF và /cmd_out (gửi lại sau mỗi lần nối)
 { "op": "subscribe", "id": "hmi:/odom", "topic": "/odom",
   "type": "nav_msgs/msg/Odometry", "throttle_rate": 50, "queue_length": 1 }
+{ "op": "subscribe", "id": "hmi:/tf", "topic": "/tf", "type": "tf2_msgs/msg/TFMessage",
+  "throttle_rate": 50, "queue_length": 1,
+  "qos": { "history": "keep_last", "depth": 10, "reliability": "best_effort", "durability": "volatile" } }
+{ "op": "subscribe", "id": "hmi:/tf_static", "topic": "/tf_static", "type": "tf2_msgs/msg/TFMessage",
+  "throttle_rate": 0, "queue_length": 1,
+  "qos": { "history": "keep_last", "depth": 100, "reliability": "reliable", "durability": "transient_local" } }
 { "op": "subscribe", "id": "hmi:/cmd_out", "topic": "/cmd_out",
   "type": "geometry_msgs/msg/Twist", "throttle_rate": 50, "queue_length": 1 }
 
@@ -306,6 +308,7 @@ Tin rosbridge gửi về backend:
 
 ```jsonc
 { "op": "publish", "topic": "/odom", "msg": { "header": { "frame_id": "odom" }, "pose": { "pose": { "...": "..." } } } }
+{ "op": "publish", "topic": "/tf", "msg": { "transforms": [{ "header": { "frame_id": "map" }, "child_frame_id": "odom", "transform": { "translation": { "x": 0, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 } } }] } }
 { "op": "publish", "topic": "/cmd_out", "msg": { "linear": { "x": 0.2 }, "angular": { "z": 0.1 } } }
 ```
 
@@ -316,6 +319,8 @@ Tin rosbridge gửi về backend:
 | Luồng | Nhịp | Khi mất dữ liệu |
 | --- | --- | --- |
 | `/odom` → backend | Tối đa 20 Hz (`throttle_ms: 50`) | Quá 1500 ms: `rosConnected=false`, giữ pose cuối, tuổi pose tiếp tục tăng |
+| `/tf`, `/tf_static` → backend | Theo node định vị; `/tf` tối đa 20 Hz sau throttle của rosbridge | Thiếu transform `map ← odom` mới/hợp lệ: `mapPose=null`, không vẽ marker sai hệ tọa độ |
+| `/map` → backend | Theo SLAM hoặc `map_server` | Worker báo chờ; Navigation/Mapping không hiển thị lưới ROS mới |
 | `/cmd_out` → backend | Tối đa 20 Hz | Quá 1500 ms: vận tốc về `(0; 0)`, vẫn online nếu `/odom` còn |
 | backend → frontend (`robot.state`) | 10 Hz cố định (`publish_rate_hz`), kiêm heartbeat | Frontend tự báo dữ liệu cũ |
 | backend → `/cmd_in` | Chỉ khi có lệnh; khoảng 20 Hz khi giữ joystick (frontend gửi mỗi 50 ms) | Không phát định kỳ; khi không ai điều khiển, topic im lặng |
@@ -325,7 +330,7 @@ Robot nên tự dừng nếu không nhận được gói `manual` mới sau mộ
 ### 5.3 Mất và nối lại kết nối rosbridge
 
 - Client thử nối lại sau `bridge.reconnect_ms` (2000 ms) cho tới khi được.
-- Sau mỗi lần nối, client gửi lại toàn bộ `subscribe` và `advertise`.
+- Sau mỗi lần nối, client gửi lại toàn bộ `subscribe` và `advertise`, gồm `/odom`, `/cmd_out`, `/tf`, `/tf_static` và `/cmd_in`.
 - Gói `/cmd_in` phát trong lúc mất kết nối bị bỏ, không xếp hàng.
 - Khi nối lại, backend phát lại gói `/cmd_in` mới nhất nhưng với joystick `(0; 0)` (giữ nguyên `mode`, `target`, `original_position`), để robot không nhận lại một lệnh chạy đã cũ.
 
@@ -346,7 +351,7 @@ Kênh `/ws` giới hạn 30 tin nhắn mỗi giây cho mỗi kết nối. Lái t
 | --- | --- |
 | Driver camera → gateway | DDS của ROS 2 (`sensor_msgs/msg/Image`) |
 | Gateway → MediaMTX | VP8 trong RTP qua UDP loopback: `127.0.0.1:5004` (trước), `127.0.0.1:5006` (sau) |
-| MediaMTX → trình duyệt | WHEP (HTTPS, cổng 8889) để bắt tay, rồi WebRTC (ICE qua UDP 8189) cho video |
+| MediaMTX → Vite → trình duyệt | Vite chuyển tiếp WHEP vào MediaMTX HTTPS `8889` qua cùng Origin web `5173`; WebRTC media đi trực tiếp tới Ubuntu qua UDP `8189` |
 | Kiểm quyền | MediaMTX hỏi backend; backend chỉ cấp vé ngắn hạn, gắn với từng camera, cho người đã đăng nhập |
 
 ---
@@ -360,13 +365,15 @@ sudo apt install ros-jazzy-rosbridge-suite
 
 # Một lần (và mỗi khi sửa file .msg): build kiểu message /cmd_in
 source /opt/ros/jazzy/setup.bash
-cd ~/ROBOT_HMI/ros2_ws && colcon build --packages-select robot_hmi_msgs
+cd /home/vistar/projects/ROBOT_HMI/ros2_ws && colcon build --packages-select robot_hmi_msgs
 
 # Mỗi lần chạy: source cả workspace rồi mới mở rosbridge
 source /opt/ros/jazzy/setup.bash
-source ~/ROBOT_HMI/ros2_ws/install/setup.bash
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml   # mở ws://<máy>:9090
+source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml address:=127.0.0.1
 ```
+
+Lệnh cuối chạy lâu dài trong một terminal riêng, mở `ws://127.0.0.1:9090` cho backend trên cùng máy Ubuntu. Dùng cùng `ROS_DOMAIN_ID` và môi trường DDS với các node robot. Không cần mở cổng `9090` cho browser trong LAN. Nếu `/odom` đã chạy nhưng `rosbridge_server` chưa có, backend vẫn không thể subscribe `/odom` qua JavaScript.
 
 ### 6.2 Phía backend
 
@@ -376,7 +383,7 @@ Trong `backend/.env`:
 ROSBRIDGE_URL=ws://127.0.0.1:9090
 ```
 
-- Biến này bật cả việc đọc `/odom`, `/cmd_out` lẫn phát `/cmd_in`, trên cùng một kết nối.
+- Biến này bật việc đọc `/odom`, `/cmd_out`, `/tf`, `/tf_static` và phát `/cmd_in` trên cùng một kết nối.
 - Để trống thì backend không nối ROS và giữ hành vi mô phỏng.
 - Chỉ nhận `ws://` hoặc `wss://`; giá trị khác làm backend báo `CONFIG_VALIDATION_FAILED` khi khởi động.
 
@@ -384,23 +391,29 @@ Muốn đổi tên topic, nhịp hoặc thời gian quá hạn của `/odom` và
 
 ### 6.3 Phía frontend
 
-`frontend/.env.local` chọn chế độ client:
+`frontend/.env.local` chọn chế độ client; script `tools/run_hmi_lan.sh` đặt `VITE_ROBOT_CLIENT=remote` khi chạy trên LAN:
 
 - `VITE_ROBOT_CLIENT=mock`: robot và backend giả lập trong trình duyệt; không có gì đi tới ROS.
 - `VITE_ROBOT_CLIENT=remote`: gọi backend thật qua `/api` và `/ws` (Vite proxy tới `127.0.0.1:3001`).
 
 ### 6.4 Phía camera
 
-Xem `tools/ros-camera/README.md`. Tóm tắt: chạy MediaMTX, chạy `ros_camera_gateway.py` sau khi `source /opt/ros/jazzy/setup.bash`, và đặt `CAMERA_MEDIA_MODE=ros`, `CAMERA_WHEP_BASE_URL=https://127.0.0.1:8889` trong `backend/.env`.
+Xem `tools/ros-camera/README.md`. Tóm tắt: chạy MediaMTX, chạy `ros_camera_gateway.py` sau khi `source /opt/ros/jazzy/setup.bash`, và đặt `CAMERA_MEDIA_MODE=ros`. Script `tools/run_hmi_lan.sh` đặt `CAMERA_WHEP_BASE_URL=https://<IP-Ubuntu>:5173`; Vite chuyển tiếp WHEP đến MediaMTX trên cùng máy.
 
 ---
 
 ## 7. Kiểm tra
 
+Các lệnh `info`, `echo`, `hz` và `tf2_echo` chỉ đọc dữ liệu, phù hợp khi robot đang chạy. Những lệnh `topic pub` và script `cmdin-demo.mjs` ở cuối bảng **phát dữ liệu/lệnh ROS**; chỉ chạy trong môi trường mô phỏng cô lập, không chạy để kiểm tính năng hiển thị trên robot thật.
+
 | Việc | Lệnh |
 | --- | --- |
-| Xem robot có phát trạng thái không | `ros2 topic echo /odom --once`, `ros2 topic hz /cmd_out` |
-| Xem HMI phát gì (đã source `ros2_ws/install/setup.bash`) | `ros2 topic echo /cmd_in robot_hmi_msgs/msg/CmdIn` |
+| Xem robot có phát odometry không | `ros2 topic info /odom -v`, `ros2 topic echo /odom --once`, `ros2 topic hz /odom` |
+| Xem frame bản đồ và transform | `ros2 topic info /map -v`, `ros2 topic echo /map --once --qos-durability transient_local --field header.frame_id`, `ros2 run tf2_ros tf2_echo map odom` (nhấn `Ctrl+C` sau khi thấy transform) |
+| Xem rosbridge đã mở | `ss -lnt | grep :9090`; `ros2 topic info /odom -v` có subscription của `rosbridge_websocket` |
+| Xem backend đã nhận ROS | Mở NavigationPage: ô trạng thái hiện X/Y/yaw từ `/odom`; bản đồ ROS có marker/mũi tên khi `mapPose` hợp lệ. Kết nối browser tới backend qua `/ws` (`robot.state`). |
+| Xem vận tốc hiện tại | `ros2 topic hz /cmd_out` |
+| Xem HMI phát gì (đã source workspace interface) | `ros2 topic echo /cmd_in robot_hmi_msgs/msg/CmdIn` |
 | Giả lập robot phát `/odom` | `ros2 topic pub -r 10 /odom nav_msgs/msg/Odometry "{header: {frame_id: odom}, pose: {pose: {position: {x: 1.5, y: -0.8}, orientation: {z: 0.3827, w: 0.9239}}}}"` |
 | Giả lập robot phát `/cmd_out` | `ros2 topic pub -r 10 /cmd_out geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.1}}"` |
 | Phát thử chuỗi 9 gói `/cmd_in` (không cần backend) | `cd backend && node scripts/cmdin-demo.mjs ws://127.0.0.1:9090` |
@@ -424,7 +437,7 @@ Script gọi thẳng `cmdInService` nên không đi qua kiểm tra quyền lái;
 
 | Hiện tượng | Nguyên nhân | Cách sửa |
 | --- | --- | --- |
-| `ros2 topic echo /cmd_in robot_hmi_msgs/msg/CmdIn` báo `The passed message type is invalid` | Terminal chưa source workspace (chỉ source `/opt/ros/jazzy`) | `source ~/ROBOT_HMI/ros2_ws/install/setup.bash`, hoặc thêm dòng đó vào `~/.bashrc` sau dòng source ROS |
+| `ros2 topic echo /cmd_in robot_hmi_msgs/msg/CmdIn` báo `The passed message type is invalid` | Terminal chưa source workspace (chỉ source `/opt/ros/jazzy`) | `source /home/vistar/projects/ROBOT_HMI/ros2_ws/install/setup.bash` sau khi source ROS |
 | Echo chạy nhưng không nhận gói nào, `ros2 topic info /cmd_in` báo `Publisher count: 0` | rosbridge chạy trong terminal chưa source workspace nên từ chối advertise kiểu `CmdIn` | Tắt rosbridge, source cả `/opt/ros/jazzy/setup.bash` và `ros2_ws/install/setup.bash`, chạy lại rosbridge |
 | Vẫn không có gói dù rosbridge đã đúng | Chưa có thao tác nào: backend chỉ phát khi có lệnh (bấm dừng, nhận quyền lái, bắt đầu nhiệm vụ…) | Chạy `node scripts/cmdin-demo.mjs`, hoặc thao tác trên giao diện / gọi `POST /api/control/stop` |
 | `Unable to start server: [Errno 98] Address already in use` khi mở rosbridge | Còn một rosbridge khác giữ cổng 9090 | `ss -ltnp \| grep 9090` để tìm PID, tắt tiến trình đó rồi chạy lại |
@@ -491,10 +504,13 @@ if __name__ == '__main__':
 | `backend/src/ros/rosbridgeClient.js` | Client rosbridge v2 dùng chung: `subscribe`, `advertise`, `publish`, tự nối lại và đăng ký lại topic. |
 | `backend/src/ros/rosStatusSpec.js` | Đọc và kiểm tra `config/ros_status.yaml`; sai cấu trúc thì dừng ngay lúc khởi động. |
 | `backend/src/ros/rosStatusMessages.js` | `odometryToPose()`, `twistToVelocity()`; message hỏng trả `null`. |
+| `backend/src/ros/rosTfTransforms.js` | Lưu TF động/tĩnh và đổi pose odom sang frame bản đồ khi transform hợp lệ. |
 | `backend/src/services/rosStatusService.js` | Giữ message mới nhất, ghi vào `sharedRobotState` theo `publish_rate_hz`, xử lý quá hạn. |
+| `backend/src/ros/occupancy_map_worker.py`, `backend/src/ros/rosMapService.js` | Subscribe `/map` qua DDS, tạo ảnh PNG và metadata có frame bản đồ hiện tại. |
+| `frontend/src/components/navigation/RosNavigationWorkspace.jsx`, `frontend/src/utils/rosMapPose.js` | Chọn pose đúng frame, kiểm độ mới/phạm vi lưới và hiển thị marker/hướng trên bản đồ ROS. |
 | `backend/src/services/cmdInService.js` | Chọn `mode` và dựng gói `/cmd_in`. |
 | `backend/src/ros/rosbridgeCmdInPublisher.js` | Advertise `/cmd_in`, phát gói qua client dùng chung, phát lại gói cuối với joystick 0 khi nối lại. |
-| `backend/src/ros/mockRosAdapter.js` | Hook `onMotionCommand({ origin, velocity, poses? })` sau mỗi lệnh đã ghi; `origin` là `teleop`, `mission`, `cancel`, `stop`. |
+| `backend/src/ros/mockRosAdapter.js` | Hook `onMotionCommand({ origin, velocity, poses? })` sau mỗi lệnh đã ghi. |
 | `packages/control-domain/src/controlAuthority.js` | Hook `onStopRequested()` ở đầu mỗi lần dừng. |
 | `backend/src/runtime.js` | Tạo một client rosbridge khi có `ROSBRIDGE_URL`, nối các phần trên với nhau. |
 | `backend/src/config.js` | Biến `ROSBRIDGE_URL`. |
@@ -505,7 +521,7 @@ if __name__ == '__main__':
 | `packages/contracts/src/control.js` | `VelocitySchema`, kiểu vận tốc dùng chung cho `/cmd_out` và `/cmd_in`. |
 | `packages/contracts/src/robotState.js` | `RobotStateSchema`. |
 | `tools/ros-camera/ros_camera_gateway.py` | Node ROS 2 đọc ảnh camera, mã hóa VP8/RTP. |
-| `backend/test/cmdIn.test.mjs`, `backend/test/rosStatus.test.mjs` | Test unit (`npm run test:unit`). |
+| `backend/test/cmdIn.test.mjs`, `backend/test/rosStatus.test.mjs`, `backend/test/rosTfTransforms.test.mjs`, `backend/test/rosMapService.test.mjs` | Test unit (`npm run test:unit`). |
 | `backend/test/rosStatus.live.test.mjs` | Test với ROS 2 thật (`npm run test:ros-live`). |
 | `backend/scripts/cmdin-demo.mjs` | Phát thử chuỗi gói `/cmd_in`. |
 

@@ -1,11 +1,14 @@
-# Hiển thị ROS 2 `/map` trên MappingPage
+# Hiển thị ROS 2 `/map` trên MappingPage và NavigationPage
 
-Backend dùng một node `rclpy` để subscribe `nav_msgs/msg/OccupancyGrid` với QoS
-`RELIABLE` và `TRANSIENT_LOCAL`. Nhờ vậy bản đồ do `map_server` phát một lần
-vẫn được nhận khi HMI khởi động sau. Node đổi toàn bộ lưới sang PNG ở đúng độ
-phân giải gốc; backend giữ bản mới nhất và chỉ gửi PNG (~174 KB với bản đồ đang
-chạy trên máy này) qua API có xác thực. Frontend lấy metadata mỗi 2 giây và
-dùng `Map2D` hiện có để hiển thị, phóng to, thu nhỏ và kéo bản đồ.
+Backend dùng một node `rclpy` với hai subscription
+`nav_msgs/msg/OccupancyGrid`: `RELIABLE`/`TRANSIENT_LOCAL` nhận map latched
+do `map_server` đã phát, và `BEST_EFFORT`/`VOLATILE` nhận publisher chỉ phát
+luồng live. Node đổi lưới mới sang PNG ở đúng độ phân giải gốc; thay đổi mỗi
+timestamp mà không đổi ô bản đồ không tạo PNG mới. Backend giữ bản mới nhất
+và vài revision gần đây để request metadata/PNG không bị lỗi khi map đổi giữa
+hai request. Khi publisher biến mất, backend bỏ ảnh cũ và chuyển về chờ.
+Frontend kiểm metadata mỗi giây, tự thử tải lại PNG nếu lỗi và dùng `Map2D`
+để hiển thị, phóng to, thu nhỏ và kéo bản đồ.
 
 ## Khởi chạy qua LAN trên máy này
 
@@ -62,18 +65,23 @@ Nếu IP máy thay đổi, tạo chứng chỉ SAN mới bằng
 `tools/ros-camera/create_lan_dev_cert.sh <IP>` rồi chạy script với
 `HMI_LAN_IP=<IP>` và cập nhật `backend/.env` cho IP tương ứng.
 
-Sau khi đăng nhập, nếu không chọn bản đồ đã lưu,
-MappingPage ưu tiên bản đồ ROS `/map`; chip `Nguồn: ROS /map` cho biết kích thước
-và độ phân giải. Bản đồ đã lưu vẫn hiển thị khi được chọn. Dữ liệu map đi trực
-tiếp từ ROS 2, không phụ thuộc `ROSBRIDGE_URL` hay chế độ camera.
+Sau khi đăng nhập, MappingPage ưu tiên bản đồ ROS `/map` nếu không chọn bản đồ
+đã lưu; NavigationPage mặc định mở **ROS /map (trực tiếp)**. Chip nguồn cho
+biết kích thước và độ phân giải. Muốn đặt đích, thêm waypoint hoặc tạo nhiệm
+vụ trên NavigationPage, chọn bản đồ đã lưu: chế độ ROS trực tiếp chỉ để quan
+sát. Dữ liệu map đi trực tiếp từ ROS 2, không phụ thuộc `ROSBRIDGE_URL` hay
+chế độ camera.
 
 ## Dữ liệu và kiểm tra
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 ros2 topic info /map -v
-ros2 topic echo /map --once --no-arr --qos-durability transient_local
 ```
+
+Khi backend chạy, `robot_hmi_map_raster` phải có hai subscription. Ảnh bản đồ
+chỉ xuất hiện khi có publisher `/map` cùng ROS domain; nếu không, web hiển thị
+trạng thái chờ. Không cần khởi động lại HMI khi publisher bắt đầu phát.
 
 `/map` gồm `header.frame_id`, dấu thời gian, `info.resolution`, `width`,
 `height`, `origin` (vị trí và quaternion), và mảng `data` theo hàng. Ô `-1` là

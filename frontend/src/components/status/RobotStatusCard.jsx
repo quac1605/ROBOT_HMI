@@ -51,6 +51,9 @@ export default function RobotStatusCard() {
   const connection = connectionState(snapshot, stale);
   const isOnline = snapshot?.rosConnected && !stale;
   const pose = snapshot?.pose;
+  const poseFresh = Boolean(pose && isOnline &&
+    Number.isFinite(snapshot.poseSourceUpdateAgeMs) && snapshot.poseSourceUpdateAgeMs <= 2000);
+  const visiblePose = poseFresh ? pose : null;
   const velocity = snapshot?.velocity;
   const battery = snapshot?.batteryPercent;
 
@@ -111,11 +114,17 @@ export default function RobotStatusCard() {
 
           {snapshot && (
             <Box sx={{ opacity: isOnline ? 1 : 0.6 }}>
+              <Typography variant="caption" color="text.secondary">
+                Vị trí {pose ? `(frame_id: ${pose.frameId})` : ''}
+              </Typography>
               <Stack spacing={0.25}>
-                <Metric dense label="X" value={pose ? pose.x.toFixed(2) : null} unit="m" />
-                <Metric dense label="Y" value={pose ? pose.y.toFixed(2) : null} unit="m" />
-                <Metric dense label="Góc quay" value={pose ? ((pose.yaw * 180) / Math.PI).toFixed(1) : null} unit="°" />
+                <Metric dense label="X" value={visiblePose ? visiblePose.x.toFixed(2) : null} unit="m" />
+                <Metric dense label="Y" value={visiblePose ? visiblePose.y.toFixed(2) : null} unit="m" />
+                <Metric dense label="Góc quay" value={visiblePose ? ((visiblePose.yaw * 180) / Math.PI).toFixed(1) : null} unit="°" />
               </Stack>
+              {!poseFresh && <Typography variant="caption" color={pose ? 'warning.main' : 'text.secondary'}>
+                {pose ? 'Dữ liệu vị trí đã cũ hoặc mất kết nối.' : 'Đang chờ dữ liệu vị trí từ ROS /odom.'}
+              </Typography>}
               <Divider sx={{ my: 0.75 }} />
               <Stack spacing={0.25}>
                 <Metric dense label="V dài" value={velocity ? velocity.linearX.toFixed(2) : null} unit="m/s" />
