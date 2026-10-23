@@ -1,28 +1,34 @@
-# Khởi động ROBOT_HMI và xem hai camera từ máy trong LAN
+# Khởi động ROBOT_HMI, xem camera, bản đồ `/map` và vị trí `/odom` trong LAN
 
 Tài liệu này dành cho người mới tiếp quản repository tại
 `/home/vistar/projects/ROBOT_HMI`. Mục tiêu của lần chạy là: mở trang HMI từ
-một máy khác trong LAN, đăng nhập bằng tài khoản đã có, và xem camera trước/sau
-trên Navigation hoặc Mapping. Các lệnh đã được đối chiếu với checkout ngày
-14/10/2026. Nếu source hoặc mạng đã thay đổi, kiểm lại các đường dẫn và IP trước
-khi chạy.
+một máy khác trong LAN, đăng nhập bằng tài khoản đã có, xem camera trước/sau
+và bản đồ ROS `/map` trên Navigation hoặc Mapping. Trang Navigation còn hiển thị
+tọa độ và hướng robot từ `/odom`. Các lệnh đã được đối chiếu với code ngày
+22/10/2026. Nếu mạng thay đổi, kiểm lại IP trước khi chạy.
 
-> **Phạm vi an toàn:** Camera `/image_front` và `/image_rear` là nguồn ROS 2
-> thật, nhưng backend vẫn dùng `ROBOT_ADAPTER=mock`. Xem được video **không** có
-> nghĩa là map, pose, motor hoặc teleop phần cứng đã sẵn sàng. Không dùng trang
-> này để thử lái robot thật; `hardwareReady` vẫn là `false`.
+> **Phạm vi an toàn:** Camera `/image_front`, `/image_rear`, bản đồ `/map` và
+> vị trí `/odom` là dữ liệu ROS 2 thật khi các nguồn tương ứng hoạt động.
+> Backend điều khiển vẫn dùng `ROBOT_ADAPTER=mock`. Thấy video, bản đồ hoặc
+> vị trí **không** chứng minh motor hay teleop phần cứng đã sẵn sàng. Bản đồ
+> ROS trên Navigation chỉ để xem; muốn đặt đích/waypoint phải chọn bản đồ đã
+> lưu. Không dùng trang này để thử lái robot thật; `hardwareReady` vẫn là
+> `false`.
 
 ## 1. Hiểu các thành phần trước khi mở terminal
 
 ```text
-Camera ROS node  ── /image_front, /image_rear ──> ROS camera gateway
-                                                     │ VP8/RTP, loopback
-                                                     ▼
-Máy xem web ── HTTPS :8889 + WebRTC UDP :8189 ──> MediaMTX
-      │                                              │ kiểm camera grant
-      └── HTTPS :5173 ──> Vite preview ── loopback ──> Backend :3001
-                                                        │
-                                                        └── PostgreSQL dev
+Camera ROS node ── /image_front, /image_rear ──> ROS camera gateway
+                                                    │ VP8/RTP loopback
+                                                    ▼
+Máy xem web ── WebRTC UDP :8189 ─────────────────> MediaMTX
+      │                                             ▲ HTTPS :8889 (WHEP)
+      └── HTTPS :5173 ──> Vite ── WHEP proxy ───────┘
+                              └── API/WS loopback ──> Backend :3001 ── PostgreSQL dev
+                                                        ▲
+Node ROS phát /map ── nav_msgs/msg/OccupancyGrid ──> worker rclpy ──> API bản đồ
+Node ROS phát /odom, /tf, /tf_static ──> rosbridge_server :9090
+                                             └── WebSocket loopback ──> Backend :3001
 ```
 
 | Thành phần | Chạy ở đâu | Vai trò |
@@ -30,12 +36,15 @@ Máy xem web ── HTTPS :8889 + WebRTC UDP :8189 ──> MediaMTX
 | Camera ROS node | Máy Ubuntu gắn camera | Publish hai topic ảnh. Chỉ chạy **một** node. |
 | ROS camera gateway | Cùng máy Ubuntu | Subscribe hai topic, kiểm metadata, mã hóa video. |
 | MediaMTX | Cùng máy Ubuntu | Nhận RTP trên loopback; cấp WebRTC video cho browser. |
-| Backend | Cùng máy Ubuntu | Đăng nhập, session, API/WS và camera grant; vẫn dùng mock robot. |
-| Vite preview | Cùng máy Ubuntu | Phục vụ bản frontend đã build qua HTTPS, proxy API/WS vào backend. |
-| Browser | Máy Ubuntu hoặc máy khác trong LAN | Mở HMI và nhận video WebRTC. |
+| Backend + worker `/map` | Cùng máy Ubuntu | Đăng nhập, API/WS, camera grant; subscribe `/map` liên tục khi backend chạy; lấy `/odom` và TF qua rosbridge khi `ROSBRIDGE_URL` được đặt; vẫn dùng mock robot. |
+| rosbridge_server | Cùng máy Ubuntu | Cầu WebSocket cục bộ cho backend đọc `/odom`, `/tf`, `/tf_static` và `/cmd_in`. |
+| Vite | Cùng máy Ubuntu | Phục vụ frontend qua HTTPS; proxy API/WS vào backend và WHEP vào MediaMTX. |
+| Browser | Máy Ubuntu hoặc máy khác trong LAN | Mở HMI, nhận WebRTC và xem ảnh bản đồ qua cùng Origin `5173`. |
 
-Giữ **mỗi tiến trình trong một terminal riêng** để thấy log và dừng bằng
-`Ctrl+C`. Nếu tiến trình đã chạy đúng cấu hình, không chạy thêm bản thứ hai.
+Giữ **mỗi nhóm lệnh ở mục 5 trong một terminal riêng** để thấy log và dừng
+bằng `Ctrl+C`. Chạy Terminal R (rosbridge) trước Terminal A. Script HMI ở
+Terminal A tự chạy **cả backend và Vite**. Nếu chúng đã chạy, không mở thêm
+bản thứ hai.
 
 ## 2. Trước mỗi lần chạy: chọn IP và kiểm tra môi trường
 
@@ -59,9 +68,11 @@ pg_isready -h 127.0.0.1 -p 5432
   của máy browser hoặc `127.0.0.1`. Ví dụ bên dưới dùng `10.1.10.32`. Nếu IP
   khác, thay giá trị ở **mọi terminal**. `export` ở một terminal không tự truyền
   sang terminal khác.
-- Máy xem web phải có đường mạng đến IP đó. Cổng cần đi từ browser đến Ubuntu:
-  `5173/tcp`, `8889/tcp`, `8189/udp`. Backend `3001/tcp` và RTP
-  `5004/5006/udp` chỉ cần loopback; không mở chúng ra LAN.
+- Máy xem web phải có đường mạng đến IP đó. Browser cần tới `5173/tcp` và
+  `8189/udp` trên Ubuntu. Vite trên chính Ubuntu gọi MediaMTX ở `8889/tcp`;
+  browser không gọi trực tiếp cổng này. Backend `3001/tcp` và RTP
+  `5004/5006/udp` chỉ cần loopback; không mở chúng ra LAN. Rosbridge `9090/tcp`
+  cũng chỉ dành cho backend trên Ubuntu.
 
 Kiểm tra nhanh các thành phần đã cài, **không cài lại nếu chúng đang có**:
 
@@ -69,6 +80,8 @@ Kiểm tra nhanh các thành phần đã cài, **không cài lại nếu chúng 
 test -d frontend/node_modules && echo 'Frontend dependencies: có'
 test -d backend/node_modules && echo 'Backend dependencies: có'
 test -x tools/ros-camera/.bin/mediamtx && echo 'MediaMTX: có'
+source /opt/ros/jazzy/setup.bash
+ros2 pkg prefix rosbridge_server >/dev/null 2>&1 && echo 'rosbridge_server: có'
 for plugin in rawvideoparse videoconvert vp8enc rtpvp8pay; do
   if gst-inspect-1.0 "$plugin" >/dev/null 2>&1; then
     echo "$plugin: có"
@@ -109,9 +122,20 @@ bash tools/ros-camera/install_mediamtx.sh
 
 Script tải bản MediaMTX đã ghim phiên bản và kiểm SHA-256. Nếu thiếu plugin
 GStreamer hoặc package ROS, dừng ở đây và đối chiếu với
-[`tools/ros-camera/README.md`](../tools/ros-camera/README.md) và
+[`tools/ros-camera/README.md`](tools/ros-camera/README.md) và
 [`ros2_ws/src/camera/README.md`](/home/vistar/projects/ros2_ws/src/camera/README.md);
 không sửa gateway để nhận một định dạng ảnh khác mà chưa kiểm camera node.
+
+Nếu thiếu `rosbridge_server`, cài package ROS 2 Jazzy một lần trên máy Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install ros-jazzy-rosbridge-suite
+```
+
+Backend dùng rosbridge để đọc `/odom` và các transform TF; worker `/map` dùng
+`rclpy` riêng. Chỉ cần rosbridge trên máy Ubuntu chạy backend; browser không
+kết nối trực tiếp tới cổng `9090`.
 
 ### 3.2. Backend development và tài khoản
 
@@ -128,9 +152,14 @@ development đã chuẩn bị, `SESSION_SECRET` ngẫu nhiên 64–128 ký tự 
 `DATA_DIR` là đường dẫn tuyệt đối. Có thể tạo secret cục bộ bằng
 `openssl rand -hex 32`; không dùng secret mẫu hay gửi secret ra ngoài. Giữ
 `NODE_ENV=development`, `HOST=127.0.0.1`, `PORT=3001`,
-`ROBOT_ADAPTER=mock`, `CAMERA_MEDIA_MODE=ros`. File mẫu đã có `APP_ORIGIN` và
-`TRUST_LOOPBACK_PROXY`; lệnh khởi động LAN ở mục 5 sẽ ghi đè đúng các giá trị
-cần đổi theo IP. **Không dùng `backend/.env.test` để chạy web app.**
+`ROBOT_ADAPTER=mock`, `CAMERA_MEDIA_MODE=ros`, `ROS_MAP_ENABLED=true`,
+`ROS_MAP_SETUP=/opt/ros/jazzy/setup.bash` (hoặc để dùng mặc định Jazzy) và
+`ROSBRIDGE_URL=ws://127.0.0.1:9090`. Worker `/map` chạy độc lập với
+`ROSBRIDGE_URL`; nếu biến này trống, Navigation không nhận `/odom`. Script
+khởi động LAN ở mục 5
+sẽ ghi đè `APP_ORIGIN`, `CAMERA_WHEP_BASE_URL` và `TRUST_LOOPBACK_PROXY` theo
+IP; URL WHEP dùng cổng **5173** cùng Origin với web. **Không dùng
+`backend/.env.test` để chạy web app.**
 
 Nếu `DATA_DIR` đang là đường dẫn dev mặc định và chưa có thư mục:
 
@@ -216,7 +245,9 @@ bash tools/ros-camera/create_lan_dev_cert.sh "$HMI_LAN_IP"
 Chỉ làm khi đã xác nhận đúng IP và **cả hai file cũ** tồn tại. Sau đó kiểm
 fingerprint mới và chấp nhận chứng chỉ mới trên browser.
 
-## 4. Kiểm tra camera ROS trước khi chạy web
+## 4. Kiểm tra nguồn ROS trước khi chạy web
+
+### 4.1. Hai camera
 
 Mở **Terminal ROS** trên máy Ubuntu:
 
@@ -248,44 +279,114 @@ mở thiết bị camera; chỉ chạy một instance. Gateway HMI hiện yêu c
 `camera_rear_link`, với QoS `BEST_EFFORT`. Nếu node đã đổi dữ liệu, gateway sẽ
 từ chối ảnh thay vì hiển thị nhầm camera.
 
-## 5. Khởi động Web Application: mỗi dịch vụ một terminal
+### 4.2. Bản đồ `/map`
 
-Trước khi chạy, kiểm tra các cổng để tránh khởi động trùng:
+Trong Terminal ROS đã source Jazzy ở trên, chạy:
 
 ```bash
-ss -lntu | grep -E ':(3001|5173|8889|8189|5004|5006)\b' || true
+ros2 topic info /map -v
+```
+
+Để thấy bản đồ thật, topic phải có **Publisher count ít nhất 1**, type
+`nav_msgs/msg/OccupancyGrid`. Nếu chưa có publisher, mở node SLAM hoặc
+`map_server` của robot theo quy trình robot của bạn; HMI không tự tạo bản đồ.
+Nếu lệnh báo `Unknown topic '/map'`, nguồn chưa chạy hoặc `ROS_DOMAIN_ID`/DDS
+của terminal khác với robot. Sau khi Terminal A ở mục 5 chạy, lệnh này còn
+phải thấy **hai subscription** tên `robot_hmi_map_raster`: một
+`RELIABLE`/`TRANSIENT_LOCAL` nhận map đã phát trước đó, và một
+`BEST_EFFORT`/`VOLATILE` nhận luồng đang cập nhật. Không cần khởi động lại HMI
+khi publisher `/map` xuất hiện sau.
+
+### 4.3. Vị trí `/odom` và hệ tọa độ TF
+
+Trong cùng môi trường ROS 2 với robot:
+
+```bash
+ros2 topic info /odom -v
+ros2 topic echo /odom --once
+ros2 topic info /tf -v
+ros2 topic info /tf_static -v
+```
+
+`/odom` cần publisher loại `nav_msgs/msg/Odometry`. Trong message, xem
+`header.frame_id` (thường là `odom`), `pose.pose.position.x/y` (mét) và
+`pose.pose.orientation.x/y/z/w` (quaternion). Backend chuẩn hóa quaternion
+rồi tính yaw; Navigation hiển thị X, Y và góc quay theo độ trong ô trạng thái.
+Nếu chưa có message, kiểm nguồn ROS, `ROS_DOMAIN_ID` và DDS trước khi mở HMI.
+
+Map và odometry có thể ở **hai hệ tọa độ khác nhau**. Nếu `/map` có
+`header.frame_id=map` và `/odom` có `header.frame_id=odom`, robot cần publish
+TF `map ← odom` qua `/tf` hoặc `/tf_static`; thử:
+
+```bash
+ros2 run tf2_ros tf2_echo map odom
+```
+
+Lệnh chạy liên tục; thấy transform mới rồi nhấn `Ctrl+C`. Không có transform
+thì HMI vẫn có thể hiện X/Y/yaw của `/odom`, nhưng **không đặt marker robot
+vào lưới `/map` bằng tọa độ odom**. Khi frame giống nhau, HMI dùng pose trực
+tiếp. Pose cũ hoặc nằm ngoài vùng lưới cũng không được vẽ. Lần kiểm trên máy
+ngày 22/10/2026 thấy `/odom` ở frame `odom`, `/map` ở frame `map` và node SLAM
+có transform động `map ← odom`; `/tf_static` không có publisher vẫn hợp lệ nếu
+transform cần thiết đã đến từ `/tf`.
+
+## 5. Khởi động Web Application: bốn terminal
+
+Trước khi chạy, kiểm tra cổng để tránh mở bản thứ hai:
+
+```bash
+ss -lntup | grep -E ':(3001|5173|8889|8189|5004|5006|9090)\b' || true
 curl -sS -o /dev/null -w 'Backend HTTP %{http_code}\n' \
   http://127.0.0.1:3001/api/health/live
 ```
 
-Nếu các dịch vụ HMI đã chạy đúng IP hiện tại, dùng chúng; nếu đang chạy cấu
-hình IP cũ, dừng bằng `Ctrl+C` tại terminal cũ rồi mới khởi động lại. Dòng
-`LISTEN`/`UNCONN` tự nó không xác định tiến trình; kiểm terminal/log trước khi
-dừng bất kỳ process nào. Nếu backend trả `200` và đã xác nhận nó dùng đúng
-`APP_ORIGIN`/IP hiện tại, **bỏ qua Terminal A**: chạy thêm một backend trên
-`3001` sẽ báo `BACKEND_START_FAILED` vì cổng đã được dùng. `curl` trả lỗi kết
-nối hoặc `HTTP 000` thì backend chưa trả lời; kiểm terminal backend trước khi
-chạy lại.
+Nếu backend trả `200` hoặc cổng đã có tiến trình, xem terminal/log của tiến
+trình đó. Nếu là HMI cũ hoặc IP cũ, dừng bằng `Ctrl+C` ở đúng terminal trước
+khi chạy lại. **Terminal A sẽ tự mở cả cổng 3001 và 5173**; không chạy thêm
+backend hay Vite trong terminal khác. `curl` lỗi kết nối hoặc `HTTP 000` chỉ
+cho biết backend chưa trả lời, không phải lý do để dừng một tiến trình khác.
 
-### Terminal A — Backend HTTP/WS
+### Terminal R — rosbridge cho `/odom` (mở trước Terminal A)
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source /home/vistar/projects/ros2_ws/install/setup.bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml address:=127.0.0.1
+```
+
+Kỳ vọng log báo WebSocket server chạy ở cổng `9090`; `ss -lnt | grep :9090`
+phải cho thấy địa chỉ `127.0.0.1:9090`. Dùng cùng `ROS_DOMAIN_ID` và môi
+trường DDS với node phát `/odom`, `/map`, `/tf`. Nếu cổng đã được rosbridge
+chiếm, dùng instance đó sau khi kiểm đúng môi trường ROS thay vì chạy thêm.
+Giữ terminal này mở trong suốt thời gian xem vị trí robot.
+
+### Terminal A — Backend và frontend HTTPS
 
 ```bash
 cd /home/vistar/projects/ROBOT_HMI
 source /home/vistar/.nvm/nvm.sh
 nvm use
 export HMI_LAN_IP=10.1.10.32   # THAY bằng IP Ubuntu ở mục 2
-APP_ORIGIN="https://${HMI_LAN_IP}:5173" \
-CAMERA_WHEP_BASE_URL="https://${HMI_LAN_IP}:8889" \
-TRUST_LOOPBACK_PROXY=true \
-node --env-file=backend/.env backend/src/server.js
+bash tools/run_hmi_lan.sh
 ```
 
-Kỳ vọng: `ROBOT_HMI backend listening on 127.0.0.1:3001`. Giữ terminal mở.
-Backend chỉ nghe loopback; Vite sẽ proxy `/api`, `/ws`, `/map-stream` đến nó.
-Lệnh này đọc/ghi session và có thể reconcile dữ liệu map/mission trong DB dev,
-nhưng **không** chạy migration. Nếu `BACKEND_START_FAILED`, **dừng**: kiểm
-PostgreSQL, `.env`, migration và cổng 3001; không tiếp tục đăng nhập khi backend
-chưa chạy.
+Kỳ vọng `ROBOT_HMI backend listening on 127.0.0.1:3001` và
+`HMI LAN: https://<IP>:5173/login`, sau đó Vite báo ready. Script kiểm IP đã
+gán, chứng chỉ còn hạn/có SAN đúng IP và `backend/.env` tồn tại. Nó đặt
+`APP_ORIGIN=https://<IP>:5173`, `CAMERA_WHEP_BASE_URL=https://<IP>:5173`,
+`TRUST_LOOPBACK_PROXY=true`, `VITE_ROBOT_CLIENT=remote`, rồi chạy backend và
+Vite dev server. Vite proxy API/WS vào backend loopback và WHEP
+`/front/whep`, `/rear/whep` vào MediaMTX `https://<IP>:8889` bằng chứng chỉ
+đã kiểm. Với `ROSBRIDGE_URL` trong `backend/.env`, backend duy trì kết nối tới
+Terminal R, subscribe `/odom`, `/tf`, `/tf_static` và gửi trạng thái mới nhất
+qua WebSocket `/ws`. Một lần `Ctrl+C` dừng cả backend lẫn Vite.
+
+Vite dev server phục vụ code hiện tại và hot reload; **không cần build trước
+mỗi lần chạy**. Khi muốn kiểm build riêng, chạy `npm run build` trong
+`frontend/`; build không tự khởi động server. Backend có thể đọc/ghi session
+và reconcile map/mission trong DB dev, nhưng script không chạy migration.
+Nếu `BACKEND_START_FAILED`, kiểm PostgreSQL, `.env`, migration và cổng 3001;
+không tiếp tục đăng nhập khi backend chưa chạy.
 
 ### Terminal B — MediaMTX
 
@@ -296,13 +397,12 @@ bash tools/ros-camera/run_mediamtx.sh
 ```
 
 Kỳ vọng log có `WebRTC started with listeners on <IP>:8889 ...
-<IP>:8189` và `path front/rear RTP source started`. Script kiểm IP đã gán,
-chứng chỉ tồn tại, bind WHEP/ICE trên IP LAN, chỉ cho phép Origin web tương
-ứng. MediaMTX kiểm camera grant bằng callback vào backend loopback. Nếu báo
-port đang dùng hoặc thiếu chứng chỉ, dừng và xử lý; không chạy thêm MediaMTX.
-Chỉ **một** MediaMTX được nhận RTP `127.0.0.1:5004/5006`. Một bản loopback
-khác có thể chiếm hai cổng này dù bản LAN vẫn chạy được WHEP `8889`; khi đó
-UI nhận `CAMERA_WHEP_HTTP_404` vì bản LAN không có stream.
+<IP>:8189` và `path front/rear RTP source started`. Script bind WHEP/ICE trên
+IP LAN, dùng chứng chỉ cho IP đó và chỉ cho phép Origin web tương ứng.
+MediaMTX kiểm camera grant qua backend loopback. Browser chỉ cần tin cậy
+Origin `5173`; WHEP đi qua Vite, còn media đi trực tiếp qua UDP `8189`.
+Chỉ **một** MediaMTX được nhận RTP `127.0.0.1:5004/5006`. Nếu một bản khác
+chiếm cổng RTP, UI có thể báo `CAMERA_WHEP_HTTP_404` vì bản LAN không có stream.
 
 ### Terminal C — ROS camera gateway
 
@@ -316,28 +416,14 @@ python3 -u tools/ros-camera/ros_camera_gateway.py
 Kỳ vọng log `front: /image_front -> VP8/RTP 127.0.0.1:5004`, dòng tương tự
 cho rear `5006`, rồi `sent frames front=... rear=...` mỗi 10 giây. Các bộ đếm
 phải tăng khi camera node đang publish. Gateway chạy hai tiến trình GStreamer
-con; `Ctrl+C` sẽ dọn chúng. `MediaMTX` tiếp đó phải báo front/rear `stream is
+con; `Ctrl+C` sẽ dọn chúng. MediaMTX tiếp đó phải báo front/rear `stream is
 available and online, 1 track (VP8)`. Nếu counter không tăng, quay lại mục 4.
 
-### Terminal D — Frontend HTTPS
-
-```bash
-cd /home/vistar/projects/ROBOT_HMI/frontend
-source /home/vistar/.nvm/nvm.sh
-nvm use
-export HMI_LAN_IP=10.1.10.32   # THAY bằng IP Ubuntu ở mục 2
-VITE_ROBOT_CLIENT=remote npm run build
-HMI_TLS_CERT_PATH="/home/vistar/projects/ROBOT_HMI/tools/ros-camera/.local/lan-${HMI_LAN_IP}.crt" \
-HMI_TLS_KEY_PATH="/home/vistar/projects/ROBOT_HMI/tools/ros-camera/.local/lan-${HMI_LAN_IP}.key" \
-HMI_BACKEND_URL=http://127.0.0.1:3001 \
-npm run preview -- --host "$HMI_LAN_IP" --port 5173 --strictPort
-```
-
-`build` ghi `frontend/dist/` (Git bỏ qua) và nhúng mode `remote`; nó **không**
-nhúng IP LAN, vì URL WHEP được backend cấp lúc chạy. `preview` phục vụ bản
-build và proxy API/WS, không hot reload; sửa frontend thì build lại và tải
-lại trang. Kỳ vọng Vite in URL `https://<IP>:5173/`. Đừng đổi
-`HMI_BACKEND_URL` sang IP LAN: backend được cố ý giữ trên loopback.
+Không có terminal riêng cho `/map`: worker `robot_hmi_map_raster` tự khởi động
+trong backend của Terminal A khi `ROS_MAP_ENABLED=true`. Backend giữ hai
+subscription `/map` ngay cả khi chưa có browser; frontend hỏi metadata mỗi
+giây và tải PNG mới khi lưới thay đổi. Rosbridge ở Terminal R nhận các topic
+trạng thái ROS, còn backend giữ subscription `/odom` và TF khi chưa có browser.
 
 ## 6. Kiểm tra dịch vụ trước khi mở browser
 
@@ -349,14 +435,34 @@ export HMI_LAN_IP=10.1.10.32
 curl --cacert "tools/ros-camera/.local/lan-${HMI_LAN_IP}.crt" \
   -sS -o /dev/null -w 'Web/API HTTP %{http_code}\n' \
   "https://${HMI_LAN_IP}:5173/api/health/live"
-ss -lntu | grep -E ':(3001|5173|8889|8189|5004|5006)\b' || true
+ss -lntu | grep -E ':(3001|5173|8889|8189|5004|5006|9090)\b' || true
 ```
 
 Kỳ vọng health live `200`; đây chỉ chứng minh HTTP/backend chạy. `ready` có
 thể trả `503` vì robot source chưa được xác minh và `hardwareReady=false`, dù
-camera vẫn xem được. `5173/tcp`, `8889/tcp`, `8189/udp` phải nghe trên IP LAN;
-`3001/tcp` và `5004/5006/udp` phải ở `127.0.0.1`. Nếu `curl` báo lỗi TLS,
-kiểm IP trong chứng chỉ; **không** chuyển sang `curl -k` để che lỗi.
+camera và `/map` vẫn xem được. `5173/tcp`, `8889/tcp`, `8189/udp` phải nghe
+trên IP LAN; `3001/tcp`, `9090/tcp` và `5004/5006/udp` phải ở `127.0.0.1`. Browser chỉ
+cần tới `5173/tcp` và `8189/udp`; `8889/tcp` là đường Vite tới MediaMTX trên
+cùng máy Ubuntu. Nếu `curl` báo lỗi TLS, kiểm IP trong chứng chỉ; **không**
+chuyển sang `curl -k` để che lỗi.
+
+Kiểm tra ROS sau khi backend đã chạy:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 topic info /map -v
+ros2 topic info /odom -v
+ros2 topic info /tf -v
+```
+
+Kỳ vọng ít nhất hai subscription, trong đó có hai dòng của
+`robot_hmi_map_raster`. Để có ảnh bản đồ
+thật, còn cần `Publisher count: 1` trở lên. Nếu publisher bằng `0`, HMI sẽ báo
+đang chờ dữ liệu `/map`; đừng thử khởi động worker thứ hai.
+`/odom` phải có publisher và subscription từ `rosbridge_websocket`. Khi map
+và odom khác frame, `/tf` hoặc `/tf_static` phải cung cấp transform `map ←
+odom` như mục 4.3. Nếu rosbridge chưa hiện trong ROS graph, kiểm Terminal R và
+`ROS_DOMAIN_ID`/DDS trước khi xem Navigation.
 
 ## 7. Mở và kiểm tra trên máy xem web
 
@@ -365,36 +471,54 @@ kiểm IP trong chứng chỉ; **không** chuyển sang `curl -k` để che lỗ
    `https://10.1.10.32:5173/login`. Không dùng `localhost`, `127.0.0.1` hoặc
    IP cũ: backend kiểm `APP_ORIGIN` chính xác.
 2. Browser sẽ cảnh báo chứng chỉ development tự ký. Tự so SHA-256 fingerprint
-   với kết quả ở mục 3.3 rồi mới chấp nhận. Mở thêm
-   `https://<IP-UBUNTU>:8889/` trong **cùng browser** để kiểm chứng chỉ của
-   MediaMTX; trang gốc có thể trả 401/404, đây không phải lỗi video.
+   với kết quả ở mục 3.3 rồi mới chấp nhận cho Origin `5173`. WHEP đi qua
+   cùng Origin nên không cần mở `https://<IP-UBUNTU>:8889/` trong browser.
 3. Đăng nhập bằng **tài khoản HMI dev đã có**. Mở Navigation; ô camera ở bên
    phải map. Chọn **Cam trước**, nhìn ảnh có thay đổi; chọn **Cam sau** và
    kiểm lại. Sang Mapping và làm tương tự. Không cần bấm joystick hoặc tạo
    phiên mapping để xem camera.
-4. Nếu cần kiểm kỹ, trong DevTools Network: request
+4. Navigation mặc định chọn **ROS /map (trực tiếp)**. Khi node robot phát
+   `/map`, ô bản đồ hiện lưới OccupancyGrid và tự cập nhật khi ô bản đồ đổi.
+   Mapping cũng ưu tiên `/map` nếu chưa chọn bản đồ đã lưu. Có thể phóng to,
+   thu nhỏ, kéo bản đồ. Ô **Trạng thái robot** trên Navigation hiển thị X, Y
+   theo mét và góc quay theo độ từ `/odom`, kèm `frame_id`. Marker và mũi tên
+   hướng trên bản đồ ROS dùng pose đã đổi sang frame của `/map` bằng TF, hoặc
+   dùng pose trực tiếp khi hai frame trùng nhau. Thiếu TF, pose cũ hoặc pose
+   ngoài vùng bản đồ thì marker không hiện; không nên sửa tọa độ thủ công để
+   buộc hiển thị.
+   Muốn đặt đích, thêm waypoint hoặc tạo nhiệm vụ trên Navigation, chọn một
+   **bản đồ đã lưu** trong menu: chế độ `/map` trực tiếp chỉ để quan sát.
+5. Nếu cần kiểm kỹ, trong DevTools Network: request
    `GET /api/cameras/front/stream` hoặc rear phải trả descriptor `kind=webrtc`;
-   `POST https://<IP>:8889/front/whep` hoặc rear phải trả `201`. Trong
+   `POST https://<IP>:5173/front/whep` hoặc rear phải trả `201`. Khi có
+   publisher `/map`, `GET /api/ros-map` trả `status=ready` và
+   `GET /api/ros-map/image?revision=...` trả PNG. Hai API map yêu cầu đã đăng
+   nhập. Kiểm robot di chuyển/quay: X/Y/yaw ở ô trạng thái thay đổi; marker
+   trên bản đồ đổi vị trí/hướng tương ứng nếu TF và map hợp lệ. Trong
    `about:webrtc`/WebRTC internals, ICE remote candidate phải là
    `<IP-UBUNTU>:8189`, có candidate pair được chọn và byte nhận tăng. Không
    chụp/chia sẻ `Authorization`, `grantToken`, cookie hay SDP.
-5. Đăng xuất; video phải dừng. Nếu đổi mạng/IP, xem mục 9 rồi đăng nhập lại
+6. Đăng xuất; video phải dừng. Nếu đổi mạng/IP, xem mục 9 rồi đăng nhập lại
    bằng URL mới.
 
 ## 8. Khi có lỗi, xem theo thứ tự
 
 | Hiện tượng | Kiểm tra đầu tiên | Dừng ở đâu? |
 | --- | --- | --- |
-| `BACKEND_START_FAILED` | Kiểm `3001` trước: nếu backend cũ đã trả health `200` và đúng IP thì dùng nó, không chạy bản thứ hai. Nếu không, kiểm PostgreSQL, `.env` dev và migration; không in secret. | Terminal A, chưa mở browser. |
+| `BACKEND_START_FAILED` | Kiểm `3001` trước: nếu backend cũ đã trả health `200` và đúng IP thì dừng bản cũ hoặc dùng bản đó, không chạy script lần hai. Nếu không, kiểm PostgreSQL, `.env` dev và migration; không in secret. | Terminal A, chưa mở browser. |
 | `EADDRINUSE`/port đã dùng | Dịch vụ đã chạy chưa; không khởi động bản thứ hai. | Terminal tương ứng. |
 | Không mở được `https://<IP>:5173` từ máy khác | IP Ubuntu, cùng mạng/route, Wi-Fi client isolation, firewall `5173/tcp`. | Chưa xét camera. |
 | `ORIGIN_FORBIDDEN` khi login | URL browser phải trùng `APP_ORIGIN=https://<IP>:5173`; restart backend sau đổi IP. | Đăng nhập. |
-| Browser báo lỗi chứng chỉ hoặc `NetworkError` | Kiểm chứng chỉ còn hạn/SAN đúng IP, đã chấp nhận cả origin `5173` và `8889` trong cùng browser. | Trước WHEP. |
-| Chỉ thấy video MP4 mẫu | Frontend có build `VITE_ROBOT_CLIENT=remote` không; backend `.env` có `CAMERA_MEDIA_MODE=ros` không. | Descriptor camera. |
+| Browser báo lỗi chứng chỉ hoặc camera `NetworkError` | Kiểm chứng chỉ còn hạn/SAN đúng IP và đã tin cậy Origin `5173`. Xem DevTools: WHEP phải gọi `https://<IP>:5173/front/whep` hoặc rear; nếu vẫn gọi `:8889`, backend/Vite đang chạy cấu hình cũ. | Trước WHEP. |
+| Chỉ thấy video MP4 mẫu | Có chạy đúng `tools/run_hmi_lan.sh` với `VITE_ROBOT_CLIENT=remote` không; backend `.env` có `CAMERA_MEDIA_MODE=ros` không. | Descriptor camera. |
 | Camera WHEP `401` | Đã đăng nhập? Backend và callback media còn chạy? Grant còn hạn và đúng camera? | WHEP auth. |
 | `CAMERA_WHEP_SIGNALING: CAMERA_WHEP_HTTP_404` | Xem log MediaMTX LAN: `no stream is available` cùng `bind: address already in use` ở `5004/5006` nghĩa là MediaMTX thứ hai đang chiếm RTP. Dùng `ss -ltnup` xác định bản chạy trùng, dừng đúng bản đó, chờ front/rear báo `stream is available and online`, rồi tải lại UI. | Nguồn RTP/MediaMTX; không sửa UI. |
 | WHEP `201` nhưng ICE failed/ô đen | Candidate MediaMTX có IP LAN mới? Máy xem tới được `8189/udp`? Firewall/client isolation? | Đường video, sau signaling. |
 | Front/rear không online | ROS publisher có hai topic? Gateway counter tăng? Metadata ảnh có đúng `bgr8`/640×360/frame ID? | ROS → gateway → RTP. |
+| Navigation/Mapping báo chờ `/map` | Chạy `ros2 topic info /map -v`: phải có publisher `nav_msgs/msg/OccupancyGrid` và hai subscriber `robot_hmi_map_raster`; kiểm `ROS_DOMAIN_ID`/DDS và `ROS_MAP_ENABLED=true` nếu không thấy subscriber. | Nguồn ROS → backend. |
+| Bản đồ cũ hoặc PNG lỗi | Kiểm log backend `ROS /map received`, trạng thái `GET /api/ros-map`, request PNG; web kiểm revision mỗi giây và tự thử tải lại. Nếu publisher biến mất, backend xóa ảnh cache và chuyển về chờ. | ROS worker → API → browser. |
+| X/Y/góc quay trống hoặc `/odom` báo cũ | Kiểm publisher `/odom`, Terminal R ở cổng `9090`, `ROSBRIDGE_URL` trong `backend/.env`, `ROS_DOMAIN_ID`/DDS và log kết nối rosbridge. `/odom` phải tới đều trước khi hết hạn 1500 ms. | ROS `/odom` → rosbridge → backend `/ws`. |
+| Có X/Y/góc quay nhưng không thấy marker trên `/map` | So `header.frame_id` của `/odom` với frame của `/map`; nếu khác, kiểm TF `map ← odom` bằng `tf2_echo`. Pose cũ hoặc nằm ngoài lưới cũng không vẽ. | TF/định vị và phạm vi bản đồ. |
 | Robot báo `Stale` hoặc health ready `503` | Đây là robot mock/chưa xác minh source; không suy ra camera hỏng nếu video vẫn chạy. | Không dùng để cho phép motor thật. |
 
 Đừng giảm kiểm tra Origin, tắt TLS toàn browser, mở backend `3001` ra LAN,
@@ -403,16 +527,16 @@ hoặc thêm STUN công cộng chỉ để che một lỗi routing trên mạng 
 ## 9. Khi đổi mạng hoặc IP máy Ubuntu
 
 1. Xem IP mới bằng `ip -br -4 address`; xác nhận máy browser có thể truy cập.
-2. Dừng frontend, MediaMTX và backend cũ bằng `Ctrl+C`. Gateway ROS và camera
-   node có thể giữ nếu topic vẫn đang chạy.
+2. Dừng Terminal A (backend + Vite) và B (MediaMTX) bằng `Ctrl+C`. Gateway ROS
+   và camera node có thể giữ nếu topic vẫn đang chạy.
 3. Tạo chứng chỉ **mới** bằng `create_lan_dev_cert.sh <IP-MOI>`; kiểm SAN và
    fingerprint. Chứng chỉ cho IP cũ không tự hợp lệ ở IP mới.
-4. Thay `HMI_LAN_IP` ở Terminal A, B, D rồi chạy lại các lệnh mục 5. Không
-   cần sửa code hay build lại chỉ vì IP đổi, nếu `frontend/dist` đã là bản
-   `remote`; vẫn có thể chạy build lại để chắc chắn bản build mới nhất.
+4. Thay `HMI_LAN_IP` ở Terminal A và B rồi chạy lại các lệnh mục 5. Script
+   dùng Vite dev server nên không cần build lại chỉ vì IP đổi.
 5. Mở URL mới, chấp nhận chứng chỉ mới sau khi kiểm fingerprint, đăng nhập
-   lại, thử cả hai camera. Kiểm `5173/tcp`, `8889/tcp`, `8189/udp` trên mạng
-   mới. Chỉ đổi IP của **máy xem web** thì không cần bước 2–4.
+   lại, thử cả hai camera, `/map` và `/odom`. Kiểm browser tới `5173/tcp`, `8189/udp`;
+   Vite trên Ubuntu phải tới MediaMTX `8889/tcp` tại IP mới. Chỉ đổi IP của
+   **máy xem web** thì không cần bước 2–4.
 
 Để hạn chế thay đổi IP, có thể đặt DHCP reservation cho máy Ubuntu trên mạng
 thường dùng. Cấu hình hiện tại chọn **một IP LAN**; muốn dùng tên DNS nội bộ
@@ -421,8 +545,8 @@ candidate MediaMTX, không chỉ sửa một URL.
 
 ## 10. Dừng hệ thống gọn gàng
 
-Đăng xuất HMI, sau đó nhấn `Ctrl+C` tại Terminal D (frontend), C (gateway),
-B (MediaMTX), A (backend). Chỉ dừng camera ROS node nếu bạn đã khởi động nó
+Đăng xuất HMI, sau đó nhấn `Ctrl+C` tại Terminal C (gateway), B (MediaMTX),
+A (backend + Vite) và R (rosbridge). Chỉ dừng camera ROS node nếu bạn đã khởi động nó
 riêng ở mục 4 và không có ứng dụng khác đang dùng. Backend có handler shutdown
 để đóng socket, thu hồi authority và pool DB; tránh `kill -9` trong thao tác
 thông thường. Nếu cần báo lỗi cho người hỗ trợ, gửi lệnh/terminal, HTTP status,
@@ -431,13 +555,10 @@ toàn bộ `about:webrtc` chứa ICE credential.
 
 ### Tài liệu liên quan
 
-- [Camera gateway](../tools/ros-camera/README.md)
-- [Kế hoạch Chặng 10](CHANG_10_ROS_UBUNTU_TRIEN_KHAI.md)
+- [Camera gateway](tools/ros-camera/README.md)
+- [Luồng bản đồ ROS](tools/ros-map/README.md)
+- [Kế hoạch Chặng 10](docs/CHANG_10_ROS_UBUNTU_TRIEN_KHAI.md)
 - [Camera node ROS](</home/vistar/projects/ros2_ws/src/camera/README.md>)
 
-Các hướng dẫn cũ về frontend mock không mô tả cấu hình camera LAN hiện tại;
-dùng các lệnh đã kiểm trong tài liệu này cho lần chạy camera.
-
-`docs/*` đang được `.gitignore` bỏ qua theo quy ước tài liệu nội bộ của
-repository. File hướng dẫn này có trên máy hiện tại để bạn/coding agent đọc;
-nó sẽ không tự xuất hiện trong `git status` hoặc được push lên GitHub.
+Các hướng dẫn cũ về frontend mock không mô tả cấu hình LAN hiện tại; dùng
+các lệnh đã kiểm trong tài liệu này cho lần chạy camera và `/map`.

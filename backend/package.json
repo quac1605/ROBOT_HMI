@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:unit": "node --test test/cmdOut.test.mjs test/rosStatus.test.mjs",
+    "test:unit": "node --test test/cmdOut.test.mjs test/rosStatus.test.mjs test/rosTfTransforms.test.mjs test/rosMapService.test.mjs",
     "test:ros-live": "node --test test/rosStatus.live.test.mjs"
   },
   "dependencies": {

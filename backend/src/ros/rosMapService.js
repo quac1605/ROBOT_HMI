@@ -6,15 +6,15 @@ const WORKER = fileURLToPath(new URL('./occupancy_map_worker.py', import.meta.ur
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const MAX_PNG_BYTES = 12 * 1024 * 1024;
 const MAX_LINE_CHARS = Math.ceil(MAX_PNG_BYTES * 4 / 3) + 4096;
+const MAX_CACHED_IMAGES = 8;
+const MAX_CACHE_BYTES = 48 * 1024 * 1024;
 
 function validStamp(value) {
     return Number.isInteger(value?.sec) && Number.isInteger(value?.nanosec) &&
         value.nanosec >= 0 && value.nanosec < 1_000_000_000;
 }
 
-function parseWorkerMap(line) {
-    if (line.length > MAX_LINE_CHARS) throw new Error('ROS_MAP_TOO_LARGE');
-    const value = JSON.parse(line);
+function parseWorkerMap(value) {
     const geometry = value?.geometry;
     const counts = value?.counts;
     const cells = geometry?.width * geometry?.height;
@@ -58,6 +58,26 @@ export function createRosMapService({
     let started = false;
     let status = enabled ? 'waiting' : 'disabled';
     let latest = null;
+    const images = new Map();
+    let cacheBytes = 0;
+
+    function clearImages() {
+        images.clear();
+        cacheBytes = 0;
+    }
+
+    function retainImage(revision, image) {
+        const existing = images.get(revision);
+        if (existing) cacheBytes -= existing.length;
+        images.delete(revision);
+        images.set(revision, image);
+        cacheBytes += image.length;
+        while (images.size > MAX_CACHED_IMAGES || cacheBytes > MAX_CACHE_BYTES) {
+            const oldest = images.keys().next().value;
+            cacheBytes -= images.get(oldest).length;
+            images.delete(oldest);
+        }
+    }
 
     function scheduleRestart() {
         if (disposed || retryTimer) return;
@@ -88,7 +108,18 @@ export function createRosMapService({
         lines.on('line', line => {
             if (disposed || child !== process) return;
             try {
-                latest = parseWorkerMap(line);
+                if (line.length > MAX_LINE_CHARS) throw new Error('ROS_MAP_TOO_LARGE');
+                const value = JSON.parse(line);
+                if (value?.type === 'source_lost') {
+                    latest = null;
+                    clearImages();
+                    status = 'waiting';
+                    logger?.warn('ROS /map publisher unavailable');
+                    return;
+                }
+                const next = parseWorkerMap(value);
+                latest = next;
+                retainImage(next.metadata.revision, next.image);
                 status = 'ready';
                 logger?.info({ revision: latest.metadata.revision,
                     width: latest.metadata.geometry.width,
@@ -111,6 +142,7 @@ export function createRosMapService({
             child = null;
             if (disposed) return;
             latest = null;
+            clearImages();
             status = 'offline';
             logger?.warn({ code, signal }, 'ROS map worker stopped');
             scheduleRestart();
@@ -127,8 +159,7 @@ export function createRosMapService({
             return latest ? structuredClone(latest.metadata) : { status };
         },
         getImage(revision) {
-            if (!latest || latest.metadata.revision !== revision) return null;
-            return latest.image;
+            return images.get(revision) ?? null;
         },
         dispose() {
             disposed = true;
@@ -137,6 +168,7 @@ export function createRosMapService({
             child?.kill('SIGTERM');
             child = null;
             latest = null;
+            clearImages();
         },
     };
 }

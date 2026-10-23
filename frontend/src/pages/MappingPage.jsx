@@ -27,6 +27,7 @@ import { waitForMappingStop } from '../utils/waitForMappingStop.js';
 import { resolveVisiblePose } from '../utils/mapCoordinates.js';
 import { sameMapContext } from '../utils/mapRenderModel.js';
 import { resolvePoseQuality } from '../utils/poseQuality.js';
+import { resolveRosMapPose } from '../utils/rosMapPose.js';
 
 async function trackAcceptedFinish(client, attempt, response) {
   const workflow = useMappingWorkflowStore.getState();
@@ -112,16 +113,18 @@ export default function MappingPage() {
     });
   }, [snapshot, viewerContext, renderModel]);
 
-  // Bản đồ /map thật được ưu tiên cho màn hình live; xem bản đồ đã lưu vẫn giữ
-  // đúng context đã chọn. Pose chỉ phủ lên /map nếu đã ở cùng frame.
+  // Bản đồ /map thật được ưu tiên cho màn hình live; pose /odom chỉ được vẽ
+  // sau khi đã ở cùng frame (trực tiếp hoặc qua TF do backend cung cấp).
   const showingRosMap = Boolean(rosMapModel && viewerContext?.kind !== 'saved');
   const displayedModel = showingRosMap ? rosMapModel : renderModel;
+  const rosPose = resolveRosMapPose(snapshot, rosMapModel?.geometry, { transportStale });
   const displayedPose = showingRosMap
-    ? (snapshot?.pose?.frameId === rosMapModel.geometry.frameId && !transportStale
-        ? snapshot.pose : null)
+    ? rosPose.pose
     : visiblePose;
 
-  const poseQuality = resolvePoseQuality(snapshot, { transportStale });
+  const poseQuality = showingRosMap && displayedPose
+    ? snapshot?.localization?.status === 'lost' ? 'lost' : 'odom'
+    : resolvePoseQuality(snapshot, { transportStale });
 
   async function handleStartMapping(e) {
     e.preventDefault();
@@ -315,8 +318,8 @@ export default function MappingPage() {
                   />
                 )}
                 {showingRosMap && (
-                  <Chip label={`Nguồn: ROS /map · ${rosMapMetadata.geometry.width}×${rosMapMetadata.geometry.height} · ${rosMapMetadata.geometry.resolution.toFixed(3)} m/ô`}
-                    size="small" variant="outlined" color="success" />
+                  <Chip label={`Nguồn: ROS /map${rosMapError ? ' (kết nối gián đoạn)' : ''} · ${rosMapMetadata.geometry.width}×${rosMapMetadata.geometry.height} · ${rosMapMetadata.geometry.resolution.toFixed(3)} m/ô`}
+                    size="small" variant="outlined" color={rosMapError ? 'warning' : 'success'} />
                 )}
                 {!showingRosMap && gridStatus?.sourceState && (
                   <Chip

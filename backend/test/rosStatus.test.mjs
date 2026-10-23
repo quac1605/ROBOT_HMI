@@ -135,16 +135,20 @@ test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.stat
         sharedRobotState,
         spec: FAST_SPEC,
         client: createRosbridgeClient({ url: bridge.url, reconnectMs: FAST_SPEC.bridge.reconnect_ms }),
+        mapFrameId: () => 'map',
     });
     t.after(async () => { service.dispose(); stateService.dispose(); await bridge.close(); });
     service.start();
 
     // 1. Backend đăng ký đúng topic và kiểu message trong spec
-    await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe ops' });
+    await waitFor(() => bridge.subscribeOps.length === 4, { label: 'subscribe ops' });
     assert.deepEqual(bridge.subscribeOps.map(op => [op.topic, op.type]).sort(), [
         ['/cmd_in', 'geometry_msgs/msg/Twist'],
         ['/odom', 'nav_msgs/msg/Odometry'],
+        ['/tf', 'tf2_msgs/msg/TFMessage'],
+        ['/tf_static', 'tf2_msgs/msg/TFMessage'],
     ]);
+    assert.equal(bridge.subscribeOps.find(op => op.topic === '/tf_static').qos.durability, 'transient_local');
 
     // 2. Chưa có /odom: chưa coi là đã kết nối ROS, pose null, vận tốc 0
     assert.equal(sharedRobotState.getSnapshot().rosConnected, false);
@@ -166,6 +170,21 @@ test('Luồng: rosbridge /odom + /cmd_in -> sharedRobotState -> frame robot.stat
     assert.ok(Math.abs(payload.pose.yaw - Math.PI / 4) < 1e-9);
     assert.deepEqual(payload.velocity, { linearX: 0.35, angularZ: -0.6 });
     assert.ok(payload.poseSourceUpdateAgeMs >= 0 && payload.poseSourceUpdateAgeMs <= FAST_SPEC.status.pose.timeout_ms);
+    assert.equal(payload.mapPose, null, 'không vẽ /odom lên /map khi chưa có TF');
+
+    bridge.publish('/tf', { transforms: [{
+        header: { frame_id: 'map' }, child_frame_id: 'odom',
+        transform: {
+            translation: { x: 1, y: 2, z: 0 },
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+        },
+    }] });
+    const mapped = await waitFor(() => sharedRobotState.getSnapshot().mapPose,
+        { label: 'mapPose từ /odom + /tf' });
+    assert.equal(mapped.frameId, 'map');
+    assert.ok(Math.abs(mapped.x - 3.5) < 1e-9);
+    assert.ok(Math.abs(mapped.y - 0.8) < 1e-9);
+    assert.ok(Math.abs(mapped.yaw - Math.PI / 4) < 1e-9);
 
     // 4. Message hỏng bị bỏ qua, không ghi đè số liệu tốt
     bridge.publish('/odom', { pose: { pose: { position: { x: 'abc' } } } });
@@ -186,10 +205,11 @@ test('Luồng: /cmd_in im lặng -> vận tốc 0; /odom im lặng -> rosConnect
         sharedRobotState,
         spec: FAST_SPEC,
         client: createRosbridgeClient({ url: bridge.url, reconnectMs: 100 }),
+        mapFrameId: () => 'map',
     });
     t.after(async () => { service.dispose(); await bridge.close(); });
     service.start();
-    await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe ops' });
+    await waitFor(() => bridge.subscribeOps.length === 4, { label: 'subscribe ops' });
 
     bridge.publish('/cmd_in', twist(0.5, 0.1));
     // Giữ /odom đều đặn để chỉ /cmd_in quá hạn
@@ -219,23 +239,37 @@ test('Luồng: rosbridge rớt -> rosConnected=false; bật lại -> tự kết 
         sharedRobotState,
         spec: FAST_SPEC,
         client: createRosbridgeClient({ url: bridge.url, reconnectMs: 100 }),
+        mapFrameId: () => 'map',
     });
     t.after(async () => { service.dispose(); await bridge.close(); });
     service.start();
-    await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe lần đầu' });
+    await waitFor(() => bridge.subscribeOps.length === 4, { label: 'subscribe lần đầu' });
     bridge.publish('/odom', odometry({ x: 3, y: 4, yaw: 1 }));
     await waitFor(() => sharedRobotState.getSnapshot().rosConnected, { label: 'online' });
 
+    bridge.publish('/tf_static', { transforms: [{
+        header: { frame_id: 'map' }, child_frame_id: 'odom',
+        transform: {
+            translation: { x: 1, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+        },
+    }] });
+    await waitFor(() => sharedRobotState.getSnapshot().mapPose?.x === 4,
+        { label: 'mapPose trước khi reconnect' });
+
     await bridge.close();
     await waitFor(() => sharedRobotState.getSnapshot().rosConnected === false, { label: 'offline khi mất bridge' });
+    assert.equal(sharedRobotState.getSnapshot().mapPose, null);
 
     bridge = await startFakeRosbridge(port);
-    await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe lại sau reconnect' });
+    await waitFor(() => bridge.subscribeOps.length === 4, { label: 'subscribe lại sau reconnect' });
     bridge.publish('/odom', odometry({ x: 5, y: 6, yaw: 0 }));
     await waitFor(() => {
         const s = sharedRobotState.getSnapshot();
         return s.rosConnected && s.pose.x === 5;
     }, { label: 'online lại với pose mới' });
+    assert.equal(sharedRobotState.getSnapshot().mapPose, null,
+        'TF của kết nối cũ không được dùng sau khi reconnect');
 });
 
 test('Runtime: có ROSBRIDGE_URL thì createRobotRuntime đẩy /odom, /cmd_in lên robot.state', async t => {
@@ -253,7 +287,7 @@ test('Runtime: có ROSBRIDGE_URL thì createRobotRuntime đẩy /odom, /cmd_in l
     t.after(async () => { runtime.dispose(); await bridge.close(); });
     assert.ok(runtime.rosStatusService, 'runtime phải bật rosStatusService khi có ROSBRIDGE_URL');
 
-    await waitFor(() => bridge.subscribeOps.length === 2, { label: 'subscribe ops' });
+    await waitFor(() => bridge.subscribeOps.length === 4, { label: 'subscribe ops' });
     bridge.publish('/odom', odometry({ x: -0.75, y: 0.5, yaw: -Math.PI / 2 }));
     bridge.publish('/cmd_in', twist(0.2, 0.3));
     const payload = await waitFor(() => {

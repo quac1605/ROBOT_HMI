@@ -82,7 +82,9 @@ def encode_map(message, skip_revision=None):
     counts["other"] = cells - sum(counts.values())
 
     revision_hash = hashlib.sha256(raw)
-    revision_hash.update(json.dumps([geometry, stamp, map_load_time],
+    # A fresh header stamp alone does not change the visible map. Avoid
+    # re-encoding the same large PNG on every periodic OccupancyGrid publish.
+    revision_hash.update(json.dumps([geometry, map_load_time],
                                     sort_keys=True).encode("utf-8"))
     revision = revision_hash.hexdigest()[:32]
     if revision == skip_revision:
@@ -117,13 +119,19 @@ def encode_map(message, skip_revision=None):
 def main():
     rclpy.init()
     node = rclpy.create_node("robot_hmi_map_raster")
-    qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
-                     durability=DurabilityPolicy.TRANSIENT_LOCAL)
+    latched_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                            durability=DurabilityPolicy.TRANSIENT_LOCAL)
+    live_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT,
+                          durability=DurabilityPolicy.VOLATILE)
     last_revision = None
+    had_publisher = False
+    missing_checks = 0
 
     def on_map(message):
-        nonlocal last_revision
+        nonlocal last_revision, had_publisher, missing_checks
         try:
+            had_publisher = True
+            missing_checks = 0
             result = encode_map(message, skip_revision=last_revision)
             if result is None:
                 return
@@ -132,7 +140,24 @@ def main():
         except (ValueError, OverflowError) as error:
             print(f"/map rejected: {error}", file=sys.stderr, flush=True)
 
-    node.create_subscription(OccupancyGrid, "/map", on_map, qos)
+    # The latched subscription receives an existing map from map_server.
+    # The volatile one also matches publishers that only offer volatile QoS.
+    # Both may receive a live update; revision deduplication keeps one PNG.
+    node.create_subscription(OccupancyGrid, "/map", on_map, latched_qos)
+    node.create_subscription(OccupancyGrid, "/map", on_map, live_qos)
+
+    def check_publisher():
+        nonlocal had_publisher, last_revision, missing_checks
+        present = node.count_publishers("/map") > 0
+        missing_checks = 0 if present else missing_checks + 1
+        if had_publisher and missing_checks >= 2:
+            last_revision = None
+            print('{"type":"source_lost"}', flush=True)
+            had_publisher = False
+        elif present:
+            had_publisher = True
+
+    node.create_timer(2.0, check_publisher)
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

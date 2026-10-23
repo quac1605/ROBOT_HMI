@@ -267,10 +267,11 @@ test('runtime mở đúng một kết nối rosbridge: subscribe /odom, /cmd_in 
     });
     t.after(async () => { runtime.dispose(); await bridge.close(); });
 
-    await waitFor(() => bridge.connections[0]?.length === 3, { label: 'subscribe + advertise' });
+    await waitFor(() => bridge.connections[0]?.length === 5, { label: 'subscribe + advertise' });
     const ops = bridge.connections[0];
     assert.deepEqual(ops.map(op => [op.op, op.topic]).sort(), [
         ['advertise', '/cmd_out'], ['subscribe', '/cmd_in'], ['subscribe', '/odom'],
+        ['subscribe', '/tf'], ['subscribe', '/tf_static'],
     ]);
 
     runtime.cmdOutService.emergencyStop();

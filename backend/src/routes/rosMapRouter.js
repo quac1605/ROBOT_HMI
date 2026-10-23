@@ -4,6 +4,7 @@ export function createRosMapRouter({ lifecycle, rosMapService }) {
     const router = Router();
 
     router.get('/ros-map', lifecycle.requireAuth, (_req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
         res.status(200).json(rosMapService.getMetadata());
     });
 
@@ -20,6 +21,7 @@ export function createRosMapRouter({ lifecycle, rosMapService }) {
                 message: 'Bản đồ đã thay đổi hoặc chưa sẵn sàng' } });
             return;
         }
+        res.setHeader('Cache-Control', 'no-store');
         res.setHeader('Content-Type', 'image/png');
         res.setHeader('Content-Length', image.length);
         res.status(200).end(image);

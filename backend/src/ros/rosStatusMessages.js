@@ -16,7 +16,7 @@ export function odometryToPose(msg, defaultFrameId = 'odom') {
     if (![q?.x, q?.y, q?.z, q?.w].every(finite)) return null;
 
     const norm = Math.hypot(q.x, q.y, q.z, q.w);
-    if (norm === 0) return null;
+    if (!Number.isFinite(norm) || norm === 0) return null;
     const [x, y, z, w] = [q.x / norm, q.y / norm, q.z / norm, q.w / norm];
     const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 

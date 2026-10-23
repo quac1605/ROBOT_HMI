@@ -1,7 +1,8 @@
 # backend/config/ros_status.yaml
 #
 # HỢP ĐỒNG TRẠNG THÁI ROBOT: ROS 2 -> BACKEND HMI -> FRONTEND (ô "Trạng thái robot" ở /navigation).
-# HMI SUBSCRIBE các topic dưới đây. Trên cùng kết nối rosbridge, HMI còn PUBLISH /cmd_out
+# HMI SUBSCRIBE /odom, /cmd_in và TF (/tf, /tf_static) trên cùng kết nối rosbridge.
+# HMI còn PUBLISH /cmd_out
 # (std_msgs/msg/String, xem readme_ros.md); vận tốc trong /cmd_out cùng kiểu và đơn vị với /cmd_in.
 # Các bên phía robot publish đúng topic/kiểu message này; kiểm tra bằng:
 #   ros2 topic echo /odom --once      ros2 topic hz /odom
@@ -9,6 +10,8 @@
 #
 # Backend chỉ bật nguồn ROS khi có biến môi trường ROSBRIDGE_URL (ví dụ ws://<robot-ip>:9090).
 # Phía robot chạy: ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+# /tf phải chứa transform từ frame bản đồ sang frame của /odom (thường map -> odom).
+# Thiếu TF thì vẫn hiển thị vị trí /odom dạng số, nhưng không vẽ robot lên /map.
 
 version: 1
 
@@ -43,6 +46,8 @@ status:
 
 # Dữ liệu backend đẩy lên frontend (WebSocket, frame type 'robot.state', payload JSON theo RobotStateSchema):
 #   pose:                  { frameId: string, x: m, y: m, yaw: rad } | null
+#   mapPose:               { frameId: string, x: m, y: m, yaw: rad } | null
+#                          (tọa độ trong frame /map sau khi ghép TF; null nếu thiếu TF)
 #   poseSourceUpdateAgeMs: ms kể từ msg /odom cuối | null
 #   velocity:              { linearX: m/s, angularZ: rad/s }
 #   rosConnected:          true khi rosbridge đang mở VÀ /odom còn trong timeout_ms
